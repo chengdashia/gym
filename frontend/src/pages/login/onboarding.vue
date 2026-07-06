@@ -206,7 +206,10 @@ async function next() {
   if (!agreed.value) return;
   uni.showLoading({ title: '登录中...' });
   try {
-    await auth.login();
+    // 已有 token 时不要重新登录，避免反复调用 wechat-login
+    if (!auth.token) {
+      await auth.login();
+    }
     await userStore.fetchMe();
     if (userStore.me?.agreement_confirmed) {
       // 已确认，跳过 onboarding

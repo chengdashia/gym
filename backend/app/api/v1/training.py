@@ -171,6 +171,12 @@ def list_plans(user: User = Depends(get_current_user), db: Session = Depends(get
 
 @router.post("/plans")
 def create_plan(body: PlanIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # 同一用户只能有一个 active 计划；新建时取消其它 active
+    db.query(TrainingPlan).filter(
+        TrainingPlan.user_id == user.id,
+        TrainingPlan.deleted_at.is_(None),
+        TrainingPlan.is_active == 1,
+    ).update({TrainingPlan.is_active: 0})
     plan = TrainingPlan(
         user_id=user.id,
         name=body.name,
@@ -286,6 +292,36 @@ def delete_plan(plan_id: int, user: User = Depends(get_current_user), db: Sessio
     db.add(OperationLog(user_id=user.id, action="training.plan.delete", target_type="plan", target_id=p.id))
     db.commit()
     return ok({"deleted": plan_id})
+
+
+@router.post("/plans/{plan_id}/activate")
+def activate_plan(
+    plan_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """将指定计划设为当前激活；同时取消同用户其它计划的激活。"""
+    p = db.query(TrainingPlan).filter(
+        TrainingPlan.id == plan_id, TrainingPlan.user_id == user.id, TrainingPlan.deleted_at.is_(None)
+    ).first()
+    if not p:
+        raise BizException(40401, "计划不存在")
+    # 取消同用户其它计划的 active
+    db.query(TrainingPlan).filter(
+        TrainingPlan.user_id == user.id,
+        TrainingPlan.deleted_at.is_(None),
+        TrainingPlan.id != plan_id,
+        TrainingPlan.is_active == 1,
+    ).update({TrainingPlan.is_active: 0})
+    p.is_active = 1
+    p.status = "active"
+    db.add(OperationLog(
+        user_id=user.id, action="training.plan.activate",
+        target_type="plan", target_id=plan_id,
+    ))
+    db.commit()
+    db.refresh(p)
+    return ok(_plan_to_dict(p))
 
 
 # ================== Today ==================

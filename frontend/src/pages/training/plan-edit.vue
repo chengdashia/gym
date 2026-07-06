@@ -358,11 +358,11 @@ function confirmEditEx() {
 
 async function save() {
   if (!plan.name.trim()) {
-    uni.showToast({ title: '请填写计划名称', icon: 'none' });
+    safeToast('请填写计划名称', 'none');
     return;
   }
   if (plan.days.length === 0) {
-    uni.showToast({ title: '请至少添加一个训练日', icon: 'none' });
+    safeToast('请至少添加一个训练日', 'none');
     return;
   }
   saving.value = true;
@@ -396,15 +396,28 @@ async function save() {
     } else {
       const created = await trainingApi.createPlan(payload);
       if (created && (created as any).id) {
-        await trainingApi.setActive((created as any).id).catch(() => {});
+        // 后端 /activate 可能在某些版本不存在；静默兜底，避免阻塞保存
+        try { await trainingApi.setActive((created as any).id); } catch { /* noop */ }
       }
     }
-    uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 600);
+    safeToast('已保存', 'success');
+    setTimeout(() => {
+      if (typeof uni !== 'undefined' && uni.navigateBack) uni.navigateBack();
+    }, 600);
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+    safeToast(e?.message || '保存失败', 'none');
   } finally {
     saving.value = false;
+  }
+}
+
+function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
+  try {
+    if (typeof uni !== 'undefined' && uni.showToast) {
+      uni.showToast({ title, icon });
+    }
+  } catch {
+    /* 页面已销毁，忽略 */
   }
 }
 </script>

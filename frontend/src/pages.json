@@ -1,17 +1,17 @@
 {
   "pages": [
     {
-      "path": "pages/login/onboarding",
-      "style": {
-        "navigationBarTitleText": "登录",
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/home/index",
       "style": {
         "navigationBarTitleText": "健身饮食",
         "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/login/onboarding",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
       }
     },
     {
