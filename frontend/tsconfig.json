@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "types": [
+      "@dcloudio/types"
+    ],
+    "lib": ["esnext", "dom"],
+    "strict": false,
+    "noImplicitAny": false,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "esnext",
+    "module": "esnext",
+    "allowJs": true,
+    "resolveJsonModule": true
+  },
+  "vueCompilerOptions": {
+    "experimentalRuntimeMode": "runtime-uni-app"
+  },
+  "include": ["src/**/*", "src/**/*.vue"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,118 @@
+@import './variables.scss';
+
+// reset
+// 注意：WeChat 小程序的 WXSS 解析器不支持 `page *` 这类带通用选择器 * 的选择器组，
+// 会报 `unexpected token '*'`，因此只针对具体元素做 box-sizing 重置。
+page {
+  box-sizing: border-box;
+}
+
+view, text, image, button, input, textarea, scroll-view, swiper, swiper-item {
+  box-sizing: border-box;
+}
+
+view, text {
+  word-break: break-all;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  line-height: normal;
+  &::after {
+    border: none;
+  }
+}
+
+input, textarea {
+  background: transparent;
+}
+
+// 容器
+.container {
+  min-height: 100vh;
+  padding: 0 $gap-3;
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
+  background: $bg;
+}
+
+.section {
+  margin-top: $gap-3;
+}
+
+// 通用文字
+.text-1 { color: $text-1; }
+.text-2 { color: $text-2; }
+.text-3 { color: $text-3; }
+.text-primary { color: $primary; }
+.text-warn { color: $warn; }
+.text-danger { color: $danger; }
+
+.fw-500 { font-weight: 500; }
+.fw-600 { font-weight: 600; }
+.fw-700 { font-weight: 700; }
+
+// 通用圆角
+.r-8 { border-radius: $r-8; }
+.r-12 { border-radius: $r-12; }
+.r-16 { border-radius: $r-16; }
+.r-20 { border-radius: $r-20; }
+.r-24 { border-radius: $r-24; }
+.r-pill { border-radius: $r-pill; }
+
+// 弹性盒子
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-around { display: flex; align-items: center; justify-content: space-around; }
+.items-center { align-items: center; }
+.justify-end { justify-content: flex-end; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+.gap-1 { gap: $gap-1; }
+.gap-2 { gap: $gap-2; }
+.gap-3 { gap: $gap-3; }
+
+// 卡片
+.card {
+  background: $card;
+  border-radius: $r-20;
+  padding: $gap-3;
+  box-shadow: $shadow-md;
+}
+
+// 分割线
+.divider {
+  height: 1rpx;
+  background: $divider;
+  width: 100%;
+}
+
+// 渐变文字
+.gradient-text {
+  background: $gradient-primary;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+// 安全区
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+// 文字省略
+.ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ellipsis-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

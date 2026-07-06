@@ -1,0 +1,449 @@
+<template>
+  <view class="add-page">
+    <view class="search-bar">
+      <view class="search-input">
+        <text class="search-icon">🔍</text>
+        <input
+          v-model="keyword"
+          placeholder="搜索食物"
+          placeholder-class="ph"
+          confirm-type="search"
+          @confirm="search"
+          class="input"
+        />
+        <view v-if="keyword" class="clear" @tap="clearSearch">✕</view>
+      </view>
+    </view>
+
+    <view v-if="results.length" class="result-list">
+      <view
+        v-for="r in results"
+        :key="`${r.source}-${r.id}`"
+        class="result-item"
+        @tap="pickFood(r)"
+      >
+        <view class="ri-info">
+          <view class="ri-name">{{ r.name }}</view>
+          <view class="ri-cat">{{ r.category || '-' }} · {{ Math.round(r.calories_per_100g) }} kcal/100g</view>
+        </view>
+        <view class="ri-tag">
+          <Tag :text="r.source === 'custom' ? '自定义' : '系统'" :variant="r.source === 'custom' ? 'warn' : 'soft'" />
+        </view>
+      </view>
+    </view>
+
+    <view v-else-if="searched" class="empty-block">
+      <EmptyState emoji="🍽️" title="没有找到相关食物" desc="试试更短的关键词，或自定义食物">
+        <view class="empty-actions">
+          <view class="ea-btn" @tap="goCustom">自定义食物</view>
+        </view>
+      </EmptyState>
+    </view>
+
+    <view v-else class="empty-block">
+      <EmptyState emoji="🥗" title="输入关键词搜索" desc="支持中文、英文、拼音首字母" />
+    </view>
+
+    <!-- 选食物后填写克数 -->
+    <view v-if="picked" class="picker-mask" @tap="cancelPick">
+      <view class="picker" @tap.stop>
+        <view class="picker-title">{{ picked.name }}</view>
+        <view class="picker-cat">{{ picked.category || '-' }} · {{ picked.calories_per_100g }} kcal/100g</view>
+
+        <view class="seg">
+          <view :class="['seg-item', { active: unit === 'g' }]" @tap="setUnit('g')">按克数</view>
+          <view
+            :class="['seg-item', { active: unit === 'serving', disabled: !picked.serving_weight_g }]"
+            @tap="picked.serving_weight_g && setUnit('serving')"
+          >按份数</view>
+        </view>
+
+        <view v-if="unit === 'g'" class="form-row">
+          <text class="form-label">克数</text>
+          <input v-model.number="amount" type="digit" class="form-input" placeholder="克数" />
+          <text class="form-unit">g</text>
+        </view>
+        <view v-else class="form-row">
+          <text class="form-label">份数</text>
+          <input v-model.number="amount" type="digit" class="form-input" placeholder="份数" />
+          <text class="form-unit">份 · {{ picked.serving_weight_g }}g/份</text>
+        </view>
+
+        <view class="form-row">
+          <text class="form-label">餐次</text>
+          <view class="meal-chips">
+            <view
+              v-for="m in mealTypes"
+              :key="m.value"
+              :class="['chip', { active: meal === m.value }]"
+              @tap="meal = m.value as MealType"
+            >{{ m.label }}</view>
+          </view>
+        </view>
+
+        <view class="form-row">
+          <text class="form-label">时间</text>
+          <picker mode="time" :value="time" @change="(e: any) => time = e.detail.value" class="time-picker">
+            <view class="time-text">{{ time }}</view>
+          </picker>
+        </view>
+
+        <view class="preview">
+          <view class="preview-num">{{ previewCal }} kcal</view>
+          <view class="preview-macros">碳 {{ previewMacros.carbs }}g · 蛋 {{ previewMacros.protein }}g · 脂 {{ previewMacros.fat }}g</view>
+        </view>
+
+        <view class="picker-actions">
+          <view class="btn-secondary" @tap="cancelPick">取消</view>
+          <PrimaryButton text="保存记录" @tap="save" />
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PrimaryButton from '@/components/PrimaryButton.vue';
+import Tag from '@/components/Tag.vue';
+import { foodApi, FoodItem } from '@/api/food';
+import { dietApi } from '@/api/diet';
+import { useDietStore } from '@/store/diet';
+import { MEAL_TYPES, MealType } from '@/utils/constants';
+import { calcNutrition } from '@/utils/nutrition';
+import { formatTime, today } from '@/utils/date';
+
+const mealTypes = MEAL_TYPES;
+const dietStore = useDietStore();
+
+const keyword = ref('');
+const results = ref<FoodItem[]>([]);
+const searched = ref(false);
+const picked = ref<FoodItem | null>(null);
+const unit = ref<'g' | 'serving'>('g');
+const amount = ref<number>(100);
+const meal = ref<MealType>((getCurrentMeal()));
+const time = ref(formatTime(new Date()));
+
+const date = computed(() => dietStore.selectedDate || today());
+
+function getCurrentMeal(): MealType {
+  const h = new Date().getHours();
+  if (h < 10) return 'breakfast';
+  if (h < 14) return 'lunch';
+  if (h < 17) return 'snack';
+  if (h < 21) return 'dinner';
+  return 'snack';
+}
+
+async function search() {
+  if (!keyword.value.trim()) {
+    results.value = [];
+    searched.value = false;
+    return;
+  }
+  try {
+    const res = await foodApi.search({ keyword: keyword.value.trim(), page_size: 50 });
+    results.value = res.items || [];
+    searched.value = true;
+  } catch {
+    results.value = [];
+  }
+}
+
+function clearSearch() {
+  keyword.value = '';
+  results.value = [];
+  searched.value = false;
+}
+
+function pickFood(f: FoodItem) {
+  picked.value = f;
+  unit.value = f.default_unit || 'g';
+  amount.value = unit.value === 'serving' ? 1 : 100;
+}
+
+function setUnit(u: 'g' | 'serving') {
+  unit.value = u;
+  amount.value = u === 'serving' ? 1 : 100;
+}
+
+function cancelPick() {
+  picked.value = null;
+}
+
+const previewCal = computed(() => {
+  if (!picked.value) return 0;
+  const r = calcNutrition(
+    {
+      calories_per_100g: picked.value.calories_per_100g,
+      carbs_per_100g: picked.value.carbs_per_100g,
+      protein_per_100g: picked.value.protein_per_100g,
+      fat_per_100g: picked.value.fat_per_100g,
+      serving_weight_g: picked.value.serving_weight_g,
+    },
+    { unit_type: unit.value, amount_g: amount.value, serving_count: amount.value },
+  );
+  return Math.round(r.calories);
+});
+
+const previewMacros = computed(() => {
+  if (!picked.value) return { carbs: 0, protein: 0, fat: 0 };
+  const r = calcNutrition(
+    {
+      calories_per_100g: picked.value.calories_per_100g,
+      carbs_per_100g: picked.value.carbs_per_100g,
+      protein_per_100g: picked.value.protein_per_100g,
+      fat_per_100g: picked.value.fat_per_100g,
+      serving_weight_g: picked.value.serving_weight_g,
+    },
+    { unit_type: unit.value, amount_g: amount.value, serving_count: amount.value },
+  );
+  return { carbs: r.carbs, protein: r.protein, fat: r.fat };
+});
+
+async function save() {
+  if (!picked.value) return;
+  if (!amount.value || amount.value <= 0) {
+    uni.showToast({ title: '请输入有效数量', icon: 'none' });
+    return;
+  }
+  uni.showLoading({ title: '保存中...' });
+  try {
+    await dietApi.create({
+      record_date: date.value,
+      record_time: time.value,
+      meal_type: meal.value,
+      food_source: picked.value.source,
+      food_id: picked.value.source === 'system' ? picked.value.id : null,
+      custom_food_id: picked.value.source === 'custom' ? picked.value.id : null,
+      food_name_snapshot: picked.value.name,
+      unit_type: unit.value,
+      amount_g: unit.value === 'g' ? amount.value : null,
+      serving_count: unit.value === 'serving' ? amount.value : null,
+    });
+    uni.hideLoading();
+    uni.showToast({ title: '已保存', icon: 'success' });
+    setTimeout(() => uni.navigateBack(), 600);
+    dietStore.fetch();
+  } catch (e: any) {
+    uni.hideLoading();
+    uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  }
+}
+
+function goCustom() {
+  uni.navigateTo({ url: '/pages/diet/custom-food' });
+}
+</script>
+
+<style lang="scss" scoped>
+.add-page {
+  min-height: 100vh;
+  background: $bg;
+  padding: $gap-3;
+}
+.search-bar {
+  margin-bottom: $gap-3;
+}
+.search-input {
+  display: flex;
+  align-items: center;
+  background: $card;
+  border-radius: $r-16;
+  padding: 18rpx $gap-2;
+  gap: $gap-1;
+  box-shadow: $shadow-sm;
+}
+.search-icon {
+  font-size: 28rpx;
+}
+.input {
+  flex: 1;
+  font-size: $fs-md;
+  color: $text-1;
+}
+.ph {
+  color: $text-3;
+}
+.clear {
+  color: $text-3;
+  padding: 4rpx 8rpx;
+}
+
+.result-list {
+  background: $card;
+  border-radius: $r-16;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+}
+.result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $gap-3;
+  border-bottom: 1rpx solid $divider;
+  &:last-child { border-bottom: none; }
+}
+.ri-info {
+  flex: 1;
+}
+.ri-name {
+  font-size: $fs-md;
+  color: $text-1;
+  font-weight: 500;
+}
+.ri-cat {
+  font-size: $fs-xs;
+  color: $text-3;
+  margin-top: 4rpx;
+}
+
+.empty-block {
+  margin-top: $gap-4;
+}
+.empty-actions {
+  display: flex;
+  gap: $gap-2;
+}
+.ea-btn {
+  padding: 14rpx 36rpx;
+  background: $primary;
+  color: #fff;
+  border-radius: $r-pill;
+  font-size: $fs-sm;
+}
+
+.picker-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: flex-end;
+  z-index: 200;
+}
+.picker {
+  width: 100%;
+  background: $card;
+  border-radius: $r-24 $r-24 0 0;
+  padding: $gap-3;
+  padding-bottom: calc(#{$gap-3} + env(safe-area-inset-bottom));
+}
+.picker-title {
+  font-size: $fs-xl;
+  font-weight: 600;
+  color: $text-1;
+}
+.picker-cat {
+  margin-top: 4rpx;
+  font-size: $fs-sm;
+  color: $text-3;
+}
+
+.seg {
+  display: flex;
+  background: $bg-2;
+  border-radius: $r-pill;
+  padding: 4rpx;
+  margin: $gap-3 0;
+}
+.seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  border-radius: $r-pill;
+  font-size: $fs-sm;
+  color: $text-2;
+  &.active {
+    background: $primary;
+    color: #fff;
+    font-weight: 500;
+  }
+  &.disabled {
+    opacity: 0.4;
+  }
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: $gap-2 0;
+  border-bottom: 1rpx solid $divider;
+  gap: $gap-2;
+}
+.form-label {
+  width: 100rpx;
+  color: $text-2;
+  font-size: $fs-sm;
+}
+.form-input {
+  flex: 1;
+  font-size: $fs-md;
+  color: $text-1;
+  text-align: right;
+}
+.form-unit {
+  color: $text-3;
+  font-size: $fs-sm;
+}
+.meal-chips {
+  flex: 1;
+  display: flex;
+  gap: 12rpx;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 8rpx 20rpx;
+  border-radius: $r-pill;
+  background: $bg-2;
+  font-size: $fs-sm;
+  color: $text-2;
+  &.active {
+    background: $primary;
+    color: #fff;
+    font-weight: 500;
+  }
+}
+.time-picker {
+  flex: 1;
+  text-align: right;
+}
+.time-text {
+  font-size: $fs-md;
+  color: $text-1;
+}
+
+.preview {
+  margin-top: $gap-3;
+  padding: $gap-3;
+  background: $primary-tint;
+  border-radius: $r-16;
+  text-align: center;
+}
+.preview-num {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: $primary-deep;
+}
+.preview-macros {
+  font-size: $fs-sm;
+  color: $text-2;
+  margin-top: 4rpx;
+}
+
+.picker-actions {
+  display: flex;
+  gap: $gap-2;
+  align-items: center;
+  margin-top: $gap-3;
+}
+.btn-secondary {
+  padding: 24rpx 32rpx;
+  background: $bg-2;
+  border-radius: $r-16;
+  color: $text-2;
+  font-size: $fs-md;
+}
+</style>

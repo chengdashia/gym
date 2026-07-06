@@ -1,0 +1,54 @@
+{
+  "name": "健身与饮食",
+  "appid": "__UNI__GYMDIET",
+  "description": "健身与饮食记录小程序",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowBeforeRender": true,
+      "waiting": true,
+      "autoclose": true,
+      "delay": 0
+    },
+    "modules": {},
+    "distribute": {
+      "android": { "permissions": [] },
+      "ios": {},
+      "sdkConfigs": {}
+    }
+  },
+  "quickapp": {},
+  "mp-weixin": {
+    "appid": "wx0000000000000000",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于展示附近的健身房"
+      },
+      "scope.album": {
+        "desc": "用于选择食物图片进行拍照识别"
+      },
+      "scope.camera": {
+        "desc": "用于拍摄食物图片进行识别"
+      }
+    },
+    "requiredPrivateInfos": [],
+    "lazyCodeLoading": "requiredComponents"
+  },
+  "mp-alipay": {},
+  "mp-baidu": {},
+  "mp-toutiao": {},
+  "uniStatistics": { "enable": false },
+  "vueVersion": "3"
+}

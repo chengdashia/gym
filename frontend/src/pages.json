@@ -1,0 +1,182 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/onboarding",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "健身饮食",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/diet/index",
+      "style": {
+        "navigationBarTitleText": "饮食"
+      }
+    },
+    {
+      "path": "pages/diet/add",
+      "style": {
+        "navigationBarTitleText": "添加饮食"
+      }
+    },
+    {
+      "path": "pages/diet/custom-food",
+      "style": {
+        "navigationBarTitleText": "自定义食物"
+      }
+    },
+    {
+      "path": "pages/diet/photo-recognize",
+      "style": {
+        "navigationBarTitleText": "拍照识别"
+      }
+    },
+    {
+      "path": "pages/diet/record-edit",
+      "style": {
+        "navigationBarTitleText": "编辑记录"
+      }
+    },
+    {
+      "path": "pages/training/index",
+      "style": {
+        "navigationBarTitleText": "训练"
+      }
+    },
+    {
+      "path": "pages/training/plan-edit",
+      "style": {
+        "navigationBarTitleText": "训练计划"
+      }
+    },
+    {
+      "path": "pages/training/execute",
+      "style": {
+        "navigationBarTitleText": "训练中"
+      }
+    },
+    {
+      "path": "pages/training/history",
+      "style": {
+        "navigationBarTitleText": "训练历史"
+      }
+    },
+    {
+      "path": "pages/training/history-detail",
+      "style": {
+        "navigationBarTitleText": "训练详情"
+      }
+    },
+    {
+      "path": "pages/stats/index",
+      "style": {
+        "navigationBarTitleText": "数据"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/mine/profile",
+      "style": {
+        "navigationBarTitleText": "基础资料"
+      }
+    },
+    {
+      "path": "pages/mine/goals",
+      "style": {
+        "navigationBarTitleText": "目标设置"
+      }
+    },
+    {
+      "path": "pages/mine/reminders",
+      "style": {
+        "navigationBarTitleText": "提醒设置"
+      }
+    },
+    {
+      "path": "pages/mine/account",
+      "style": {
+        "navigationBarTitleText": "账号与数据"
+      }
+    },
+    {
+      "path": "pages/mine/agreement",
+      "style": {
+        "navigationBarTitleText": "协议"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "健身饮食",
+    "navigationBarBackgroundColor": "#F7FAF8",
+    "backgroundColor": "#F7FAF8",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#8FA3A1",
+    "selectedColor": "#3FA67C",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/diet/index",
+        "iconPath": "static/tabbar/diet.png",
+        "selectedIconPath": "static/tabbar/diet-active.png",
+        "text": "饮食"
+      },
+      {
+        "pagePath": "pages/training/index",
+        "iconPath": "static/tabbar/training.png",
+        "selectedIconPath": "static/tabbar/training-active.png",
+        "text": "训练"
+      },
+      {
+        "pagePath": "pages/stats/index",
+        "iconPath": "static/tabbar/stats.png",
+        "selectedIconPath": "static/tabbar/stats-active.png",
+        "text": "数据"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png",
+        "text": "我的"
+      }
+    ]
+  },
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^card$": "@/components/Card.vue",
+      "^primary-button$": "@/components/PrimaryButton.vue",
+      "^secondary-button$": "@/components/PrimaryButton.vue",
+      "^tag$": "@/components/Tag.vue",
+      "^empty-state$": "@/components/EmptyState.vue",
+      "^macro-bar$": "@/components/MacroBar.vue",
+      "^progress-ring$": "@/components/ProgressRing.vue",
+      "^modal-confirm$": "@/components/ModalConfirm.vue",
+      "^rest-timer$": "@/components/RestTimer.vue",
+      "^fab$": "@/components/Fab.vue",
+      "^section-header$": "@/components/SectionHeader.vue",
+      "^icon$": "@/components/Icon.vue"
+    }
+  }
+}
