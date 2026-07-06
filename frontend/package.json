@@ -5,7 +5,7 @@
   "description": "健身与饮食记录小程序 - uni-app 前端",
   "scripts": {
     "dev:mp-weixin": "uni -p mp-weixin",
-    "build:mp-weixin": "uni build -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin && node scripts/postbuild-mp-weixin.mjs",
     "dev:h5": "uni",
     "build:h5": "uni build"
   },
@@ -16,6 +16,7 @@
     "@dcloudio/uni-h5": "3.0.0-4020920240930001",
     "@dcloudio/uni-mp-weixin": "3.0.0-4020920240930001",
     "echarts": "^5.5.0",
+    "echarts-for-weixin": "^1.0.2",
     "pinia": "^2.2.4",
     "vue": "^3.4.38",
     "vue-i18n": "^9.14.0"
