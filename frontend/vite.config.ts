@@ -11,10 +11,14 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
+        // 使用 modern API，消除 legacy-js-api 弃用警告
+        api: 'modern',
+        // uni-app 插件内部仍走 legacy API，静默该警告
+        silenceDeprecations: ['legacy-js-api'],
         // 自动注入到每个 <style lang="scss">，使 mixin 和变量全局可用
         additionalData: `
-          @import "@/styles/variables.scss";
-          @import "@/styles/glass.scss";
+          @use "@/styles/variables.scss" as *;
+          @use "@/styles/glass.scss" as *;
         `,
       },
     },

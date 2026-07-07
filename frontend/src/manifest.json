@@ -43,8 +43,7 @@
         "desc": "用于拍摄食物图片进行识别"
       }
     },
-    "requiredPrivateInfos": [],
-    "lazyCodeLoading": "requiredComponents"
+    "requiredPrivateInfos": []
   },
   "mp-alipay": {},
   "mp-baidu": {},

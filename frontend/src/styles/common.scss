@@ -1,5 +1,5 @@
-@import './variables.scss';
-@import './glass.scss';
+@use './variables.scss' as *;
+@use './glass.scss' as *;
 
 // ============================================================
 // 全局样式 — 液态玻璃主题

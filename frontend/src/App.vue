@@ -49,7 +49,7 @@ onHide(() => {
 </script>
 
 <style lang="scss">
-@import '@/styles/common.scss';
+@use '@/styles/common.scss';
 
 /* 液态玻璃全局背景 */
 page {
