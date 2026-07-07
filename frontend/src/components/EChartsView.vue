@@ -1,30 +1,42 @@
 <template>
   <view :style="{ width: '100%', height: height + 'rpx' }">
+    <!--
+      MP-WEIXIN: 直接渲染 <canvas type="2d">，绕过 echarts-for-weixin 的 ec-canvas 自定义组件。
+      原因：uni-app 把 <ec-canvas> 编译到 wxml 时会用 uP 透传 props，导致 uni-app 运行时调用
+      Ma(t.uP)（期望 "name,index" 字符串）实际却拿到对象 {canvas-id, ec}，从而触发
+      t.split is not a function（vendor.js Ma → Ka → pi.attached）。
+      自己拿 canvas 节点后直接 echarts.init(canvasNode)，行为与 ec-canvas 内部 initByNewWay 一致。
+
+      H5：直接渲染 <view ref>，echarts.init(ref) 即可。
+    -->
     <!-- #ifdef MP-WEIXIN -->
-    <ec-canvas
+    <canvas
+      type="2d"
+      :id="canvasId"
       :canvas-id="canvasId"
-      :ec="ec"
       class="ec-canvas"
+      :style="{ width: '100%', height: height + 'rpx' }"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
     />
     <!-- #endif -->
 
     <!-- #ifndef MP-WEIXIN -->
-    <view ref="chartEl" class="chart" :style="{ width: '100%', height: height + 'rpx' }" />
+    <view
+      ref="chartEl"
+      class="chart"
+      :style="{ width: '100%', height: height + 'rpx' }"
+    />
     <!-- #endif -->
   </view>
 </template>
 
 <script setup lang="ts">
-// mp 端 <ec-canvas> 是 echarts-for-weixin 提供的第三方组件，需要在 EChartsView.json 的
-// usingComponents 中显式注册（路径：/echarts-for-weixin/ec-canvas/index）。
-// 这里的 require 把 echarts-for-weixin 的 JS 打进依赖图，确保 ECharts 库可用。
-// #ifdef MP-WEIXIN
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-require('echarts-for-weixin');
-// #endif
-
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as echarts from 'echarts';
+
+declare const wx: any;
 
 const props = withDefaults(defineProps<{
   option: any;
@@ -38,70 +50,69 @@ const props = withDefaults(defineProps<{
 const chartEl = ref<HTMLElement | null>(null);
 let chartInstance: any = null;
 
-const ec = ref<any>({
-  lazyLoad: true,
-  chart: null,
-  onInit: null as null | ((canvas: any, width: number, height: number, dpr: number) => any),
-  refresh: null as null | (() => void),
-});
-
-function bindEcInit(option: any) {
-  ec.value.chart = null;
-  ec.value.lazyLoad = false;
-  ec.value.onInit = (canvas: any, width: number, height: number, dpr: number) => {
-    const chart = echarts.init(canvas, null, {
-      width,
-      height,
-      devicePixelRatio: dpr,
-    });
-    chart.setOption(option);
-    ec.value.chart = chart;
-    return chart;
-  };
-  ec.value.refresh = () => {
-    if (ec.value.chart) ec.value.chart.setOption(option, true);
-  };
-}
-
-function render(option: any) {
-  if (!option) return;
-  // #ifdef H5
-  if (chartEl.value && !chartInstance) {
-    chartInstance = echarts.init(chartEl.value);
-  }
-  if (chartInstance) {
-    chartInstance.setOption(option, true);
-  }
-  return;
-  // #endif
-
-  // #ifdef MP-WEIXIN
-  if (!ec.value.onInit) {
-    bindEcInit(option);
-  } else if (ec.value.chart) {
-    ec.value.chart.setOption(option, true);
-  }
-  // #endif
+function refresh(option: any) {
+  if (!option || !chartInstance) return;
+  chartInstance.setOption(option, true);
 }
 
 onMounted(() => {
-  render(props.option);
+  // #ifdef MP-WEIXIN
+  // 节点需要在 componentDidMount / ready 后才能 select 到；这里用 setTimeout 让 render 先 commit
+  const query = wx.createSelectorQuery();
+  query.select('#' + props.canvasId)
+    .fields({ node: true, size: true })
+    .exec((res: any[]) => {
+      const node = res && res[0] && res[0].node;
+      if (!node) return;
+      const dpr = (wx.getSystemInfoSync().pixelRatio || 1) as number;
+      chartInstance = echarts.init(node, null, { devicePixelRatio: dpr });
+      if (props.option) chartInstance.setOption(props.option, true);
+    });
+  // #endif
+
+  // #ifdef H5
+  if (chartEl.value && !chartInstance) {
+    chartInstance = echarts.init(chartEl.value as any);
+    if (props.option) chartInstance.setOption(props.option);
+  }
+  // #endif
 });
 
-watch(() => props.option, (v) => render(v));
+function onTouchStart(e: any) {
+  if (!chartInstance || !e.touches || !e.touches.length) return;
+  const t = e.touches[0];
+  const h = chartInstance.getZr().handler;
+  h.dispatch('mousedown', { zrX: t.x, zrY: t.y });
+  h.dispatch('mousemove', { zrX: t.x, zrY: t.y });
+}
+function onTouchMove(e: any) {
+  if (!chartInstance || !e.touches || !e.touches.length) return;
+  const t = e.touches[0];
+  chartInstance.getZr().handler.dispatch('mousemove', { zrX: t.x, zrY: t.y });
+}
+function onTouchEnd(e: any) {
+  if (!chartInstance) return;
+  const t = (e.changedTouches && e.changedTouches[0]) || {};
+  const h = chartInstance.getZr().handler;
+  h.dispatch('mouseup', { zrX: t.x, zrY: t.y });
+  h.dispatch('click', { zrX: t.x, zrY: t.y });
+}
+
+watch(() => props.option, (v) => refresh(v));
 
 onBeforeUnmount(() => {
   if (chartInstance) {
     chartInstance.dispose();
     chartInstance = null;
   }
-  ec.value.chart = null;
-  ec.value.onInit = null;
-  ec.value.refresh = null;
 });
 </script>
 
 <style lang="scss" scoped>
+.ec-canvas {
+  width: 100%;
+  height: 100%;
+}
 .chart {
   width: 100%;
 }

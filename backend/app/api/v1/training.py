@@ -327,11 +327,11 @@ def activate_plan(
 # ================== Today ==================
 @router.get("/today")
 def today(
-    date: str = Query(...),
+    date: Optional[str] = Query(default=None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    d = datetime.strptime(date, "%Y-%m-%d").date()
+    d = datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.now().date()
     active_plan = db.query(TrainingPlan).filter(
         TrainingPlan.user_id == user.id, TrainingPlan.deleted_at.is_(None),
         TrainingPlan.is_active == 1,
@@ -343,12 +343,20 @@ def today(
         TrainingSession.status.in_(("in_progress", "paused")),
     ).order_by(TrainingSession.started_at.desc()).first()
 
-    out = {
+    has_plan = active_plan is not None
+    out: dict = {
+        # 兼容字段：旧客户端仍可读取 today_day / incomplete_session
         "date": date_str(d),
+        "has_plan": has_plan,
         "plan_id": active_plan.id if active_plan else None,
-        "plan": _plan_to_dict(active_plan) if active_plan else None,
-        "today_day": None,
+        "schedule_type": active_plan.schedule_type if active_plan else None,
         "is_rest_day": False,
+        "plan_day_id": None,
+        "session_id": incomplete.id if incomplete else None,
+        "session_status": incomplete.status if incomplete else None,
+        "title": None,
+        "exercise_count": 0,
+        "today_day": None,
         "incomplete_session": _session_to_dict(incomplete) if incomplete else None,
     }
 
@@ -356,7 +364,14 @@ def today(
         today_day = resolve_today_day(db, active_plan, d)
         if today_day:
             out["today_day"] = _plan_day_to_dict(today_day)
+            out["plan_day_id"] = today_day.id
+            out["title"] = today_day.day_name
+            out["exercise_count"] = len(today_day.exercises or [])
             out["is_rest_day"] = bool(today_day.is_rest_day)
+            # 若同 plan 同 day 已有未完成 session，覆盖 session_id 指向它
+            if incomplete and incomplete.plan_id == active_plan.id and incomplete.plan_day_id == today_day.id:
+                out["session_id"] = incomplete.id
+                out["session_status"] = incomplete.status
         else:
             out["is_rest_day"] = True
     return ok(out)

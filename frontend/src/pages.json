@@ -125,39 +125,30 @@
     "backgroundTextStyle": "light"
   },
   "tabBar": {
+    "custom": true,
     "color": "#8FA3A1",
     "selectedColor": "#3FA67C",
-    "backgroundColor": "#FFFFFF",
+    "backgroundColor": "#F7FAF8",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/index",
-        "iconPath": "static/tabbar/home.png",
-        "selectedIconPath": "static/tabbar/home-active.png",
         "text": "首页"
       },
       {
         "pagePath": "pages/diet/index",
-        "iconPath": "static/tabbar/diet.png",
-        "selectedIconPath": "static/tabbar/diet-active.png",
         "text": "饮食"
       },
       {
         "pagePath": "pages/training/index",
-        "iconPath": "static/tabbar/training.png",
-        "selectedIconPath": "static/tabbar/training-active.png",
         "text": "训练"
       },
       {
         "pagePath": "pages/stats/index",
-        "iconPath": "static/tabbar/stats.png",
-        "selectedIconPath": "static/tabbar/stats-active.png",
         "text": "数据"
       },
       {
         "pagePath": "pages/mine/index",
-        "iconPath": "static/tabbar/mine.png",
-        "selectedIconPath": "static/tabbar/mine-active.png",
         "text": "我的"
       }
     ]
@@ -176,7 +167,12 @@
       "^rest-timer$": "@/components/RestTimer.vue",
       "^fab$": "@/components/Fab.vue",
       "^section-header$": "@/components/SectionHeader.vue",
-      "^icon$": "@/components/Icon.vue"
+      "^icon$": "@/components/Icon.vue",
+      "^liquid-glass-card$": "@/components/LiquidGlassCard.vue",
+      "^liquid-glass-button$": "@/components/LiquidGlassButton.vue",
+      "^liquid-glass-pill$": "@/components/LiquidGlassPill.vue",
+      "^liquid-glass-panel$": "@/components/LiquidGlassPanel.vue"
     }
+  }
   }
 }

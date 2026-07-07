@@ -1,82 +1,113 @@
 <template>
   <view class="training-page">
-    <!-- 今日训练 -->
-    <view class="hero-card" :class="heroClass">
+    <!-- 今日训练 Hero Panel -->
+    <liquid-glass-panel :variant="heroVariant" :highlight="true" :ambient="true" class="hero-panel">
       <view class="hero-top">
         <view>
-          <view class="hero-tag">今日训练</view>
+          <liquid-glass-pill
+            :text="heroStatusText"
+            :variant="heroStatusVariant"
+            size="xs"
+          />
           <view class="hero-title">{{ heroTitle }}</view>
           <view v-if="heroSubtitle" class="hero-sub">{{ heroSubtitle }}</view>
         </view>
         <view class="hero-icon">🏋️</view>
       </view>
 
-      <view v-if="today && today.session_id" class="hero-actions">
-        <view class="primary-btn" @tap="continueSession">继续训练</view>
+      <view class="hero-actions">
+        <liquid-glass-button
+          v-if="today && today.session_id"
+          text="继续训练"
+          variant="primary"
+          size="md"
+          :block="false"
+          @tap="continueSession"
+        />
+        <liquid-glass-button
+          v-else-if="today && !today.is_rest_day && today.plan_id"
+          text="开始训练"
+          variant="primary"
+          size="md"
+          :block="false"
+          @tap="startSession"
+        />
+        <liquid-glass-button
+          v-else-if="today && today.is_rest_day"
+          text="今日休息 💤"
+          variant="soft"
+          size="md"
+          :block="false"
+          :disabled="true"
+        />
+        <liquid-glass-button
+          v-else
+          text="创建训练计划"
+          variant="primary"
+          size="md"
+          :block="false"
+          @tap="goCreatePlan"
+        />
       </view>
-      <view v-else-if="today && !today.is_rest_day && today.plan_id" class="hero-actions">
-        <view class="primary-btn" @tap="startSession">开始训练</view>
-      </view>
-      <view v-else-if="today && today.is_rest_day" class="hero-actions">
-        <view class="ghost-btn">今日休息 💤</view>
-      </view>
-      <view v-else class="hero-actions">
-        <view class="primary-btn" @tap="goCreatePlan">创建训练计划</view>
-      </view>
-    </view>
+    </liquid-glass-panel>
 
     <!-- 我的训练计划 -->
-    <view class="section">
+    <liquid-glass-card :highlight="true" class="section-card">
       <view class="section-head">
         <view class="left">
           <view class="bar" />
           <text class="title">我的训练计划</text>
         </view>
         <view class="actions">
-          <view class="link" @tap="goHistory">历史</view>
-          <view class="link primary" @tap="goCreatePlan">+ 新建</view>
+          <text class="link" @tap="goHistory">历史</text>
+          <text class="link primary" @tap="goCreatePlan">+ 新建</text>
         </view>
       </view>
 
       <view v-if="plans.length === 0" class="empty-card">
-        <EmptyState emoji="📋" title="还没有训练计划" desc="从模板创建或自定义">
-          <view class="empty-actions">
-            <view class="ea-btn primary" @tap="goCreatePlan">+ 创建计划</view>
-          </view>
-        </EmptyState>
+        <view class="emoji">📋</view>
+        <view class="empty-title">还没有训练计划</view>
+        <view class="empty-desc">从模板创建或自定义</view>
+        <liquid-glass-button text="+ 创建计划" variant="primary" size="sm" :block="false" @tap="goCreatePlan" />
       </view>
 
       <view v-else class="plan-list">
-        <view
+        <liquid-glass-card
           v-for="p in plans"
           :key="p.id"
-          :class="['plan-card', { active: p.is_active }]"
+          :variant="p.is_active ? 'tint' : 'light'"
+          :highlight="true"
+          hoverable
+          radius="20rpx"
+          class="plan-card"
           @tap="goPlanDetail(p.id)"
         >
           <view class="plan-row">
             <view class="plan-name">{{ p.name }}</view>
-            <Tag
+            <liquid-glass-pill
               :text="p.schedule_type === 'weekly' ? '按周' : '顺序'"
-              :variant="p.schedule_type === 'weekly' ? 'soft' : 'neutral'"
+              :variant="p.schedule_type === 'weekly' ? 'soft' : 'default'"
+              size="xs"
             />
           </view>
           <view class="plan-meta">
             <text>{{ p.days?.length || 0 }} 个训练日</text>
             <text v-if="p.is_active" class="active-tag">· 当前计划</text>
           </view>
-        </view>
+        </liquid-glass-card>
       </view>
-    </view>
+    </liquid-glass-card>
 
+    <!-- 快捷入口 -->
     <view class="quick-grid">
-      <view class="quick-item" @tap="goHistory">
-        <view class="qi-icon" style="background: #EAF8F1; color: #3FA67C;">📜</view>
+      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="24rpx 0" @tap="goHistory" class="quick-item">
+        <view class="qi-icon" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">📜</view>
         <view class="qi-label">训练历史</view>
-      </view>
-      <view class="quick-item" @tap="goCreatePlan">
-        <view class="qi-icon" style="background: #FFF3DC; color: #B86A1F;">📝</view>
+      </liquid-glass-card>
+      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="24rpx 0" @tap="goCreatePlan" class="quick-item">
+        <view class="qi-icon" style="background: linear-gradient(135deg, #FFEED9, #FFD79A);">📝</view>
         <view class="qi-label">创建计划</view>
-      </view>
+      </liquid-glass-card>
     </view>
   </view>
 </template>
@@ -85,9 +116,15 @@
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useTrainingStore } from '@/store/training';
-import EmptyState from '@/components/EmptyState.vue';
-import Tag from '@/components/Tag.vue';
 import { today } from '@/utils/date';
+
+// 同步自定义 tabBar 高亮
+function syncTabBar() {
+  const pages = getCurrentPages();
+  const page = pages[pages.length - 1];
+  const tabBar = (page as any)?.getTabBar?.();
+  if (tabBar) tabBar.setData({ activeIdx: 2 });
+}
 
 const trainingStore = useTrainingStore();
 
@@ -110,12 +147,28 @@ const heroSubtitle = computed(() => {
   return `共 ${t.exercise_count} 个动作`;
 });
 
-const heroClass = computed(() => {
+const heroVariant = computed<'mint' | 'warm' | 'light' | 'dark'>(() => {
   const t = todayInfo.value;
-  if (!t || !t.has_plan) return 'no-plan';
-  if (t.is_rest_day) return 'rest';
-  if (t.session_status === 'in_progress') return 'in-progress';
-  return 'normal';
+  if (!t || !t.has_plan) return 'light';
+  if (t.is_rest_day) return 'light';
+  if (t.session_status === 'in_progress') return 'warm';
+  return 'mint';
+});
+
+const heroStatusText = computed(() => {
+  const t = todayInfo.value;
+  if (!t) return '加载中';
+  if (!t.has_plan) return '未配置';
+  if (t.is_rest_day) return '休息日';
+  if (t.session_status === 'in_progress') return '进行中';
+  return '今日训练';
+});
+
+const heroStatusVariant = computed<'soft' | 'primary' | 'default'>(() => {
+  const t = todayInfo.value;
+  if (!t || !t.has_plan) return 'default';
+  if (t.session_status === 'in_progress') return 'primary';
+  return 'soft';
 });
 
 async function load() {
@@ -124,7 +177,10 @@ async function load() {
 }
 
 onMounted(load);
-onShow(load);
+onShow(() => {
+  syncTabBar();
+  load();
+});
 
 async function startSession() {
   const t = todayInfo.value;
@@ -155,202 +211,200 @@ function goHistory() {
 <style lang="scss" scoped>
 .training-page {
   min-height: 100vh;
-  background: $bg;
   padding: $gap-3;
-  padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
+  animation: lg-fade-up 0.4s $ease-spring both;
 }
 
-.hero-card {
-  border-radius: $r-24;
-  padding: $gap-3;
-  margin-bottom: $gap-3;
-  color: #fff;
-  &.no-plan {
-    background: linear-gradient(135deg, #8FA3A1 0%, #5C6B6A 100%);
-  }
-  &.rest {
-    background: linear-gradient(135deg, #6BA8D6 0%, #4F87B0 100%);
-  }
-  &.in-progress {
-    background: linear-gradient(135deg, #FF8A65 0%, #FF6F4D 100%);
-  }
-  &.normal {
-    background: $gradient-primary;
-  }
+// ----- Hero Panel -----
+.hero-panel {
+  padding: $gap-4 $gap-3;
+  position: relative;
+  overflow: hidden;
 }
+
 .hero-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.hero-tag {
-  display: inline-block;
-  padding: 4rpx 16rpx;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: $r-pill;
-  font-size: $fs-xs;
-}
-.hero-title {
-  margin-top: $gap-1;
-  font-size: 44rpx;
-  font-weight: 700;
-}
-.hero-sub {
-  margin-top: 4rpx;
-  font-size: $fs-sm;
-  opacity: 0.9;
-}
-.hero-icon {
-  font-size: 80rpx;
-  opacity: 0.4;
-}
-.hero-actions {
-  margin-top: $gap-3;
-}
-.primary-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18rpx 40rpx;
-  background: rgba(255, 255, 255, 0.95);
-  color: $primary-deep;
-  border-radius: $r-pill;
-  font-size: $fs-md;
-  font-weight: 600;
-}
-.ghost-btn {
-  display: inline-flex;
-  padding: 18rpx 32rpx;
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-md;
+  position: relative;
+  z-index: 1;
 }
 
-.section {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-sm;
+.hero-title {
+  margin-top: $gap-1;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: inherit;
+  letter-spacing: 0.5rpx;
 }
+
+.hero-sub {
+  margin-top: 6rpx;
+  font-size: $fs-sm;
+  opacity: 0.85;
+}
+
+.hero-icon {
+  font-size: 96rpx;
+  opacity: 0.35;
+  filter: drop-shadow(0 4rpx 12rpx rgba(95, 175, 145, 0.2));
+}
+
+.hero-actions {
+  margin-top: $gap-3;
+  position: relative;
+  z-index: 1;
+}
+
+// ----- Section Card -----
+.section-card {
+  padding: $gap-3;
+}
+
 .section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: $gap-2;
 }
+
 .section-head .left {
   display: flex;
   align-items: center;
   gap: $gap-1;
 }
+
 .section-head .bar {
   width: 6rpx;
   height: 28rpx;
-  background: $primary;
+  background: $gradient-primary;
   border-radius: $r-pill;
 }
+
 .section-head .title {
   font-size: $fs-lg;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.3rpx;
 }
+
 .section-head .actions {
   display: flex;
   gap: $gap-2;
   align-items: center;
 }
+
 .link {
   font-size: $fs-sm;
   color: $text-3;
+  padding: 6rpx 12rpx;
+  border-radius: $r-pill;
+  transition: background 0.3s $ease-glass;
+
+  &:active { background: rgba(255, 255, 255, 0.5); }
+
   &.primary {
     color: $primary;
-    font-weight: 500;
+    font-weight: 600;
+    background: rgba(234, 248, 241, 0.6);
   }
 }
 
+// ----- Empty State -----
 .empty-card {
-  padding: $gap-3 0;
-}
-.empty-actions {
+  padding: $gap-3 $gap-2;
   display: flex;
-  gap: $gap-2;
-  margin-top: $gap-3;
-}
-.ea-btn {
-  padding: 14rpx 32rpx;
-  border-radius: $r-pill;
-  background: $bg-2;
-  color: $text-2;
-  font-size: $fs-sm;
-  &.primary {
-    background: $primary;
-    color: #fff;
-  }
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
+.empty-card .emoji {
+  font-size: 80rpx;
+  margin-bottom: $gap-2;
+  filter: drop-shadow(0 4rpx 12rpx rgba(95, 175, 145, 0.15));
+}
+
+.empty-card .empty-title {
+  font-size: $fs-md;
+  color: $text-1;
+  font-weight: 600;
+}
+
+.empty-card .empty-desc {
+  margin-top: 4rpx;
+  margin-bottom: $gap-3;
+  font-size: $fs-sm;
+  color: $text-3;
+}
+
+// ----- Plan List -----
 .plan-list {
   display: flex;
   flex-direction: column;
   gap: $gap-2;
 }
+
 .plan-card {
   padding: $gap-3;
-  background: $bg;
-  border-radius: $r-16;
-  border: 2rpx solid transparent;
-  &.active {
-    background: $primary-tint;
-    border-color: $primary;
-  }
+  position: relative;
 }
+
 .plan-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4rpx;
 }
+
 .plan-name {
   font-size: $fs-lg;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.3rpx;
 }
+
 .plan-meta {
   font-size: $fs-sm;
   color: $text-3;
 }
+
 .active-tag {
   color: $primary;
-  font-weight: 500;
+  font-weight: 600;
 }
 
+// ----- Quick Grid -----
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: $gap-2;
 }
+
 .quick-item {
   display: flex;
   align-items: center;
   gap: $gap-2;
-  padding: $gap-3;
-  background: $card;
-  border-radius: $r-16;
-  box-shadow: $shadow-sm;
+  padding-left: $gap-2 !important;
+  padding-right: $gap-2 !important;
+  justify-content: center;
 }
+
 .qi-icon {
   width: 72rpx;
   height: 72rpx;
-  border-radius: $r-16;
+  border-radius: 18rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 36rpx;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
 }
+
 .qi-label {
   font-size: $fs-md;
   color: $text-1;
-  font-weight: 500;
+  font-weight: 600;
 }
 </style>

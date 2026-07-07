@@ -119,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
 import { useTrainingStore } from '@/store/training';
 import { trainingApi, TrainingSession } from '@/api/training';
 import { createTimer } from '@/utils/timer';
@@ -254,14 +254,20 @@ async function persist(status: 'in_progress' | 'paused' | 'completed' | 'cancell
     const payload = {
       status,
       exercises: (session.value.exercises || []).map((ex) => ({
-        session_exercise_id: (ex as any).session_exercise_id,
+        session_exercise_id: (ex as any).id ?? (ex as any).session_exercise_id,
         exercise_name_snapshot: ex.exercise_name_snapshot,
         body_part_snapshot: ex.body_part_snapshot,
         sort_order: ex.sort_order,
         planned_sets: ex.planned_sets,
         completed_sets: ex.completed_sets,
         rest_seconds: ex.rest_seconds,
-        sets: ex.sets,
+        sets: (ex.sets || []).map((s) => ({
+          set_id: (s as any).id ?? s.set_id,
+          set_index: s.set_index,
+          actual_reps: s.actual_reps,
+          actual_weight_kg: s.actual_weight_kg,
+          completed: !!s.completed,
+        })),
       })),
     };
     const updated = await trainingApi.updateSession(session.value.id, payload);

@@ -1,44 +1,77 @@
-// 清新健康风：薄荷绿 + 米白 + 柔和渐变
+// ============================================================
+// 设计令牌 — 清新健康风 · 液态玻璃（Liquid Glass）
+// ============================================================
 
-// 主色
-$primary: #5BC89A;        // 主薄荷绿
-$primary-soft: #C5ECDB;   // 浅薄荷
-$primary-deep: #3FA67C;   // 深薄荷
-$primary-tint: #EAF8F1;   // 极浅薄荷背景
+// ----- 主色（薄荷绿，保留） -----
+$primary: #5BC89A;
+$primary-soft: #C5ECDB;
+$primary-deep: #3FA67C;
+$primary-tint: #EAF8F1;
 
-// 辅助色
-$accent: #FFD79A;         // 暖橙（卡路里）
+// ----- 辅助色 -----
+$accent: #FFD79A;
 $warn: #FF8A65;
 $danger: #F26565;
 $success: $primary;
 $info: #6BA8D6;
+$purple: #C490E0;
 
-// 背景与卡片
+// ----- 背景与文字 -----
 $bg: #F7FAF8;
 $bg-2: #EEF4F1;
 $card: #FFFFFF;
-$divider: #E6ECEA;
+$divider: rgba(31, 42, 42, 0.06);
 
-// 文字
 $text-1: #1F2A2A;
 $text-2: #5C6B6A;
 $text-3: #8FA3A1;
 $text-invert: #FFFFFF;
 
-// 圆角
+// ----- 液态玻璃专用色板（新增） -----
+// 玻璃背景的白色基底，0.45 表示 45% 透明
+$glass-bg-light: rgba(255, 255, 255, 0.55);
+$glass-bg-lighter: rgba(255, 255, 255, 0.35);
+$glass-bg-soft: rgba(255, 255, 255, 0.75);
+$glass-bg-fallback: rgba(247, 250, 248, 0.92); // 不支持 backdrop-filter 时的降级底色
+$glass-bg-tint: rgba(234, 248, 241, 0.65);    // 薄荷绿调玻璃
+
+// 物理边缘折射的渐变白
+$glass-border-soft: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.05) 100%);
+$glass-border-strong: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.15) 100%);
+
+// 高光层（光线穿透玻璃的模拟）
+$glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 40%);
+$glass-highlight-strong: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 50%);
+
+// 玻璃阴影（多层叠加，模拟悬浮）
+$shadow-glass-sm:
+  0 1rpx 2rpx rgba(31, 42, 42, 0.04),
+  0 4rpx 16rpx rgba(95, 175, 145, 0.06);
+$shadow-glass-md:
+  0 1rpx 2rpx rgba(31, 42, 42, 0.04),
+  0 8rpx 32rpx rgba(95, 175, 145, 0.08),
+  0 24rpx 48rpx rgba(95, 175, 145, 0.05);
+$shadow-glass-lg:
+  0 2rpx 4rpx rgba(31, 42, 42, 0.05),
+  0 12rpx 40rpx rgba(95, 175, 145, 0.12),
+  0 32rpx 64rpx rgba(95, 175, 145, 0.08);
+
+// 旧阴影（兼容保留）
+$shadow-sm: 0 2rpx 8rpx rgba(31, 42, 42, 0.04);
+$shadow-md: 0 6rpx 24rpx rgba(95, 175, 145, 0.08);
+$shadow-lg: 0 12rpx 36rpx rgba(95, 175, 145, 0.12);
+
+// ----- 圆角 -----
 $r-8: 8rpx;
 $r-12: 12rpx;
 $r-16: 16rpx;
 $r-20: 20rpx;
 $r-24: 24rpx;
+$r-28: 28rpx;
+$r-32: 32rpx;
 $r-pill: 999rpx;
 
-// 阴影
-$shadow-sm: 0 2rpx 8rpx rgba(31, 42, 42, 0.04);
-$shadow-md: 0 6rpx 24rpx rgba(95, 175, 145, 0.08);
-$shadow-lg: 0 12rpx 36rpx rgba(95, 175, 145, 0.12);
-
-// 间距
+// ----- 间距 -----
 $gap-1: 8rpx;
 $gap-2: 16rpx;
 $gap-3: 24rpx;
@@ -46,7 +79,7 @@ $gap-4: 32rpx;
 $gap-5: 40rpx;
 $gap-6: 48rpx;
 
-// 文字尺寸
+// ----- 文字尺寸 -----
 $fs-xs: 22rpx;
 $fs-sm: 24rpx;
 $fs-md: 28rpx;
@@ -54,11 +87,33 @@ $fs-lg: 32rpx;
 $fs-xl: 36rpx;
 $fs-xxl: 44rpx;
 
-// 安全区
-$tabbar-height: 100rpx;
+// ----- 缓动（新增） -----
+// 苹果弹簧曲线：略带回弹
+$ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+// 玻璃质感曲线：缓入缓出
+$ease-glass: cubic-bezier(0.4, 0, 0.2, 1);
+// iOS 标准曲线
+$ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
 
-// 渐变
+// ----- 渐变 -----
 $gradient-primary: linear-gradient(135deg, #5BC89A 0%, #7BD8B0 100%);
 $gradient-warm: linear-gradient(135deg, #FFD79A 0%, #FFB37D 100%);
 $gradient-card: linear-gradient(135deg, #FFFFFF 0%, #F4FBF7 100%);
 $gradient-hero: linear-gradient(160deg, #5BC89A 0%, #A6E3C5 100%);
+
+// 环境光斑背景（液态玻璃的底层光环境）
+$gradient-page-bg:
+  radial-gradient(circle at 15% 10%, rgba(197, 236, 219, 0.45) 0%, transparent 45%),
+  radial-gradient(circle at 85% 90%, rgba(255, 215, 154, 0.25) 0%, transparent 50%),
+  linear-gradient(180deg, #F4FBF7 0%, #F7FAF8 100%);
+
+// ----- 安全区 -----
+$tabbar-height: 100rpx;
+
+// ----- z-index 层级（新增） -----
+$z-page: 1;
+$z-content: 10;
+$z-fab: 30;
+$z-tabbar: 50;
+$z-sheet: 200;
+$z-modal: 300;

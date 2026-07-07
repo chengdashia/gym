@@ -1,18 +1,26 @@
 <template>
   <view class="stats-page">
+    <!-- Range 切换：玻璃药丸 -->
     <view class="range-bar">
-      <view
+      <liquid-glass-pill
         v-for="r in ranges"
         :key="r.value"
-        :class="['seg', { active: range === r.value }]"
+        :text="r.label"
+        :variant="range === r.value ? 'primary' : 'default'"
+        size="md"
+        interactive
+        :active="range === r.value"
         @tap="setRange(r.value as 7 | 30 | 90)"
-      >{{ r.label }}</view>
+      />
     </view>
 
     <!-- 饮食 -->
-    <view class="chart-card">
+    <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
-        <view class="chart-title">🥗 饮食热量与营养</view>
+        <view class="chart-title-row">
+          <text class="chart-emoji">🥗</text>
+          <text class="chart-title">饮食热量与营养</text>
+        </view>
         <view class="chart-sub">平均 {{ Math.round(avgCalories) }} kcal / 天</view>
       </view>
       <view class="chart-box">
@@ -33,24 +41,30 @@
           <view class="ms-name">脂肪 g/天</view>
         </view>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <!-- 训练 -->
-    <view class="chart-card">
+    <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
-        <view class="chart-title">🏋️ 训练容量与次数</view>
+        <view class="chart-title-row">
+          <text class="chart-emoji">🏋️</text>
+          <text class="chart-title">训练容量与次数</text>
+        </view>
         <view class="chart-sub">{{ totalSessions }} 次训练 · 容量 {{ Math.round(totalVolume) }} kg</view>
       </view>
       <view class="chart-box">
         <EChartsView v-if="trainingOption" :option="trainingOption" canvas-id="training-chart" />
         <view v-else class="chart-empty">暂无训练数据</view>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <!-- 体重 -->
-    <view class="chart-card">
+    <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
-        <view class="chart-title">⚖️ 体重趋势</view>
+        <view class="chart-title-row">
+          <text class="chart-emoji">⚖️</text>
+          <text class="chart-title">体重趋势</text>
+        </view>
         <view v-if="weightChange !== null" class="chart-sub" :class="{ down: weightChange < 0, up: weightChange > 0 }">
           {{ weightChange > 0 ? '+' : '' }}{{ weightChange.toFixed(1) }} kg
         </view>
@@ -59,15 +73,24 @@
         <EChartsView v-if="weightOption" :option="weightOption" canvas-id="weight-chart" />
         <view v-else class="chart-empty">暂无体重记录</view>
       </view>
-    </view>
+    </liquid-glass-card>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint } from '@/api/stats';
 import { chartTheme } from '@/utils/echarts';
 import EChartsView from '@/components/EChartsView.vue';
+
+// 同步自定义 tabBar 高亮
+function syncTabBar() {
+  const pages = getCurrentPages();
+  const page = pages[pages.length - 1];
+  const tabBar = (page as any)?.getTabBar?.();
+  if (tabBar) tabBar.setData({ activeIdx: 3 });
+}
 
 const ranges = [
   { value: 7, label: '7 天' },
@@ -339,63 +362,73 @@ function setRange(r: 7 | 30 | 90) {
   load();
 }
 
-onMounted(load);
+onMounted(() => {
+  syncTabBar();
+  load();
+});
 </script>
 
 <style lang="scss" scoped>
 .stats-page {
   min-height: 100vh;
-  background: $bg;
   padding: $gap-3;
-  padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
+  animation: lg-fade-up 0.4s $ease-spring both;
 }
+
 .range-bar {
   display: flex;
-  gap: $gap-2;
+  gap: 12rpx;
   margin-bottom: $gap-3;
-}
-.seg {
-  padding: 14rpx 28rpx;
-  background: $card;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-    font-weight: 500;
-  }
+  padding: 6rpx 0;
 }
 
 .chart-card {
-  background: $card;
-  border-radius: $r-20;
   padding: $gap-3;
   margin-bottom: $gap-3;
-  box-shadow: $shadow-sm;
 }
+
 .chart-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: $gap-2;
 }
+
+.chart-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.chart-emoji {
+  font-size: $fs-lg;
+  filter: drop-shadow(0 2rpx 4rpx rgba(95, 175, 145, 0.15));
+}
+
 .chart-title {
   font-size: $fs-lg;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.3rpx;
 }
+
 .chart-sub {
   font-size: $fs-sm;
   color: $primary;
-  font-weight: 500;
-  &.up { color: $warn; }
-  &.down { color: $primary; }
+  font-weight: 600;
+  background: rgba(234, 248, 241, 0.6);
+  padding: 4rpx 14rpx;
+  border-radius: $r-pill;
+  &.up { color: $warn; background: rgba(255, 238, 217, 0.7); }
+  &.down { color: $primary; background: rgba(234, 248, 241, 0.7); }
 }
+
 .chart-box {
   height: 400rpx;
   width: 100%;
 }
+
 .chart-empty {
   height: 100%;
   display: flex;
@@ -412,14 +445,18 @@ onMounted(load);
   padding-top: $gap-2;
   border-top: 1rpx solid $divider;
 }
+
 .ms-cell {
   text-align: center;
 }
+
 .ms-num {
   font-size: $fs-xl;
-  font-weight: 700;
+  font-weight: 800;
   color: $primary-deep;
+  letter-spacing: -0.5rpx;
 }
+
 .ms-name {
   font-size: $fs-xs;
   color: $text-3;

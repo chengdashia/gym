@@ -1,23 +1,26 @@
 <template>
   <view class="diet-page">
     <view class="header">
+      <!-- 日期切换：玻璃药丸横向滚动 -->
       <view class="date-bar">
         <scroll-view scroll-x class="date-scroll" :show-scrollbar="false">
           <view class="date-row">
-            <view
+            <liquid-glass-pill
               v-for="d in weekDates"
               :key="d.date"
-              :class="['date-item', { active: d.date === selectedDate }]"
+              :text="`${d.weekday} ${d.day}`"
+              :variant="d.date === selectedDate ? 'primary' : 'default'"
+              size="md"
+              interactive
+              :active="d.date === selectedDate"
               @tap="selectDate(d.date)"
-            >
-              <view class="date-weekday">{{ d.weekday }}</view>
-              <view class="date-day">{{ d.day }}</view>
-            </view>
+            />
           </view>
         </scroll-view>
       </view>
 
-      <view class="summary-card">
+      <!-- 摘要面板 -->
+      <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="summary-panel">
         <view class="sum-row">
           <view class="sum-main">
             <view class="sum-num">{{ Math.round(summary.calories_kcal) }}</view>
@@ -27,6 +30,7 @@
             <ProgressRing :value="summary.calories_kcal" :goal="goalKcal || 1" :size="100" :thickness="10" />
           </view>
         </view>
+        <view class="sum-divider" />
         <view class="sum-macros">
           <view class="sm-cell">
             <view class="sm-name">碳水</view>
@@ -41,11 +45,16 @@
             <view class="sm-val">{{ Math.round(summary.fat_g) }}<text class="sm-goal">/{{ Math.round(goalFat) }}</text></view>
           </view>
         </view>
-      </view>
+      </liquid-glass-panel>
     </view>
 
     <view class="meal-list">
-      <view v-for="m in mealTypes" :key="m.value" class="meal-card">
+      <liquid-glass-card
+        v-for="m in mealTypes"
+        :key="m.value"
+        :highlight="true"
+        class="meal-card"
+      >
         <view class="meal-head" @tap="toggleMeal(m.value)">
           <view class="meal-left">
             <view class="meal-emoji">{{ mEmoji(m.value) }}</view>
@@ -86,32 +95,39 @@
 
           <view class="meal-add" @tap="addMeal(m.value)">+ 添加食物</view>
         </view>
+      </liquid-glass-card>
+    </view>
+
+    <!-- FAB -->
+    <view class="fab-wrap" @tap="showAddSheet = true">
+      <view class="fab">
+        <text class="fab-icon">+</text>
+        <view class="fab-shine" />
       </view>
     </view>
 
-    <view class="fab-wrap">
-      <Fab icon="+" @tap="showAddSheet = true" />
-    </view>
-
-    <!-- 添加方式选择 -->
+    <!-- 添加方式选择：底部弹出玻璃 Sheet -->
     <view v-if="showAddSheet" class="sheet-mask" @tap="showAddSheet = false">
-      <view class="sheet" @tap.stop>
+      <view class="sheet-wrap" @tap.stop>
+        <view class="sheet-grip" />
         <view class="sheet-title">添加饮食</view>
-        <view class="sheet-item" @tap="go('add')">
-          <view class="sheet-emoji">🔍</view>
-          <view class="sheet-text">搜索食物</view>
-        </view>
-        <view class="sheet-item" @tap="go('custom')">
-          <view class="sheet-emoji">✏️</view>
-          <view class="sheet-text">自定义食物</view>
-        </view>
-        <view class="sheet-item" @tap="go('photo')">
-          <view class="sheet-emoji">📷</view>
-          <view class="sheet-text">拍照识别</view>
-        </view>
+        <liquid-glass-card
+          v-for="opt in addOptions"
+          :key="opt.action"
+          :highlight="true"
+          hoverable
+          padding="20rpx 24rpx"
+          class="sheet-item"
+          @tap="go(opt.action)"
+        >
+          <view class="sheet-emoji">{{ opt.emoji }}</view>
+          <view class="sheet-text">{{ opt.text }}</view>
+          <view class="sheet-arrow">›</view>
+        </liquid-glass-card>
         <view class="sheet-cancel" @tap="showAddSheet = false">取消</view>
       </view>
     </view>
+
   </view>
 </template>
 
@@ -121,10 +137,17 @@ import { onShow } from '@dcloudio/uni-app';
 import { useDietStore } from '@/store/diet';
 import { useUserStore } from '@/store/user';
 import ProgressRing from '@/components/ProgressRing.vue';
-import Fab from '@/components/Fab.vue';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
-import { addDays, formatDate, weekdayCN, today } from '@/utils/date';
+import { addDays, formatDate, weekdayCN } from '@/utils/date';
 import type { DietRecord } from '@/api/diet';
+
+// 同步自定义 tabBar 高亮
+function syncTabBar() {
+  const pages = getCurrentPages();
+  const page = pages[pages.length - 1];
+  const tabBar = (page as any)?.getTabBar?.();
+  if (tabBar) tabBar.setData({ activeIdx: 1 });
+}
 
 const dietStore = useDietStore();
 const userStore = useUserStore();
@@ -140,6 +163,12 @@ const goalFat = computed(() => userStore.goal.fat_g);
 
 const showAddSheet = ref(false);
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
+
+const addOptions = [
+  { action: 'add' as const,    emoji: '🔍', text: '搜索食物' },
+  { action: 'custom' as const, emoji: '✏️', text: '自定义食物' },
+  { action: 'photo' as const,  emoji: '📷', text: '拍照识别' },
+];
 
 const weekDates = computed(() => {
   const t = new Date();
@@ -161,7 +190,10 @@ async function load() {
 }
 
 onMounted(load);
-onShow(load);
+onShow(() => {
+  syncTabBar();
+  load();
+});
 
 function selectDate(d: string) {
   dietStore.setDate(d);
@@ -212,100 +244,108 @@ function go(action: 'add' | 'custom' | 'photo') {
 <style lang="scss" scoped>
 .diet-page {
   min-height: 100vh;
-  background: $bg;
-  padding-bottom: 200rpx;
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-5});
+  animation: lg-fade-up 0.4s $ease-spring both;
 }
 
+// ----- Header -----
 .header {
-  background: $gradient-card;
-  border-radius: 0 0 $r-24 $r-24;
+  background: linear-gradient(160deg, rgba(166, 227, 197, 0.35) 0%, rgba(91, 200, 154, 0.12) 100%);
+  border-radius: 0 0 40rpx 40rpx;
   padding: $gap-3;
   margin-bottom: $gap-3;
+  position: relative;
+  overflow: hidden;
 }
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: -60rpx;
+  left: -40rpx;
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
+  pointer-events: none;
+}
+
 .date-bar {
-  margin-bottom: $gap-2;
+  margin-bottom: $gap-3;
+  position: relative;
+  z-index: 1;
 }
+
 .date-scroll {
   white-space: nowrap;
   width: 100%;
 }
+
 .date-row {
   display: inline-flex;
   gap: 12rpx;
   padding: 4rpx 0;
 }
-.date-item {
-  flex-shrink: 0;
-  width: 80rpx;
-  padding: 14rpx 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-radius: $r-16;
-  background: $card;
-  &.active {
-    background: $primary;
-    .date-weekday, .date-day { color: #fff; }
-  }
-}
-.date-weekday {
-  font-size: $fs-xs;
-  color: $text-3;
-}
-.date-day {
-  margin-top: 4rpx;
-  font-size: $fs-lg;
-  font-weight: 600;
-  color: $text-1;
+
+// ----- Summary Panel -----
+.summary-panel {
+  padding: $gap-3;
+  position: relative;
+  z-index: 1;
 }
 
-.summary-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-md;
-}
 .sum-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
+
 .sum-main {
   display: flex;
   align-items: baseline;
   gap: 8rpx;
 }
+
 .sum-num {
   font-size: 64rpx;
-  font-weight: 700;
+  font-weight: 800;
   color: $text-1;
   line-height: 1;
+  letter-spacing: -1rpx;
 }
+
 .sum-label {
   font-size: $fs-md;
   color: $text-3;
 }
-.sum-progress { padding: 0; }
+
+.sum-divider {
+  height: 1rpx;
+  background: $divider;
+  margin: $gap-3 0 $gap-2;
+}
+
 .sum-macros {
   display: flex;
   justify-content: space-around;
-  margin-top: $gap-3;
-  padding-top: $gap-2;
-  border-top: 1rpx solid $divider;
 }
+
 .sm-cell {
   text-align: center;
 }
+
 .sm-name {
   font-size: $fs-xs;
   color: $text-3;
 }
+
 .sm-val {
   margin-top: 4rpx;
   font-size: $fs-lg;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
 }
+
 .sm-goal {
   font-size: $fs-xs;
   color: $text-3;
@@ -313,171 +353,294 @@ function go(action: 'add' | 'custom' | 'photo') {
   margin-left: 4rpx;
 }
 
+// ----- Meal List -----
 .meal-list {
   padding: 0 $gap-3;
 }
+
 .meal-card {
-  background: $card;
-  border-radius: $r-20;
+  padding: 0;
   margin-bottom: $gap-2;
   overflow: hidden;
-  box-shadow: $shadow-sm;
 }
+
 .meal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: $gap-3;
+  transition: background 0.3s $ease-glass;
 }
+
+.meal-head:active {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 .meal-left {
   display: flex;
   align-items: center;
   gap: $gap-2;
 }
+
 .meal-emoji {
   width: 80rpx;
   height: 80rpx;
-  border-radius: $r-16;
-  background: $primary-tint;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #C5ECDB, #5BC89A);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 40rpx;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.5),
+    0 4rpx 12rpx rgba(95, 175, 145, 0.18);
 }
+
 .meal-name {
   font-size: $fs-lg;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.3rpx;
 }
+
 .meal-sub {
   font-size: $fs-sm;
   color: $text-3;
   margin-top: 4rpx;
 }
+
 .meal-right {
   display: flex;
   align-items: center;
   gap: $gap-2;
 }
+
 .meal-cal {
   font-size: $fs-md;
   color: $primary;
-  font-weight: 600;
+  font-weight: 700;
 }
+
 .meal-arrow {
   color: $text-3;
   font-size: $fs-md;
+  transition: transform 0.3s $ease-glass;
 }
 
 .meal-body {
   padding: 0 $gap-3 $gap-3;
 }
+
 .meal-empty {
   text-align: center;
   color: $text-3;
   font-size: $fs-sm;
   padding: $gap-3 0;
 }
+
 .record-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: $gap-2 0;
   border-bottom: 1rpx solid $divider;
+  transition: background 0.2s $ease-glass;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
   &:last-of-type { border-bottom: none; }
 }
+
 .record-info {
   flex: 1;
 }
+
 .record-name {
   font-size: $fs-md;
   color: $text-1;
+  font-weight: 500;
 }
+
 .record-amount {
   margin-top: 4rpx;
   font-size: $fs-xs;
   color: $text-3;
 }
+
 .record-nut {
   text-align: right;
 }
+
 .record-cal {
   font-size: $fs-md;
   color: $primary;
-  font-weight: 600;
+  font-weight: 700;
 }
+
 .record-macros {
   font-size: $fs-xs;
   color: $text-3;
 }
+
 .meal-add {
   text-align: center;
   padding: $gap-2;
   margin-top: $gap-1;
-  background: $primary-tint;
+  background: rgba(234, 248, 241, 0.6);
   border-radius: $r-12;
   color: $primary-deep;
   font-size: $fs-sm;
-  font-weight: 500;
+  font-weight: 600;
+  transition: background 0.3s $ease-glass, transform 0.3s $ease-spring;
+
+  &:active {
+    background: rgba(234, 248, 241, 0.85);
+    transform: scale(0.98);
+  }
 }
 
+// ----- FAB -----
 .fab-wrap {
   position: fixed;
   right: $gap-3;
   bottom: calc(#{$tabbar-height} + #{$gap-3});
-  z-index: 30;
+  z-index: $z-fab;
 }
 
+.fab {
+  position: relative;
+  width: 110rpx;
+  height: 110rpx;
+  border-radius: 50%;
+  background: $gradient-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 8rpx 24rpx rgba(95, 175, 145, 0.4),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  transition: transform 0.3s $ease-spring;
+}
+
+.fab:active {
+  transform: scale(0.92);
+}
+
+.fab-icon {
+  font-size: 56rpx;
+  color: #fff;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.fab-shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+// ----- Sheet -----
 .sheet-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 200;
+  background: rgba(31, 42, 42, 0.45);
+  z-index: $z-sheet;
   display: flex;
   align-items: flex-end;
+  animation: sheet-fade-in 0.3s $ease-glass both;
 }
-.sheet {
+
+@keyframes sheet-fade-in {
+  from { background: rgba(31, 42, 42, 0); }
+  to { background: rgba(31, 42, 42, 0.45); }
+}
+
+.sheet-wrap {
   width: 100%;
-  background: $card;
-  border-radius: $r-24 $r-24 0 0;
-  padding: $gap-3 $gap-3 calc(#{$gap-3} + env(safe-area-inset-bottom));
+  background: rgba(247, 250, 248, 0.95);
+  // #ifdef H5 || APP-PLUS
+  backdrop-filter: blur(32rpx) saturate(180%);
+  -webkit-backdrop-filter: blur(32rpx) saturate(180%);
+  // #endif
+  border-radius: 32rpx 32rpx 0 0;
+  padding: $gap-2 $gap-3 calc(#{$gap-3} + env(safe-area-inset-bottom));
+  box-shadow: 0 -8rpx 32rpx rgba(31, 42, 42, 0.15);
+  animation: sheet-up 0.4s $ease-spring both;
 }
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-grip {
+  width: 60rpx;
+  height: 6rpx;
+  background: rgba(143, 163, 161, 0.4);
+  border-radius: $r-pill;
+  margin: 0 auto $gap-2;
+}
+
 .sheet-title {
   text-align: center;
   font-size: $fs-md;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
   margin-bottom: $gap-3;
 }
+
 .sheet-item {
   display: flex;
   align-items: center;
-  padding: $gap-3 $gap-2;
-  border-radius: $r-12;
-  margin-bottom: $gap-1;
+  margin-bottom: $gap-2;
 }
+
 .sheet-emoji {
   width: 64rpx;
   height: 64rpx;
-  border-radius: $r-16;
-  background: $primary-tint;
+  border-radius: 18rpx;
+  background: linear-gradient(135deg, #C5ECDB, #5BC89A);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
   margin-right: $gap-2;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
 }
+
 .sheet-text {
+  flex: 1;
   font-size: $fs-md;
   color: $text-1;
+  font-weight: 500;
 }
+
+.sheet-arrow {
+  font-size: $fs-lg;
+  color: $text-3;
+}
+
 .sheet-cancel {
-  margin-top: $gap-2;
+  margin-top: $gap-3;
   text-align: center;
   padding: $gap-3;
-  background: $bg-2;
+  background: rgba(238, 244, 241, 0.7);
   border-radius: $r-16;
   color: $text-2;
   font-size: $fs-md;
+  font-weight: 600;
+  transition: background 0.3s $ease-glass, transform 0.3s $ease-spring;
+
+  &:active {
+    background: rgba(238, 244, 241, 1);
+    transform: scale(0.98);
+  }
 }
 </style>

@@ -1,10 +1,17 @@
 @import './variables.scss';
+@import './glass.scss';
+
+// ============================================================
+// 全局样式 — 液态玻璃主题
+// ============================================================
 
 // reset
-// 注意：WeChat 小程序的 WXSS 解析器不支持 `page *` 这类带通用选择器 * 的选择器组，
-// 会报 `unexpected token '*'`，因此只针对具体元素做 box-sizing 重置。
 page {
   box-sizing: border-box;
+  // 极淡薄荷渐变 + 环境光斑，作为所有玻璃组件的"被折射底层"
+  background: $gradient-page-bg;
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 view, text, image, button, input, textarea, scroll-view, swiper, swiper-item {
@@ -35,7 +42,6 @@ input, textarea {
   min-height: 100vh;
   padding: 0 $gap-3;
   padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
-  background: $bg;
 }
 
 .section {
@@ -76,7 +82,26 @@ input, textarea {
 .gap-2 { gap: $gap-2; }
 .gap-3 { gap: $gap-3; }
 
-// 卡片
+// 玻璃卡片（兼容旧 API）
+.lg-card {
+  position: relative;
+  background: $glass-bg-light;
+  border-radius: $r-20;
+  padding: $gap-3;
+  margin-bottom: $gap-3;
+  overflow: hidden;
+  @include glass-shadow(md);
+
+  // 顶部高光层（不可交互）
+  > .lg-highlight {
+    position: absolute;
+    inset: 0;
+    @include glass-highlight(0.4);
+    border-radius: inherit;
+  }
+}
+
+// 兼容保留：旧 .card 类
 .card {
   background: $card;
   border-radius: $r-20;
@@ -115,4 +140,9 @@ input, textarea {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+// 全局页面入场
+page, .page-enter {
+  animation: lg-fade-up 0.4s $ease-spring both;
 }

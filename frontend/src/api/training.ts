@@ -56,6 +56,7 @@ export interface TrainingTemplate {
 }
 
 export interface SessionSet {
+  id?: number;
   set_id?: number;
   set_index: number;
   target_reps?: number | null;

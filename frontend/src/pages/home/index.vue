@@ -1,49 +1,56 @@
 <template>
   <view class="home">
-    <view class="hero">
+    <!-- Hero 玻璃面板：卡路里环 + 三大营养 -->
+    <view class="hero-section">
       <view class="hero-top">
         <view class="greet">
           <view class="hi">{{ greetText }}，{{ nickname }}</view>
           <view class="date">{{ dateText }}</view>
         </view>
-        <view class="avatar" @tap="goMine">
-          <text v-if="!avatar">{{ initial }}</text>
-          <image v-else :src="avatar" mode="aspectFill" class="avatar-img" />
-        </view>
-      </view>
-
-      <view class="ring-card">
-        <ProgressRing
-          :value="diet.calories_kcal"
-          :goal="diet.calories_goal || 1"
-          :size="220"
-          :thickness="18"
-          color="#5BC89A"
-        >
-          <view class="ring-content">
-            <view class="ring-num">{{ Math.round(diet.calories_kcal) }}</view>
-            <view class="ring-label">已摄入 kcal</view>
-            <view class="ring-goal">目标 {{ Math.round(diet.calories_goal) }}</view>
+        <view class="avatar-wrap" @tap="goMine">
+          <view class="avatar">
+            <text v-if="!avatar">{{ initial }}</text>
+            <image v-else :src="avatar" mode="aspectFill" class="avatar-img" />
           </view>
-        </ProgressRing>
-
-        <view class="ring-macros">
-          <MacroBar label="碳水" :value="diet.carbs_g" :goal="diet.carbs_goal" color="#FFD79A" />
-          <MacroBar label="蛋白质" :value="diet.protein_g" :goal="diet.protein_goal" color="#5BC89A" />
-          <MacroBar label="脂肪" :value="diet.fat_g" :goal="diet.fat_goal" color="#C490E0" />
         </view>
       </view>
+
+      <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="ring-panel">
+        <view class="ring-row">
+          <view class="ring-wrap">
+            <ProgressRing
+              :value="diet.calories_kcal"
+              :goal="diet.calories_goal || 1"
+              :size="220"
+              :thickness="18"
+              color="#5BC89A"
+            >
+              <view class="ring-content">
+                <view class="ring-num">{{ Math.round(diet.calories_kcal) }}</view>
+                <view class="ring-label">已摄入 kcal</view>
+                <view class="ring-goal">目标 {{ Math.round(diet.calories_goal) }}</view>
+              </view>
+            </ProgressRing>
+          </view>
+
+          <view class="ring-macros">
+            <MacroBar label="碳水" :value="diet.carbs_g" :goal="diet.carbs_goal" color="#FFD79A" />
+            <MacroBar label="蛋白质" :value="diet.protein_g" :goal="diet.protein_goal" color="#5BC89A" />
+            <MacroBar label="脂肪" :value="diet.fat_g" :goal="diet.fat_goal" color="#C490E0" />
+          </view>
+        </view>
+      </liquid-glass-panel>
     </view>
 
     <view class="container">
       <!-- 训练卡 -->
-      <view class="card-section" @tap="goTraining">
+      <liquid-glass-card :highlight="true" hoverable @tap="goTraining" class="card-section">
         <view class="section-head">
           <view class="left">
             <view class="bar" />
             <text class="title">今日训练</text>
-            <Tag v-if="training.status === 'in_progress'" text="进行中" variant="primary" />
-            <Tag v-else-if="training.is_rest_day" text="休息日" variant="soft" />
+            <liquid-glass-pill v-if="training.status === 'in_progress'" text="进行中" variant="primary" size="xs" />
+            <liquid-glass-pill v-else-if="training.is_rest_day" text="休息日" variant="soft" size="xs" />
           </view>
           <text class="more">查看 ›</text>
         </view>
@@ -52,7 +59,7 @@
           <view class="emoji">🏋️</view>
           <view class="empty-title">还没有训练计划</view>
           <view class="empty-desc">选择一个模板或自定义创建你的第一个计划</view>
-          <view class="action-btn" @tap.stop="goCreatePlan">创建训练计划</view>
+          <liquid-glass-button text="创建训练计划" variant="primary" size="sm" :block="false" @tap.stop="goCreatePlan" />
         </view>
 
         <view v-else class="training-info">
@@ -61,19 +68,29 @@
             <text>共 {{ training.exercise_count }} 个动作</text>
           </view>
           <view class="training-actions">
-            <view v-if="training.status === 'in_progress'" class="primary-btn" @tap.stop="continueSession">
-              继续训练
-            </view>
-            <view v-else-if="!training.is_rest_day" class="primary-btn" @tap.stop="startSession">
-              开始训练
-            </view>
-            <view v-else class="ghost-btn">好好休息 💤</view>
+            <liquid-glass-button
+              v-if="training.status === 'in_progress'"
+              text="继续训练"
+              variant="primary"
+              size="sm"
+              :block="false"
+              @tap.stop="continueSession"
+            />
+            <liquid-glass-button
+              v-else-if="!training.is_rest_day"
+              text="开始训练"
+              variant="primary"
+              size="sm"
+              :block="false"
+              @tap.stop="startSession"
+            />
+            <liquid-glass-pill v-else text="好好休息 💤" variant="soft" size="sm" />
           </view>
         </view>
-      </view>
+      </liquid-glass-card>
 
       <!-- 体重卡 -->
-      <view class="card-section">
+      <liquid-glass-card :highlight="true" class="card-section">
         <view class="section-head">
           <view class="left">
             <view class="bar" />
@@ -86,7 +103,7 @@
           <view class="emoji">⚖️</view>
           <view class="empty-title">还没有体重记录</view>
           <view class="empty-desc">记录第一次体重，开始追踪变化</view>
-          <view class="action-btn" @tap="recordWeight">记录体重</view>
+          <liquid-glass-button text="记录体重" variant="soft" size="sm" :block="false" @tap="recordWeight" />
         </view>
 
         <view v-else class="weight-info">
@@ -101,38 +118,40 @@
               <view class="unit">kg 目标</view>
             </view>
           </view>
-          <view class="weight-diff" :class="{ pos: (weight.diff_kg || 0) > 0, neg: (weight.diff_kg || 0) < 0 }">
+          <view :class="['weight-diff', { pos: (weight.diff_kg || 0) > 0, neg: (weight.diff_kg || 0) < 0 }]">
             <text v-if="weight.diff_kg && weight.diff_kg > 0">还需减 {{ weight.diff_kg }} kg</text>
             <text v-else-if="weight.diff_kg && weight.diff_kg < 0">还需增 {{ -weight.diff_kg }} kg</text>
             <text v-else>已达成目标 🎉</text>
           </view>
           <view class="weight-actions">
-            <view class="ghost-btn small" @tap="recordWeight">记录体重</view>
+            <liquid-glass-button text="记录体重" variant="soft" size="sm" :block="false" @tap="recordWeight" />
           </view>
           <view v-if="weight.last_recorded_at" class="weight-foot">最近记录：{{ formatDateTime(weight.last_recorded_at) }}</view>
         </view>
-      </view>
+      </liquid-glass-card>
 
       <!-- 快捷入口 -->
       <view class="quick-grid">
-        <view class="quick-item" @tap="goAddDiet">
-          <view class="qi-icon" style="background: #EAF8F1; color: #3FA67C;">🥗</view>
+        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goAddDiet" class="quick-item">
+          <view class="qi-icon" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">🥗</view>
           <view class="qi-label">添加饮食</view>
-        </view>
-        <view class="quick-item" @tap="goPhoto">
-          <view class="qi-icon" style="background: #FFF3DC; color: #B86A1F;">📷</view>
+        </liquid-glass-card>
+        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goPhoto" class="quick-item">
+          <view class="qi-icon" style="background: linear-gradient(135deg, #FFEED9, #FFD79A);">📷</view>
           <view class="qi-label">拍照识别</view>
-        </view>
-        <view class="quick-item" @tap="goTraining">
-          <view class="qi-icon" style="background: #E0F0FA; color: #2F6DA0;">🏋️</view>
+        </liquid-glass-card>
+        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goTraining" class="quick-item">
+          <view class="qi-icon" style="background: linear-gradient(135deg, #D4E5F4, #6BA8D6);">🏋️</view>
           <view class="qi-label">训练计划</view>
-        </view>
-        <view class="quick-item" @tap="goStats">
-          <view class="qi-icon" style="background: #F1E6F8; color: #7E45A6;">📊</view>
+        </liquid-glass-card>
+        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goStats" class="quick-item">
+          <view class="qi-icon" style="background: linear-gradient(135deg, #EBDAF2, #C490E0);">📊</view>
           <view class="qi-label">数据趋势</view>
-        </view>
+        </liquid-glass-card>
       </view>
     </view>
+
+    <!-- 自定义液态玻璃 TabBar 由 pages.json tabBar.custom 渲染 -->
   </view>
 </template>
 
@@ -144,8 +163,15 @@ import { useUserStore } from '@/store/user';
 import { useTrainingStore } from '@/store/training';
 import ProgressRing from '@/components/ProgressRing.vue';
 import MacroBar from '@/components/MacroBar.vue';
-import Tag from '@/components/Tag.vue';
 import { today, weekdayCN, dateMD, formatDateTime } from '@/utils/date';
+
+// 同步自定义 tabBar 高亮
+function syncTabBar() {
+  const pages = getCurrentPages();
+  const page = pages[pages.length - 1];
+  const tabBar = (page as any)?.getTabBar?.();
+  if (tabBar) tabBar.setData({ activeIdx: 0 });
+}
 
 const userStore = useUserStore();
 const trainingStore = useTrainingStore();
@@ -159,7 +185,7 @@ const diet = computed(() => summary.value?.diet || {
   calories_kcal: 0, calories_goal: 0,
   carbs_g: 0, carbs_goal: 0,
   protein_g: 0, protein_goal: 0,
-  fat_g: 0, fat_g: 0 as any, fat_goal: 0,
+  fat_g: 0, fat_goal: 0,
   record_count: 0,
 });
 
@@ -198,6 +224,7 @@ onMounted(async () => {
 });
 
 onShow(() => {
+  syncTabBar();
   if (userStore.me) load();
 });
 
@@ -231,13 +258,43 @@ function recordWeight() {
 <style lang="scss" scoped>
 .home {
   min-height: 100vh;
-  background: $bg;
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
+  animation: lg-fade-up 0.4s $ease-spring both;
 }
 
-.hero {
-  background: $gradient-hero;
-  padding: $gap-3 $gap-3 $gap-5;
-  border-radius: 0 0 $r-24 $r-24;
+// ----- Hero -----
+.hero-section {
+  position: relative;
+  padding: $gap-3 $gap-3 $gap-4;
+  background: linear-gradient(160deg, rgba(166, 227, 197, 0.5) 0%, rgba(91, 200, 154, 0.2) 100%);
+  border-radius: 0 0 40rpx 40rpx;
+  margin-bottom: $gap-3;
+  overflow: hidden;
+}
+
+// 环境光斑（hero 左上 + 右下）
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -100rpx;
+  left: -60rpx;
+  width: 320rpx;
+  height: 320rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: -80rpx;
+  right: -60rpx;
+  width: 280rpx;
+  height: 280rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 154, 0.35) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .hero-top {
@@ -245,65 +302,99 @@ function recordWeight() {
   align-items: center;
   justify-content: space-between;
   margin-bottom: $gap-3;
+  position: relative;
+  z-index: 1;
 }
+
 .greet .hi {
   font-size: $fs-xl;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 700;
+  color: $primary-deep;
+  letter-spacing: 0.5rpx;
 }
+
 .greet .date {
   margin-top: 4rpx;
   font-size: $fs-sm;
-  color: rgba(255, 255, 255, 0.85);
+  color: $text-2;
+  opacity: 0.85;
 }
+
+.avatar-wrap {
+  padding: 6rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.7),
+    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
+}
+
 .avatar {
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: $gradient-primary;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-size: 32rpx;
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
+  transition: transform 0.3s $ease-spring;
 }
+
+.avatar:active {
+  transform: scale(0.94);
+}
+
 .avatar-img {
   width: 100%;
   height: 100%;
 }
 
-.ring-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: $r-24;
+// ----- Ring Panel -----
+.ring-panel {
   padding: $gap-3;
+  position: relative;
+  z-index: 1;
+}
+
+.ring-row {
   display: flex;
   align-items: center;
   gap: $gap-3;
-  box-shadow: $shadow-lg;
 }
+
+.ring-wrap {
+  flex-shrink: 0;
+}
+
 .ring-content {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
 .ring-num {
   font-size: 56rpx;
-  font-weight: 700;
+  font-weight: 800;
   color: $text-1;
   line-height: 1;
+  letter-spacing: -1rpx;
 }
+
 .ring-label {
   margin-top: 8rpx;
   font-size: $fs-xs;
   color: $text-3;
 }
+
 .ring-goal {
   margin-top: 2rpx;
   font-size: $fs-xs;
   color: $primary;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .ring-macros {
@@ -313,40 +404,44 @@ function recordWeight() {
   gap: $gap-2;
 }
 
+// ----- Container -----
 .container {
-  padding: $gap-3;
-  padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
+  padding: 0 $gap-3;
 }
 
+// ----- Cards (复用 lg-card 外壳，仅控制内部细节) -----
 .card-section {
-  background: $card;
-  border-radius: $r-20;
   padding: $gap-3;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-sm;
 }
+
 .section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: $gap-2;
 }
+
 .section-head .left {
   display: flex;
   align-items: center;
   gap: $gap-1;
 }
+
 .section-head .bar {
   width: 6rpx;
   height: 28rpx;
-  background: $primary;
+  background: $gradient-primary;
   border-radius: $r-pill;
+  box-shadow: 0 2rpx 6rpx rgba(95, 175, 145, 0.3);
 }
+
 .section-head .title {
   font-size: $fs-lg;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.3rpx;
 }
+
 .section-head .more {
   font-size: $fs-sm;
   color: $text-3;
@@ -360,28 +455,24 @@ function recordWeight() {
   text-align: center;
   &.mini { padding: $gap-2 0; }
 }
+
 .empty-card .emoji {
   font-size: 64rpx;
   margin-bottom: $gap-1;
+  filter: drop-shadow(0 4rpx 8rpx rgba(95, 175, 145, 0.15));
 }
+
 .empty-card .empty-title {
   font-size: $fs-md;
   color: $text-1;
-  font-weight: 500;
+  font-weight: 600;
 }
+
 .empty-card .empty-desc {
   font-size: $fs-sm;
   color: $text-3;
   margin-top: 4rpx;
-}
-.action-btn {
-  margin-top: $gap-2;
-  padding: 14rpx 36rpx;
-  background: $primary;
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  font-weight: 500;
+  margin-bottom: $gap-2;
 }
 
 .training-info {
@@ -389,122 +480,118 @@ function recordWeight() {
   flex-direction: column;
   gap: $gap-1;
 }
+
 .training-name {
   font-size: $fs-xl;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.3rpx;
 }
+
 .training-meta {
   font-size: $fs-sm;
   color: $text-3;
 }
+
 .training-actions {
   margin-top: $gap-2;
 }
-.primary-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18rpx 40rpx;
-  background: $primary;
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-md;
-  font-weight: 500;
-}
-.ghost-btn {
-  display: inline-flex;
-  padding: 18rpx 32rpx;
-  background: $bg-2;
-  color: $text-2;
-  border-radius: $r-pill;
-  font-size: $fs-md;
-  &.small {
-    padding: 12rpx 24rpx;
-    font-size: $fs-sm;
-  }
-}
 
+// ----- Weight -----
 .weight-info {
   display: flex;
   flex-direction: column;
   gap: $gap-2;
 }
+
 .weight-numbers {
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: $gap-2 0;
 }
+
 .weight-current, .weight-target {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
 .weight-current .num, .weight-target .num {
   font-size: 60rpx;
-  font-weight: 700;
+  font-weight: 800;
   color: $text-1;
   line-height: 1;
+  letter-spacing: -1rpx;
 }
+
 .weight-target .num { color: $primary; }
+
 .weight-current .unit, .weight-target .unit {
   margin-top: 4rpx;
   font-size: $fs-xs;
   color: $text-3;
 }
+
 .weight-arrow {
   font-size: 36rpx;
   color: $text-3;
+  font-weight: 300;
 }
+
 .weight-diff {
   text-align: center;
   font-size: $fs-md;
-  font-weight: 500;
+  font-weight: 600;
   color: $text-2;
-  padding: 8rpx 0;
-  background: $primary-tint;
+  padding: 12rpx 0;
+  background: rgba(234, 248, 241, 0.6);
   border-radius: $r-pill;
-  &.pos { color: #B86A1F; background: #FFEED9; }
-  &.neg { color: $primary-deep; }
+  backdrop-filter: blur(8rpx);
+  &.pos { color: #B86A1F; background: rgba(255, 238, 217, 0.7); }
+  &.neg { color: $primary-deep; background: rgba(234, 248, 241, 0.7); }
 }
+
 .weight-actions {
   display: flex;
   justify-content: center;
 }
+
 .weight-foot {
   font-size: $fs-xs;
   color: $text-3;
   text-align: center;
 }
 
+// ----- Quick Grid -----
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: $gap-2;
   margin-top: $gap-2;
 }
+
 .quick-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: $gap-2 0;
-  background: $card;
-  border-radius: $r-16;
-  box-shadow: $shadow-sm;
+  text-align: center;
 }
+
 .qi-icon {
   width: 80rpx;
   height: 80rpx;
-  border-radius: $r-20;
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 40rpx;
-  margin-bottom: 8rpx;
+  margin: 0 auto 8rpx;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.6),
+    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
 }
+
 .qi-label {
   font-size: $fs-xs;
   color: $text-2;
+  font-weight: 500;
 }
 </style>

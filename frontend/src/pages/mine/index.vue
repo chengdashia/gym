@@ -1,102 +1,119 @@
 <template>
   <view class="mine-page">
-    <view class="profile-card">
-      <view class="avatar" @tap="goProfile">
-        <text v-if="!avatar">{{ initial }}</text>
-        <image v-else :src="avatar" class="avatar-img" mode="aspectFill" />
-      </view>
-      <view class="info">
-        <view class="name">{{ nickname }}</view>
-        <view class="meta">
-          <Tag v-if="isMember" text="会员" variant="warn" />
-          <Tag v-else text="普通用户" variant="neutral" />
-          <text v-if="profile?.fitness_goal" class="goal-text">· {{ goalLabel }}</text>
+    <!-- Profile 玻璃面板（带环境光斑） -->
+    <liquid-glass-panel variant="mint" :highlight="true" :ambient="true" class="profile-panel">
+      <view class="profile-row">
+        <view class="avatar" @tap="goProfile">
+          <text v-if="!avatar">{{ initial }}</text>
+          <image v-else :src="avatar" class="avatar-img" mode="aspectFill" />
+        </view>
+        <view class="info">
+          <view class="name">{{ nickname }}</view>
+          <view class="meta">
+            <liquid-glass-pill
+              :text="isMember ? '会员' : '普通用户'"
+              :variant="isMember ? 'warn' : 'default'"
+              size="xs"
+            />
+            <text v-if="profile?.fitness_goal" class="goal-text">· {{ goalLabel }}</text>
+          </view>
+        </view>
+        <view class="edit-btn" @tap="goProfile">
+          <text>编辑</text>
+          <text class="edit-arrow">›</text>
         </view>
       </view>
-      <view class="edit-btn" @tap="goProfile">编辑 ›</view>
-    </view>
+    </liquid-glass-panel>
 
+    <!-- 4 格入口 -->
     <view class="grid">
-      <view class="grid-item" @tap="goGoals">
-        <view class="gi-icon" style="background: #EAF8F1; color: #3FA67C;">🎯</view>
+      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goGoals" class="grid-item">
+        <view class="gi-icon" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">🎯</view>
         <view class="gi-label">目标</view>
         <view class="gi-value">{{ goal.calories_kcal }} kcal</view>
-      </view>
-      <view class="grid-item" @tap="goWeight">
-        <view class="gi-icon" style="background: #FFF3DC; color: #B86A1F;">⚖️</view>
+      </liquid-glass-card>
+      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goWeight" class="grid-item">
+        <view class="gi-icon" style="background: linear-gradient(135deg, #FFEED9, #FFD79A);">⚖️</view>
         <view class="gi-label">体重</view>
         <view class="gi-value">{{ profile?.current_weight_kg || '-' }} kg</view>
-      </view>
-      <view class="grid-item" @tap="goReminders">
-        <view class="gi-icon" style="background: #E0F0FA; color: #2F6DA0;">🔔</view>
+      </liquid-glass-card>
+      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goReminders" class="grid-item">
+        <view class="gi-icon" style="background: linear-gradient(135deg, #D4E5F4, #6BA8D6);">🔔</view>
         <view class="gi-label">提醒</view>
         <view class="gi-value">{{ enabledReminderCount }} 项开启</view>
-      </view>
-      <view class="grid-item" @tap="goAccount">
-        <view class="gi-icon" style="background: #F1E6F8; color: #7E45A6;">🔒</view>
+      </liquid-glass-card>
+      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goAccount" class="grid-item">
+        <view class="gi-icon" style="background: linear-gradient(135deg, #EBDAF2, #C490E0);">🔒</view>
         <view class="gi-label">账号</view>
         <view class="gi-value">数据管理</view>
-      </view>
+      </liquid-glass-card>
     </view>
 
-    <view class="menu-card">
+    <!-- 菜单 1 -->
+    <liquid-glass-card :highlight="true" class="menu-card">
       <view class="menu-item" @tap="goProfile">
-        <view class="mi-emoji">👤</view>
+        <view class="mi-emoji" style="background: linear-gradient(135deg, #EAF8F1, #C5ECDB);">👤</view>
         <text class="mi-label">基础资料</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goGoals">
-        <view class="mi-emoji">🎯</view>
+        <view class="mi-emoji" style="background: linear-gradient(135deg, #EAF8F1, #C5ECDB);">🎯</view>
         <text class="mi-label">目标设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goReminders">
-        <view class="mi-emoji">🔔</view>
+        <view class="mi-emoji" style="background: linear-gradient(135deg, #D4E5F4, #B5D1EA);">🔔</view>
         <text class="mi-label">提醒设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAccount">
-        <view class="mi-emoji">🔒</view>
+        <view class="mi-emoji" style="background: linear-gradient(135deg, #EBDAF2, #D4BFE5);">🔒</view>
         <text class="mi-label">账号与数据</text>
         <text class="mi-arrow">›</text>
       </view>
-    </view>
+    </liquid-glass-card>
 
-    <view class="menu-card">
+    <!-- 菜单 2 -->
+    <liquid-glass-card :highlight="true" class="menu-card">
       <view class="menu-item" @tap="goAgreement('agreement')">
-        <view class="mi-emoji">📄</view>
+        <view class="mi-emoji" style="background: rgba(238, 244, 241, 0.8);">📄</view>
         <text class="mi-label">用户协议</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAgreement('privacy')">
-        <view class="mi-emoji">🛡️</view>
+        <view class="mi-emoji" style="background: rgba(238, 244, 241, 0.8);">🛡️</view>
         <text class="mi-label">隐私政策</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="logout">
-        <view class="mi-emoji">🚪</view>
-        <text class="mi-label" style="color: $danger;">退出登录</text>
+        <view class="mi-emoji" style="background: rgba(255, 226, 226, 0.7);">🚪</view>
+        <text class="mi-label danger">退出登录</text>
         <text class="mi-arrow">›</text>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <view class="version">v1.0.0 · 健身与饮食记录</view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
-import { useAppStore } from '@/store/app';
-import Tag from '@/components/Tag.vue';
 import { FITNESS_GOALS } from '@/utils/constants';
 import { clearAll } from '@/utils/cache';
 
+// 同步自定义 tabBar 高亮
+function syncTabBar() {
+  const pages = getCurrentPages();
+  const page = pages[pages.length - 1];
+  const tabBar = (page as any)?.getTabBar?.();
+  if (tabBar) tabBar.setData({ activeIdx: 4 });
+}
+
 const userStore = useUserStore();
 const auth = useAuthStore();
-const appStore = useAppStore();
 
 const nickname = computed(() => userStore.nickname);
 const avatar = computed(() => userStore.avatar);
@@ -119,7 +136,10 @@ async function load() {
 }
 
 onMounted(load);
-onShow(load);
+onShow(() => {
+  syncTabBar();
+  load();
+});
 
 function goProfile() { uni.navigateTo({ url: '/pages/mine/profile' }); }
 function goGoals() { uni.navigateTo({ url: '/pages/mine/goals' }); }
@@ -146,133 +166,189 @@ function logout() {
 <style lang="scss" scoped>
 .mine-page {
   min-height: 100vh;
-  background: $bg;
   padding: $gap-3;
-  padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
+  animation: lg-fade-up 0.4s $ease-spring both;
 }
 
-.profile-card {
-  background: $gradient-card;
-  border-radius: $r-24;
+// ----- Profile Panel -----
+.profile-panel {
   padding: $gap-3;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-row {
   display: flex;
   align-items: center;
   gap: $gap-2;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-md;
+  position: relative;
+  z-index: 1;
 }
+
 .avatar {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  background: $gradient-primary;
+  background: linear-gradient(135deg, #FFFFFF 0%, #C5ECDB 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: $primary-deep;
   font-size: 48rpx;
-  font-weight: 600;
+  font-weight: 800;
   flex-shrink: 0;
   overflow: hidden;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.8),
+    0 6rpx 16rpx rgba(95, 175, 145, 0.2);
+  transition: transform 0.3s $ease-spring;
 }
+
+.avatar:active {
+  transform: scale(0.95);
+}
+
 .avatar-img {
   width: 100%;
   height: 100%;
 }
+
 .info {
   flex: 1;
+  min-width: 0;
 }
+
 .name {
   font-size: 36rpx;
-  font-weight: 700;
-  color: $text-1;
+  font-weight: 800;
+  color: $primary-deep;
+  letter-spacing: 0.3rpx;
 }
+
 .meta {
   margin-top: 8rpx;
   display: flex;
   align-items: center;
   gap: 8rpx;
 }
+
 .goal-text {
   font-size: $fs-sm;
-  color: $text-3;
-}
-.edit-btn {
-  padding: 12rpx 20rpx;
-  background: $card;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  color: $primary;
-  font-weight: 500;
+  color: $text-2;
 }
 
+.edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: $r-pill;
+  font-size: $fs-sm;
+  color: $primary-deep;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.7),
+    0 2rpx 6rpx rgba(95, 175, 145, 0.1);
+  transition: background 0.3s $ease-glass, transform 0.3s $ease-spring;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.9);
+    transform: scale(0.96);
+  }
+}
+
+.edit-arrow {
+  font-size: $fs-md;
+  line-height: 1;
+}
+
+// ----- Grid -----
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: $gap-2;
   margin-bottom: $gap-3;
 }
+
 .grid-item {
-  background: $card;
-  border-radius: $r-16;
-  padding: $gap-2;
   text-align: center;
-  box-shadow: $shadow-sm;
 }
+
 .gi-icon {
   width: 80rpx;
   height: 80rpx;
-  border-radius: $r-20;
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 40rpx;
-  margin: 0 auto $gap-1;
+  margin: 0 auto 8rpx;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.6),
+    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
 }
+
 .gi-label {
   font-size: $fs-xs;
   color: $text-3;
+  font-weight: 500;
 }
+
 .gi-value {
   font-size: $fs-xs;
   color: $text-1;
-  font-weight: 500;
+  font-weight: 700;
   margin-top: 2rpx;
 }
 
+// ----- Menu Card -----
 .menu-card {
-  background: $card;
-  border-radius: $r-20;
+  padding: 0;
   margin-bottom: $gap-3;
   overflow: hidden;
-  box-shadow: $shadow-sm;
 }
+
 .menu-item {
   display: flex;
   align-items: center;
   padding: $gap-3;
   border-bottom: 1rpx solid $divider;
+  transition: background 0.3s $ease-glass;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
   &:last-child { border-bottom: none; }
 }
+
 .mi-emoji {
   width: 64rpx;
   height: 64rpx;
-  border-radius: $r-16;
-  background: $bg-2;
+  border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
   margin-right: $gap-2;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
 }
+
 .mi-label {
   flex: 1;
   font-size: $fs-md;
   color: $text-1;
+  font-weight: 500;
+
+  &.danger { color: $danger; font-weight: 600; }
 }
+
 .mi-arrow {
   color: $text-3;
   font-size: $fs-lg;
+  line-height: 1;
 }
 
 .version {
@@ -280,5 +356,6 @@ function logout() {
   color: $text-3;
   font-size: $fs-xs;
   padding: $gap-3 0;
+  opacity: 0.7;
 }
 </style>

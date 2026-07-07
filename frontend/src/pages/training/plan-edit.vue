@@ -94,14 +94,14 @@
     <!-- 动作编辑弹窗 -->
     <view v-if="showExEditor" class="ex-mask" @tap="cancelEx">
       <view class="ex-picker" @tap.stop>
-        <view class="ex-title">{{ exEditing.idx !== null ? '编辑动作' : '选择动作' }}</view>
+        <view class="ex-title">{{ exIdx === null ? '选择动作' : '编辑动作' }}</view>
 
-        <view v-if="exEditing.idx === null" class="ex-search">
+        <view v-if="exIdx === null" class="ex-search">
           <input v-model="exSearchKw" placeholder="搜索动作" class="input" @confirm="searchExercises" />
           <view class="search-btn" @tap="searchExercises">搜索</view>
         </view>
 
-        <view v-if="exEditing.idx === null" class="ex-search-list">
+        <view v-if="exIdx === null" class="ex-search-list">
           <view
             v-for="ex in exSearchList"
             :key="`${ex.source}-${ex.id}`"
@@ -148,9 +148,8 @@
         </view>
 
         <view class="ex-picker-actions">
-          <view v-if="exEditing.idx === null" class="ghost" @tap="cancelEx">取消</view>
-          <view v-else class="ghost" @tap="cancelEx">取消</view>
-          <view v-if="exEditing.idx !== null" class="primary" @tap="confirmEditEx">确定</view>
+          <view class="ghost" @tap="cancelEx">取消</view>
+          <view v-if="exEditing.exIdx !== null && exEditing.exIdx >= 0" class="primary" @tap="confirmEditEx">确定</view>
         </view>
       </view>
     </view>
@@ -335,7 +334,7 @@ function cancelEx() {
 }
 
 function confirmEditEx() {
-  if (exEditing.idx === null || exEditing.dayIdx < 0) return;
+  if (exEditing.dayIdx < 0 || exEditing.exIdx === null || exEditing.exIdx < -1) return;
   const payload: PlanExercise = {
     exercise_source: exEditing.exercise_source,
     exercise_id: exEditing.exercise_id,
@@ -350,7 +349,7 @@ function confirmEditEx() {
   };
   if (exEditing.exIdx === -1) {
     plan.days[exEditing.dayIdx].exercises.push(payload);
-  } else if (exEditing.idx !== null && exEditing.exIdx !== null && exEditing.exIdx >= 0) {
+  } else if (exEditing.exIdx >= 0) {
     plan.days[exEditing.dayIdx].exercises[exEditing.exIdx] = payload;
   }
   showExEditor.value = false;

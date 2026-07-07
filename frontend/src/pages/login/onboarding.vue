@@ -2,15 +2,17 @@
   <view class="onboarding">
     <!-- 步骤1：协议 -->
     <view v-if="step === 0" class="step">
-      <view class="hero">
-        <view class="logo">🌿</view>
-        <view class="brand">健身饮食</view>
-        <view class="brand-sub">让健康管理更轻盈</view>
-      </view>
+      <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="hero-panel">
+        <view class="logo-wrap">
+          <view class="logo">🌿</view>
+          <view class="brand">健身饮食</view>
+          <view class="brand-sub">让健康管理更轻盈</view>
+        </view>
+      </liquid-glass-panel>
 
-      <view class="card protocol">
-        <view class="title">欢迎使用</view>
-        <view class="desc">请仔细阅读以下协议条款，开始你的健康之旅。</view>
+      <liquid-glass-card :highlight="true" class="protocol-card">
+        <view class="protocol-title">欢迎使用</view>
+        <view class="protocol-desc">请仔细阅读以下协议条款，开始你的健康之旅。</view>
 
         <view class="protocol-item">
           <view class="protocol-name">📄 用户协议</view>
@@ -26,29 +28,51 @@
           </view>
         </view>
 
-        <label class="agree-row" @tap="agreed = !agreed">
-          <view :class="['checkbox', { checked: agreed }]">{{ agreed ? '✓' : '' }}</view>
-          <text>我已阅读并同意《用户协议》和《隐私政策》</text>
-        </label>
-      </view>
+        <view class="agree-row" @tap="agreed = !agreed">
+          <view :class="['checkbox', { checked: agreed }]">
+            <text v-if="agreed">✓</text>
+          </view>
+          <text class="agree-text">我已阅读并同意《用户协议》和《隐私政策》</text>
+        </view>
+      </liquid-glass-card>
 
-      <PrimaryButton text="同意并继续" :disabled="!agreed" @tap="next" />
+      <liquid-glass-button
+        text="同意并继续"
+        variant="primary"
+        size="lg"
+        :disabled="!agreed"
+        @tap="next"
+      />
     </view>
 
     <!-- 步骤2：基础资料 -->
     <view v-else-if="step === 1" class="step">
       <view class="step-head">
-        <view class="step-tag">第 2 步</view>
+        <liquid-glass-pill text="第 2 步" variant="soft" size="md" />
         <view class="step-title">基础信息</view>
         <view class="step-desc">用于计算你的每日营养目标</view>
       </view>
 
-      <view class="form-card">
+      <liquid-glass-card :highlight="true" class="form-card">
         <view class="form-row">
           <text class="form-label">性别</text>
           <view class="seg">
-            <view :class="['seg-item', { active: form.gender === 'male' }]" @tap="form.gender = 'male'">男</view>
-            <view :class="['seg-item', { active: form.gender === 'female' }]" @tap="form.gender = 'female'">女</view>
+            <liquid-glass-pill
+              :text="'男'"
+              :variant="form.gender === 'male' ? 'primary' : 'default'"
+              size="sm"
+              interactive
+              :active="form.gender === 'male'"
+              @tap="form.gender = 'male'"
+            />
+            <liquid-glass-pill
+              :text="'女'"
+              :variant="form.gender === 'female' ? 'primary' : 'default'"
+              size="sm"
+              interactive
+              :active="form.gender === 'female'"
+              @tap="form.gender = 'female'"
+            />
           </view>
         </view>
 
@@ -79,48 +103,51 @@
         <view class="form-row column">
           <text class="form-label">健身目标</text>
           <view class="chips">
-            <view
+            <liquid-glass-pill
               v-for="g in goals"
               :key="g.value"
-              :class="['chip', { active: form.fitness_goal === g.value }]"
-              :style="form.fitness_goal === g.value ? { background: g.color, color: '#fff' } : {}"
+              :text="g.label"
+              :variant="form.fitness_goal === g.value ? 'primary' : 'soft'"
+              size="md"
+              interactive
+              :active="form.fitness_goal === g.value"
               @tap="form.fitness_goal = g.value"
-            >
-              {{ g.label }}
-            </view>
+            />
           </view>
         </view>
 
         <view class="form-row column">
           <text class="form-label">每周训练频率</text>
           <view class="chips">
-            <view
+            <liquid-glass-pill
               v-for="f in frequencies"
               :key="f.value"
-              :class="['chip', { active: form.training_frequency === f.value }]"
+              :text="f.label"
+              :variant="form.training_frequency === f.value ? 'primary' : 'soft'"
+              size="md"
+              interactive
+              :active="form.training_frequency === f.value"
               @tap="form.training_frequency = f.value"
-            >
-              {{ f.label }}
-            </view>
+            />
           </view>
         </view>
-      </view>
+      </liquid-glass-card>
 
       <view class="actions">
-        <view class="btn-secondary" @tap="step = 0">上一步</view>
-        <PrimaryButton text="下一步：生成目标" @tap="submitProfile" />
+        <liquid-glass-button text="上一步" variant="ghost" size="md" :block="false" @tap="step = 0" customStyle="padding-left:36rpx;padding-right:36rpx;" />
+        <liquid-glass-button text="下一步：生成目标" variant="primary" size="md" :block="false" @tap="submitProfile" customStyle="flex:1;margin-left:16rpx;" />
       </view>
     </view>
 
     <!-- 步骤3：推荐目标 -->
     <view v-else-if="step === 2" class="step">
       <view class="step-head">
-        <view class="step-tag">第 3 步</view>
+        <liquid-glass-pill text="第 3 步" variant="soft" size="md" />
         <view class="step-title">你的每日营养目标</view>
         <view class="step-desc">系统已根据你的基础信息自动估算，可手动调整</view>
       </view>
 
-      <view class="goal-card">
+      <liquid-glass-panel variant="mint" :highlight="true" :ambient="true" class="goal-panel">
         <view class="goal-big">
           <view class="goal-num">{{ goal.calories_kcal }}</view>
           <view class="goal-unit">kcal / 天</view>
@@ -140,9 +167,9 @@
             <view class="macro-val">{{ goal.fat_g }} g</view>
           </view>
         </view>
-      </view>
+      </liquid-glass-panel>
 
-      <view class="form-card">
+      <liquid-glass-card :highlight="true" class="form-card">
         <view class="form-row">
           <text class="form-label">热量 (kcal)</text>
           <input v-model.number="goal.calories_kcal" type="number" class="form-input" />
@@ -159,11 +186,11 @@
           <text class="form-label">脂肪 (g)</text>
           <input v-model.number="goal.fat_g" type="digit" class="form-input" />
         </view>
-      </view>
+      </liquid-glass-card>
 
       <view class="actions">
-        <view class="btn-secondary" @tap="step = 1">上一步</view>
-        <PrimaryButton text="完成，开始记录" @tap="finish" />
+        <liquid-glass-button text="上一步" variant="ghost" size="md" :block="false" @tap="step = 1" customStyle="padding-left:36rpx;padding-right:36rpx;" />
+        <liquid-glass-button text="完成，开始记录" variant="primary" size="md" :block="false" @tap="finish" customStyle="flex:1;margin-left:16rpx;" />
       </view>
     </view>
   </view>
@@ -171,7 +198,6 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
 import { useAuthStore } from '@/store/auth';
 import { useUserStore } from '@/store/user';
 import { FITNESS_GOALS, TRAINING_FREQUENCIES, FitnessGoal } from '@/utils/constants';
@@ -206,13 +232,11 @@ async function next() {
   if (!agreed.value) return;
   uni.showLoading({ title: '登录中...' });
   try {
-    // 已有 token 时不要重新登录，避免反复调用 wechat-login
     if (!auth.token) {
       await auth.login();
     }
     await userStore.fetchMe();
     if (userStore.me?.agreement_confirmed) {
-      // 已确认，跳过 onboarding
       uni.hideLoading();
       goHome();
       return;
@@ -265,15 +289,26 @@ function goHome() {
 .onboarding {
   min-height: 100vh;
   padding: $gap-4 $gap-3 $gap-6;
-  background: linear-gradient(180deg, $primary-tint 0%, $bg 40%);
+  animation: lg-fade-up 0.4s $ease-spring both;
 }
 
-.hero {
+.step {
+  display: flex;
+  flex-direction: column;
+}
+
+// ----- Step 1: 协议 -----
+.hero-panel {
+  margin-bottom: $gap-4;
+  padding: $gap-5 $gap-3;
+}
+
+.logo-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: $gap-5 0 $gap-4;
 }
+
 .logo {
   width: 160rpx;
   height: 160rpx;
@@ -283,95 +318,112 @@ function goHome() {
   align-items: center;
   justify-content: center;
   font-size: 80rpx;
-  box-shadow: 0 16rpx 40rpx rgba(95, 175, 145, 0.3);
+  box-shadow:
+    0 16rpx 40rpx rgba(95, 175, 145, 0.35),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
 }
+
 .brand {
   margin-top: $gap-3;
   font-size: 48rpx;
   font-weight: 700;
   color: $primary-deep;
+  letter-spacing: 1rpx;
 }
+
 .brand-sub {
   margin-top: $gap-1;
   font-size: $fs-md;
   color: $text-3;
 }
 
-.card {
-  background: $card;
-  border-radius: $r-24;
-  padding: $gap-4 $gap-3;
+.protocol-card {
   margin-bottom: $gap-4;
-  box-shadow: $shadow-md;
 }
-.protocol .title {
+
+.protocol-title {
   font-size: $fs-xl;
-  font-weight: 600;
+  font-weight: 700;
   color: $text-1;
   text-align: center;
 }
-.protocol .desc {
+
+.protocol-desc {
   margin-top: $gap-1;
   text-align: center;
   color: $text-3;
   font-size: $fs-sm;
+  margin-bottom: $gap-3;
 }
+
 .protocol-item {
-  margin-top: $gap-3;
+  margin-bottom: $gap-2;
   padding: $gap-2;
-  background: $primary-tint;
+  background: rgba(234, 248, 241, 0.5);
   border-radius: $r-16;
 }
+
 .protocol-name {
   font-size: $fs-md;
   font-weight: 600;
   color: $primary-deep;
   margin-bottom: 8rpx;
 }
+
 .protocol-content {
   font-size: $fs-sm;
   color: $text-2;
   line-height: 1.6;
 }
+
 .agree-row {
   display: flex;
   align-items: center;
   margin-top: $gap-3;
   gap: $gap-2;
 }
+
 .checkbox {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 8rpx;
-  border: 2rpx solid $primary;
-  background: #fff;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $r-12;
+  background: rgba(255, 255, 255, 0.7);
+  border: 2rpx solid rgba(95, 175, 145, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-size: $fs-md;
-  &.checked {
-    background: $primary;
-  }
+  font-weight: 700;
+  transition: all 0.3s $ease-spring;
 }
 
+.checkbox.checked {
+  background: $gradient-primary;
+  border-color: transparent;
+  box-shadow: 0 4rpx 12rpx rgba(95, 175, 145, 0.35);
+}
+
+.agree-text {
+  font-size: $fs-sm;
+  color: $text-2;
+  flex: 1;
+  line-height: 1.5;
+}
+
+// ----- Step 2/3 通用 -----
 .step-head {
-  margin: $gap-4 0 $gap-3;
+  margin: $gap-3 0 $gap-3;
 }
-.step-tag {
-  display: inline-block;
-  padding: 6rpx 18rpx;
-  border-radius: $r-pill;
-  background: $primary-tint;
-  color: $primary-deep;
-  font-size: $fs-xs;
-}
+
 .step-title {
   margin-top: $gap-2;
   font-size: 48rpx;
   font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.5rpx;
 }
+
 .step-desc {
   margin-top: $gap-1;
   font-size: $fs-md;
@@ -379,83 +431,71 @@ function goHome() {
 }
 
 .form-card {
-  background: $card;
-  border-radius: $r-20;
   padding: $gap-3;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-sm;
 }
+
 .form-row {
   display: flex;
   align-items: center;
   padding: $gap-2 0;
   border-bottom: 1rpx solid $divider;
   gap: $gap-2;
+
   &.column {
     flex-direction: column;
     align-items: stretch;
     gap: $gap-1;
   }
+
   &:last-child { border-bottom: none; }
 }
+
 .form-label {
   flex: 1;
   color: $text-2;
   font-size: $fs-md;
+  font-weight: 500;
 }
+
 .form-input {
   flex: 2;
   text-align: right;
   font-size: $fs-md;
   color: $text-1;
+  font-weight: 600;
 }
+
 .form-unit {
   color: $text-3;
   font-size: $fs-sm;
 }
+
 .seg {
   display: flex;
-  background: $bg-2;
-  border-radius: $r-pill;
-  padding: 4rpx;
+  gap: 12rpx;
+  align-items: center;
 }
-.seg-item {
-  padding: 12rpx 28rpx;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-    font-weight: 500;
-  }
-}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
   margin-top: $gap-1;
 }
-.chip {
-  padding: 14rpx 28rpx;
-  border-radius: $r-pill;
-  background: $bg-2;
-  color: $text-2;
-  font-size: $fs-sm;
-  &.active {
-    background: $primary;
-    color: #fff;
-    font-weight: 500;
-  }
+
+.actions {
+  display: flex;
+  gap: $gap-2;
+  align-items: center;
+  margin-top: $gap-4;
 }
 
-.goal-card {
-  background: $gradient-card;
-  border-radius: $r-24;
-  padding: $gap-4 $gap-3;
-  box-shadow: $shadow-md;
+// ----- Step 3: 推荐目标 -----
+.goal-panel {
+  padding: $gap-5 $gap-3;
   margin-bottom: $gap-3;
 }
+
 .goal-big {
   display: flex;
   align-items: baseline;
@@ -463,51 +503,49 @@ function goHome() {
   gap: 8rpx;
   padding: $gap-2 0;
 }
+
 .goal-num {
-  font-size: 88rpx;
-  font-weight: 700;
+  font-size: 96rpx;
+  font-weight: 800;
   color: $primary-deep;
   line-height: 1;
+  letter-spacing: -2rpx;
+  text-shadow: 0 2rpx 8rpx rgba(95, 175, 145, 0.15);
 }
+
 .goal-unit {
   font-size: $fs-md;
-  color: $text-3;
+  color: $primary-deep;
+  opacity: 0.7;
 }
+
 .goal-divider {
   height: 1rpx;
-  background: $divider;
-  margin: $gap-2 0;
+  background: rgba(255, 255, 255, 0.5);
+  margin: $gap-3 0;
 }
+
 .goal-macros {
   display: flex;
   justify-content: space-around;
 }
+
 .macro-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4rpx;
 }
+
 .macro-name {
   font-size: $fs-sm;
-  color: $text-3;
-}
-.macro-val {
-  font-size: $fs-lg;
-  font-weight: 600;
-  color: $text-1;
+  color: $primary-deep;
+  opacity: 0.75;
 }
 
-.actions {
-  display: flex;
-  gap: $gap-2;
-  align-items: center;
-}
-.btn-secondary {
-  padding: 24rpx 32rpx;
-  background: $bg-2;
-  border-radius: $r-16;
-  color: $text-2;
-  font-size: $fs-md;
+.macro-val {
+  font-size: $fs-xl;
+  font-weight: 700;
+  color: $primary-deep;
 }
 </style>

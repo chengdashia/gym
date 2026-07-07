@@ -360,10 +360,18 @@ class PlanListOut(BaseModel):
 
 class TrainingTodayOut(BaseModel):
     date: date
+    has_plan: bool = False
     plan_id: Optional[int] = None
+    schedule_type: Optional[str] = None
+    plan_day_id: Optional[int] = None
+    is_rest_day: bool = False
+    session_id: Optional[int] = None
+    session_status: Optional[str] = None
+    title: Optional[str] = None
+    exercise_count: int = 0
+    # 兼容字段：保留给旧客户端使用
     plan: Optional[PlanOut] = None
     today_day: Optional[PlanDayOut] = None
-    is_rest_day: bool = False
     incomplete_session: Optional["SessionOut"] = None
 
 
