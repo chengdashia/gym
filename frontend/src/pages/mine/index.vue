@@ -28,22 +28,22 @@
     <!-- 4 格入口 -->
     <view class="grid">
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goGoals" class="grid-item">
-        <view class="gi-icon" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">🎯</view>
+        <line-icon name="target" tint="mint" :size="72" class="gi-icon" />
         <view class="gi-label">目标</view>
         <view class="gi-value">{{ goal.calories_kcal }} kcal</view>
       </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goWeight" class="grid-item">
-        <view class="gi-icon" style="background: linear-gradient(135deg, #FFEED9, #FFD79A);">⚖️</view>
+        <line-icon name="scale" tint="warm" :size="72" class="gi-icon" />
         <view class="gi-label">体重</view>
         <view class="gi-value">{{ profile?.current_weight_kg || '-' }} kg</view>
       </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goReminders" class="grid-item">
-        <view class="gi-icon" style="background: linear-gradient(135deg, #D4E5F4, #6BA8D6);">🔔</view>
+        <line-icon name="bell" tint="sky" :size="72" class="gi-icon" />
         <view class="gi-label">提醒</view>
         <view class="gi-value">{{ enabledReminderCount }} 项开启</view>
       </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goAccount" class="grid-item">
-        <view class="gi-icon" style="background: linear-gradient(135deg, #EBDAF2, #C490E0);">🔒</view>
+        <line-icon name="lock" tint="violet" :size="72" class="gi-icon" />
         <view class="gi-label">账号</view>
         <view class="gi-value">数据管理</view>
       </liquid-glass-card>
@@ -52,27 +52,27 @@
     <!-- 菜单 1 -->
     <liquid-glass-card :highlight="true" class="menu-card">
       <view class="menu-item" @tap="goProfile">
-        <view class="mi-emoji" style="background: linear-gradient(135deg, #EAF8F1, #C5ECDB);">👤</view>
+        <line-icon name="user" tint="mint" :size="56" class="mi-icon" />
         <text class="mi-label">基础资料</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goGoals">
-        <view class="mi-emoji" style="background: linear-gradient(135deg, #EAF8F1, #C5ECDB);">🎯</view>
+        <line-icon name="target" tint="mint" :size="56" class="mi-icon" />
         <text class="mi-label">目标设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goReminders">
-        <view class="mi-emoji" style="background: linear-gradient(135deg, #D4E5F4, #B5D1EA);">🔔</view>
+        <line-icon name="bell" tint="sky" :size="56" class="mi-icon" />
         <text class="mi-label">提醒设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAccount">
-        <view class="mi-emoji" style="background: linear-gradient(135deg, #EBDAF2, #D4BFE5);">🔒</view>
+        <line-icon name="lock" tint="violet" :size="56" class="mi-icon" />
         <text class="mi-label">账号与数据</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goTrainingHistory">
-        <view class="mi-emoji" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">📜</view>
+        <line-icon name="history" tint="warm" :size="56" class="mi-icon" />
         <text class="mi-label">训练历史</text>
         <text class="mi-arrow">›</text>
       </view>
@@ -81,17 +81,17 @@
     <!-- 菜单 2 -->
     <liquid-glass-card :highlight="true" class="menu-card">
       <view class="menu-item" @tap="goAgreement('agreement')">
-        <view class="mi-emoji" style="background: rgba(238, 244, 241, 0.8);">📄</view>
+        <line-icon name="document" tint="neutral" :size="56" class="mi-icon" />
         <text class="mi-label">用户协议</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAgreement('privacy')">
-        <view class="mi-emoji" style="background: rgba(238, 244, 241, 0.8);">🛡️</view>
+        <line-icon name="shield" tint="sky" :size="56" class="mi-icon" />
         <text class="mi-label">隐私政策</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="logout">
-        <view class="mi-emoji" style="background: rgba(255, 226, 226, 0.7);">🚪</view>
+        <line-icon name="logout" tint="rose" :size="56" class="mi-icon" />
         <text class="mi-label danger">退出登录</text>
         <text class="mi-arrow">›</text>
       </view>
@@ -283,17 +283,7 @@ function logout() {
 }
 
 .gi-icon {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40rpx;
   margin: 0 auto 8rpx;
-  box-shadow:
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.6),
-    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
 }
 
 .gi-label {
@@ -330,16 +320,8 @@ function logout() {
   &:last-child { border-bottom: none; }
 }
 
-.mi-emoji {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
+.mi-icon {
   margin-right: $gap-2;
-  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
 }
 
 .mi-label {

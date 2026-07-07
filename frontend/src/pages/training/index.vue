@@ -12,7 +12,7 @@
             <view class="hero-title">{{ heroTitle }}</view>
             <view v-if="heroSubtitle" class="hero-sub">{{ heroSubtitle }}</view>
           </view>
-          <view class="hero-icon">{{ heroIcon }}</view>
+          <line-icon :name="heroIcon" :tint="heroIconTint" :size="88" class="hero-icon" />
         </view>
 
         <view v-if="todayInfo && todayInfo.exercise_count > 0 && !todayInfo.is_rest_day" class="hero-stats">
@@ -49,7 +49,7 @@
           />
           <liquid-glass-button
             v-else-if="todayInfo && todayInfo.is_rest_day"
-            text="好好休息 💤"
+            text="好好休息"
             variant="soft"
             size="md"
             :block="false"
@@ -81,7 +81,7 @@
 
       <view v-else-if="plans.length === 0" class="empty-state">
         <liquid-glass-card :highlight="true" class="empty-card">
-          <view class="empty-emoji">📋</view>
+          <line-icon name="list" tint="mint" :size="80" class="empty-emoji" />
           <view class="empty-title">还没有训练计划</view>
           <view class="empty-desc">从推荐模板开始，快速创建适合你的训练计划</view>
           <view class="empty-actions">
@@ -192,7 +192,7 @@ const heroTitle = computed(() => {
 const heroSubtitle = computed(() => {
   const t = todayInfo.value;
   if (!t || !t.has_plan) return '创建计划，开启每一次进步';
-  if (t.is_rest_day) return '好好休息，肌肉在休息中生长 💪';
+  if (t.is_rest_day) return '好好休息，肌肉在休息中生长';
   if (t.today_completed) return '辛苦了！点击下方可再练一次进入下一循环';
   if (t.session_status === 'in_progress') return '训练进行中，加油！';
   if (t.exercise_count > 0) return `准备好挑战 ${t.exercise_count} 个动作了吗？`;
@@ -201,11 +201,20 @@ const heroSubtitle = computed(() => {
 
 const heroIcon = computed(() => {
   const t = todayInfo.value;
-  if (!t || !t.has_plan) return '🏋️';
-  if (t.is_rest_day) return '😴';
-  if (t.today_completed) return '✅';
-  if (t.session_status === 'in_progress') return '🔥';
-  return '💪';
+  if (!t || !t.has_plan) return 'dumbbell';
+  if (t.is_rest_day) return 'moon';
+  if (t.today_completed) return 'check';
+  if (t.session_status === 'in_progress') return 'fire';
+  return 'dumbbell';
+});
+
+const heroIconTint = computed<'mint' | 'warm' | 'sky' | 'neutral'>(() => {
+  const t = todayInfo.value;
+  if (!t || !t.has_plan) return 'neutral';
+  if (t.is_rest_day) return 'sky';
+  if (t.today_completed) return 'mint';
+  if (t.session_status === 'in_progress') return 'warm';
+  return 'mint';
 });
 
 const heroVariant = computed<'mint' | 'warm' | 'light' | 'dark'>(() => {
@@ -358,9 +367,7 @@ function goEditPlan(id: number) {
 }
 
 .hero-icon {
-  font-size: 88rpx;
-  opacity: 0.5;
-  filter: drop-shadow(0 4rpx 12rpx rgba(95, 175, 145, 0.2));
+  flex-shrink: 0;
 }
 
 .hero-stats {
@@ -450,9 +457,7 @@ function goEditPlan(id: number) {
 }
 
 .empty-emoji {
-  font-size: 88rpx;
-  margin-bottom: $gap-2;
-  filter: drop-shadow(0 4rpx 12rpx rgba(95, 175, 145, 0.15));
+  margin: 0 auto $gap-2;
 }
 
 .empty-title {

@@ -35,17 +35,17 @@
       <view class="section-title">账号与数据</view>
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item disabled">
-          <view class="mi-emoji">📱</view>
+          <line-icon name="phone" tint="sky" :size="48" class="mi-icon" />
           <text class="mi-label">手机号授权</text>
           <text class="mi-value">功能开发中</text>
         </view>
         <view class="menu-item disabled">
-          <view class="mi-emoji">📤</view>
+          <line-icon name="export" tint="mint" :size="48" class="mi-icon" />
           <text class="mi-label">数据导出</text>
           <text class="mi-value">功能开发中</text>
         </view>
         <view class="menu-item" @tap="clearCache">
-          <view class="mi-emoji">🧹</view>
+          <line-icon name="broom" tint="warm" :size="48" class="mi-icon" />
           <text class="mi-label">清除缓存</text>
           <text class="mi-value">{{ cacheSize }}</text>
         </view>
@@ -56,12 +56,12 @@
       <view class="section-title">危险操作</view>
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item" @tap="confirmDeleteData">
-          <view class="mi-emoji">🗑️</view>
+          <line-icon name="trash" tint="rose" :size="48" class="mi-icon" />
           <text class="mi-label danger">删除个人数据</text>
           <text class="mi-arrow">›</text>
         </view>
         <view class="menu-item" @tap="confirmCancel">
-          <view class="mi-emoji">❌</view>
+          <line-icon name="close" tint="rose" :size="48" class="mi-icon" />
           <text class="mi-label danger">注销账号</text>
           <text class="mi-arrow">›</text>
         </view>
@@ -316,16 +316,9 @@ async function cancelAccount() {
     pointer-events: none;
   }
 }
-.mi-emoji {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: $r-16;
-  background: $bg-2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
+.mi-icon {
   margin-right: $gap-2;
+  flex-shrink: 0;
 }
 .mi-label {
   flex: 1;

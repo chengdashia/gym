@@ -1,10 +1,10 @@
 <template>
   <view class="photo-page">
     <view v-if="!imagePath" class="upload-block">
-      <EmptyState emoji="📷" title="拍照识别食物" desc="支持拍照或从相册选择">
+      <EmptyState icon="camera" tint="sky" title="拍照识别食物" desc="支持拍照或从相册选择">
         <view class="upload-actions">
-          <liquid-glass-button variant="primary" size="md" :block="false" text="📸 拍照" @tap="chooseCamera" />
-          <liquid-glass-button variant="ghost" size="md" :block="false" text="🖼️ 相册" @tap="chooseAlbum" />
+          <liquid-glass-button variant="primary" size="md" :block="false" text="拍照" @tap="chooseCamera" />
+          <liquid-glass-button variant="ghost" size="md" :block="false" text="相册" @tap="chooseAlbum" />
         </view>
       </EmptyState>
     </view>

@@ -2,7 +2,7 @@
   <view class="goals-page">
     <liquid-glass-card variant="tint" :highlight="true" custom-style="margin-bottom:0">
       <view class="head-content">
-        <view class="head-emoji">🎯</view>
+        <line-icon name="target" tint="mint" :size="96" class="head-icon" />
         <view class="head-text">每日营养目标</view>
         <view class="head-sub">系统会基于你的基础信息推荐，可手动调整</view>
       </view>
@@ -114,8 +114,8 @@ async function save() {
 .head-content {
   text-align: center;
 }
-.head-emoji {
-  font-size: 64rpx;
+.head-icon {
+  margin: 0 auto $gap-2;
 }
 .head-text {
   margin-top: $gap-1;

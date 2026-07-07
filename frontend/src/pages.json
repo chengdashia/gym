@@ -171,7 +171,10 @@
       "^liquid-glass-card$": "@/components/LiquidGlassCard.vue",
       "^liquid-glass-button$": "@/components/LiquidGlassButton.vue",
       "^liquid-glass-pill$": "@/components/LiquidGlassPill.vue",
-      "^liquid-glass-panel$": "@/components/LiquidGlassPanel.vue"
+      "^liquid-glass-panel$": "@/components/LiquidGlassPanel.vue",
+      "^liquid-glass-tab-bar$": "@/components/LiquidGlassTabBar.vue",
+      "^glass-icon$": "@/components/GlassIcon.vue",
+      "^line-icon$": "@/components/LineIcon.vue"
     }
   }
 }

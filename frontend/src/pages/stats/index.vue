@@ -20,7 +20,7 @@
     <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
         <view class="chart-title-row">
-          <text class="chart-emoji">🥗</text>
+          <line-icon name="diet" tint="mint" :size="48" class="chart-emoji" />
           <text class="chart-title">饮食热量与营养</text>
         </view>
         <view class="chart-sub">平均 {{ Math.round(avgCalories) }} kcal / 天</view>
@@ -49,7 +49,7 @@
     <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
         <view class="chart-title-row">
-          <text class="chart-emoji">🏋️</text>
+          <line-icon name="dumbbell" tint="warm" :size="48" class="chart-emoji" />
           <text class="chart-title">训练容量与次数</text>
         </view>
         <view class="chart-sub">{{ totalSessions }} 次训练 · 容量 {{ Math.round(totalVolume) }} kg</view>
@@ -64,7 +64,7 @@
     <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
         <view class="chart-title-row">
-          <text class="chart-emoji">⚖️</text>
+          <line-icon name="scale" tint="sky" :size="48" class="chart-emoji" />
           <text class="chart-title">体重趋势</text>
         </view>
         <view v-if="weightChange !== null" class="chart-sub" :class="{ down: weightChange < 0, up: weightChange > 0 }">
@@ -422,12 +422,11 @@ onShow(() => {
 .chart-title-row {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  gap: $gap-2;
 }
 
 .chart-emoji {
-  font-size: $fs-lg;
-  filter: drop-shadow(0 2rpx 4rpx rgba(95, 175, 145, 0.15));
+  flex-shrink: 0;
 }
 
 .chart-title {

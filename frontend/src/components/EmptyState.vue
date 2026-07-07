@@ -1,6 +1,6 @@
 <template>
   <view class="empty">
-    <view class="emoji">{{ emoji }}</view>
+    <line-icon :name="icon" :tint="tint" :size="size" class="emoji" />
     <view class="title">{{ title }}</view>
     <view v-if="desc" class="desc">{{ desc }}</view>
     <view v-if="actionText" class="action" @tap="$emit('action')">
@@ -14,12 +14,19 @@
 
 <script setup lang="ts">
 withDefaults(defineProps<{
-  emoji?: string;
+  /** 图标名（utils/icons.ts） */
+  icon?: string;
+  /** 玻璃色调 */
+  tint?: 'mint' | 'warm' | 'sky' | 'violet' | 'rose' | 'neutral';
+  /** 图标尺寸 */
+  size?: number;
   title: string;
   desc?: string;
   actionText?: string;
 }>(), {
-  emoji: '🌿',
+  icon: 'leaf',
+  tint: 'mint',
+  size: 96,
 });
 
 defineEmits<{ (e: 'action'): void }>();
@@ -34,8 +41,7 @@ defineEmits<{ (e: 'action'): void }>();
   text-align: center;
 }
 .emoji {
-  font-size: 96rpx;
-  margin-bottom: $gap-2;
+  margin-bottom: $gap-3;
 }
 .title {
   font-size: $fs-lg;

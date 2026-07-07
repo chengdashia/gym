@@ -2,7 +2,7 @@
   <view class="reminders-page">
     <liquid-glass-card variant="tint" :highlight="true" custom-style="margin-bottom:0">
       <view class="head-content">
-        <view class="head-emoji">🔔</view>
+        <line-icon name="bell" tint="warm" :size="96" class="head-icon" />
         <view class="head-text">每日提醒</view>
         <view class="head-sub">开启提醒后，会通过系统通知按时提示</view>
       </view>
@@ -17,9 +17,7 @@
         custom-style="margin-top:16rpx;margin-bottom:0"
       >
         <view class="rc-head">
-          <view class="rc-icon" :style="iconStyle(r.reminder_type)">
-            {{ iconText(r.reminder_type) }}
-          </view>
+          <line-icon :name="reminderIcon(r.reminder_type).icon" :tint="reminderIcon(r.reminder_type).tint" :size="64" class="rc-icon" />
           <view class="rc-info">
             <view class="rc-name">{{ typeLabel(r.reminder_type) }}</view>
             <view class="rc-desc">{{ typeDesc(r.reminder_type) }}</view>
@@ -99,16 +97,12 @@ function typeLabel(t: string) {
 function typeDesc(t: string) {
   return { diet: '按时记录每餐', training: '不要错过训练日', weight: '记得记录体重' }[t] || '';
 }
-function iconText(t: string) {
-  return { diet: '🥗', training: '🏋️', weight: '⚖️' }[t] || '🔔';
-}
-function iconStyle(t: string) {
-  const colors: any = {
-    diet: { background: '#EAF8F1', color: '#3FA67C' },
-    training: { background: '#E0F0FA', color: '#2F6DA0' },
-    weight: { background: '#FFF3DC', color: '#B86A1F' },
-  };
-  return colors[t] || {};
+function reminderIcon(t: string): { icon: string; tint: 'mint' | 'warm' | 'sky' | 'violet' | 'rose' | 'neutral' } {
+  return {
+    diet: { icon: 'bento', tint: 'mint' },
+    training: { icon: 'dumbbell', tint: 'warm' },
+    weight: { icon: 'scale', tint: 'sky' },
+  }[t] || { icon: 'bell', tint: 'neutral' };
 }
 
 function toggle(type: string, val: boolean) {
@@ -154,8 +148,8 @@ async function save() {
 .head-content {
   text-align: center;
 }
-.head-emoji {
-  font-size: 56rpx;
+.head-icon {
+  margin: 0 auto $gap-2;
 }
 .head-text {
   margin-top: $gap-1;
@@ -179,13 +173,7 @@ async function save() {
   gap: $gap-2;
 }
 .rc-icon {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: $r-16;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
+  flex-shrink: 0;
 }
 .rc-info {
   flex: 1;

@@ -56,7 +56,7 @@
         </view>
 
         <view v-if="training.status === 'no_plan'" class="empty-card">
-          <view class="emoji">🏋️</view>
+          <line-icon name="dumbbell" tint="mint" :size="80" class="emoji" />
           <view class="empty-title">还没有训练计划</view>
           <view class="empty-desc">选择一个模板或自定义创建你的第一个计划</view>
           <liquid-glass-button text="创建训练计划" variant="primary" size="sm" :block="false" @tap.stop="goCreatePlan" />
@@ -84,7 +84,7 @@
               :block="false"
               @tap.stop="startSession"
             />
-            <liquid-glass-pill v-else text="好好休息 💤" variant="soft" size="sm" />
+            <liquid-glass-pill v-else text="好好休息" variant="soft" size="sm" />
           </view>
         </view>
       </liquid-glass-card>
@@ -100,7 +100,7 @@
         </view>
 
         <view v-if="!weight.current_weight_kg" class="empty-card mini">
-          <view class="emoji">⚖️</view>
+          <line-icon name="scale" tint="warm" :size="80" class="emoji" />
           <view class="empty-title">还没有体重记录</view>
           <view class="empty-desc">记录第一次体重，开始追踪变化</view>
           <liquid-glass-button text="记录体重" variant="soft" size="sm" :block="false" @tap="recordWeight" />
@@ -121,7 +121,7 @@
           <view :class="['weight-diff', { pos: (weight.diff_kg || 0) > 0, neg: (weight.diff_kg || 0) < 0 }]">
             <text v-if="weight.diff_kg && weight.diff_kg > 0">还需减 {{ weight.diff_kg }} kg</text>
             <text v-else-if="weight.diff_kg && weight.diff_kg < 0">还需增 {{ -weight.diff_kg }} kg</text>
-            <text v-else>已达成目标 🎉</text>
+            <text v-else>已达成目标</text>
           </view>
           <view class="weight-actions">
             <liquid-glass-button text="记录体重" variant="soft" size="sm" :block="false" @tap="recordWeight" />
@@ -443,9 +443,7 @@ function recordWeight() {
 }
 
 .empty-card .emoji {
-  font-size: 64rpx;
-  margin-bottom: $gap-1;
-  filter: drop-shadow(0 4rpx 8rpx rgba(95, 175, 145, 0.15));
+  margin: 0 auto $gap-1;
 }
 
 .empty-card .empty-title {

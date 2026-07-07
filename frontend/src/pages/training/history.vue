@@ -14,7 +14,7 @@
     </view>
 
     <view v-if="sessions.length === 0" class="empty">
-      <EmptyState emoji="📜" title="还没有训练记录" desc="完成一次训练就会在这里看到" />
+      <EmptyState icon="scroll" tint="mint" title="还没有训练记录" desc="完成一次训练就会在这里看到" />
     </view>
 
     <view v-else class="list">

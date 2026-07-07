@@ -57,7 +57,7 @@
       >
         <view class="meal-head" @tap="toggleMeal(m.value)">
           <view class="meal-left">
-            <view class="meal-emoji">{{ mEmoji(m.value) }}</view>
+            <line-icon :name="mealIcon(m.value).icon" :tint="mealIcon(m.value).tint" :size="56" class="meal-emoji" />
             <view class="meal-info">
               <view class="meal-name">{{ m.label }}</view>
               <view class="meal-sub">{{ mealSubText(m.value) }}</view>
@@ -119,9 +119,12 @@
             class="sheet-grid-item"
             @tap="go(opt.action)"
           >
-            <view class="sheet-emoji" :style="{ background: opt.bg }">{{ opt.emoji }}</view>
-            <view class="sheet-text">{{ opt.text }}</view>
-            <view class="sheet-desc">{{ opt.desc }}</view>
+            <line-icon :name="opt.icon" :tint="opt.tint" :size="80" class="sheet-emoji" />
+            <view class="sheet-text-wrap">
+              <view class="sheet-text">{{ opt.text }}</view>
+              <view class="sheet-desc">{{ opt.desc }}</view>
+            </view>
+            <text class="sheet-arrow">›</text>
           </view>
         </view>
         <view class="sheet-cancel" @tap="showAddSheet = false">取消</view>
@@ -167,9 +170,9 @@ const showAddSheet = ref(false);
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
 
 const addOptions = [
-  { action: 'add' as const,    emoji: '🔍', text: '搜索食物', desc: '从食物库查找', bg: 'linear-gradient(135deg, #C5ECDB, #5BC89A)' },
-  { action: 'custom' as const, emoji: '✏️', text: '自定义食物', desc: '手动录入营养', bg: 'linear-gradient(135deg, #FFEED9, #FFD79A)' },
-  { action: 'photo' as const,  emoji: '📷', text: '拍照识别', desc: 'AI 智能识别', bg: 'linear-gradient(135deg, #D4E5F4, #6BA8D6)' },
+  { action: 'add' as const,    icon: 'search', tint: 'mint' as const,  text: '搜索食物', desc: '从食物库查找' },
+  { action: 'custom' as const, icon: 'edit',  tint: 'warm' as const,  text: '自定义食物', desc: '手动录入营养' },
+  { action: 'photo' as const,  icon: 'camera', tint: 'sky' as const,   text: '拍照识别', desc: 'AI 智能识别' },
 ];
 
 const weekDates = computed(() => {
@@ -218,8 +221,13 @@ function mealSubText(v: MealType) {
   return `${list.length} 条记录`;
 }
 
-function mEmoji(v: MealType) {
-  return { breakfast: '🌅', lunch: '🍱', dinner: '🌙', snack: '🍪' }[v];
+function mealIcon(v: MealType): { icon: string; tint: 'mint' | 'warm' | 'sky' | 'violet' } {
+  return {
+    breakfast: { icon: 'sunrise', tint: 'warm' },
+    lunch: { icon: 'bento', tint: 'mint' },
+    dinner: { icon: 'moon', tint: 'sky' },
+    snack: { icon: 'cookie', tint: 'violet' },
+  }[v];
 }
 
 function formatAmount(r: DietRecord) {
@@ -392,17 +400,7 @@ function go(action: 'add' | 'custom' | 'photo') {
 }
 
 .meal-emoji {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 20rpx;
-  background: linear-gradient(135deg, #C5ECDB, #5BC89A);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40rpx;
-  box-shadow:
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.5),
-    0 4rpx 12rpx rgba(95, 175, 145, 0.18);
+  flex-shrink: 0;
 }
 
 .meal-name {
@@ -639,18 +637,12 @@ function go(action: 'add' | 'custom' | 'photo') {
 }
 
 .sheet-emoji {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 44rpx;
   margin-right: $gap-3;
   flex-shrink: 0;
-  box-shadow:
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.6),
-    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
+}
+
+.sheet-text-wrap {
+  flex: 1;
 }
 
 .sheet-text {
@@ -664,6 +656,12 @@ function go(action: 'add' | 'custom' | 'photo') {
   font-size: $fs-xs;
   color: $text-3;
   margin-top: 4rpx;
+}
+
+.sheet-arrow {
+  font-size: $fs-lg;
+  color: $text-3;
+  flex-shrink: 0;
 }
 
 .sheet-cancel {

@@ -2,7 +2,7 @@
   <view class="add-page">
     <view class="search-bar">
       <view class="search-input">
-        <text class="search-icon">🔍</text>
+        <image class="search-icon-img" :src="searchIconSrc" mode="aspectFit" />
         <input
           v-model="keyword"
           placeholder="搜索食物"
@@ -37,7 +37,7 @@
     </view>
 
     <view v-else-if="searched" class="empty-block">
-      <EmptyState emoji="🍽️" title="没有找到相关食物" desc="试试更短的关键词，或自定义食物">
+      <EmptyState icon="diet" tint="warm" title="没有找到相关食物" desc="试试更短的关键词，或自定义食物">
         <view class="empty-actions">
           <liquid-glass-button variant="primary" size="sm" :block="false" text="自定义食物" @tap="goCustom" />
         </view>
@@ -45,7 +45,7 @@
     </view>
 
     <view v-else class="empty-block">
-      <EmptyState emoji="🥗" title="输入关键词搜索" desc="支持中文、英文、拼音首字母" />
+      <EmptyState icon="search" tint="mint" title="输入关键词搜索" desc="支持中文、英文、拼音首字母" />
     </view>
 
     <!-- 选食物后填写克数 -->
@@ -134,6 +134,9 @@ import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { calcNutrition } from '@/utils/nutrition';
 import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
+import { iconSrc } from '@/utils/icons';
+
+const searchIconSrc = iconSrc('search', '#8FA3A1', 1.8);
 
 const mealTypes = MEAL_TYPES;
 const dietStore = useDietStore();
@@ -299,8 +302,11 @@ function goCustom() {
   gap: $gap-1;
   box-shadow: $shadow-sm;
 }
-.search-icon {
-  font-size: 28rpx;
+.search-icon-img {
+  width: 32rpx;
+  height: 32rpx;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 .input {
   flex: 1;

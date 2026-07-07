@@ -68,7 +68,7 @@
       </view>
 
       <view v-if="plan.days.length === 0" class="day-empty">
-        <view class="emoji">📅</view>
+        <line-icon name="calendar" tint="mint" :size="72" class="day-empty-icon" />
         <view>还没有训练日，点击右上角添加</view>
       </view>
 
@@ -646,9 +646,8 @@ async function removePlan() {
   padding: $gap-3;
   color: $text-3;
 }
-.day-empty .emoji {
-  font-size: 56rpx;
-  margin-bottom: $gap-1;
+.day-empty-icon {
+  margin: 0 auto $gap-2;
 }
 
 .day-head {

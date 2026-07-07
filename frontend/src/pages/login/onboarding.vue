@@ -4,7 +4,7 @@
     <view v-if="step === 0" class="step step-auth">
       <view class="auth-center">
         <view class="logo-wrap">
-          <view class="logo">🌿</view>
+          <line-icon name="leaf" tint="mint" :size="120" class="logo" />
           <view class="brand">健身饮食</view>
           <view class="brand-sub">让健康管理更轻盈</view>
         </view>
@@ -427,15 +427,8 @@ function goHome() {
   }
 
   .logo {
-    width: 128rpx;
-    height: 128rpx;
-    border-radius: 28rpx;
-    background: $gradient-primary;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 64rpx;
-    box-shadow: 0 12rpx 32rpx rgba(95, 175, 145, 0.28);
+    width: 120rpx;
+    height: 120rpx;
   }
 
   .brand {

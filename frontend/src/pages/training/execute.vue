@@ -83,7 +83,7 @@
       <view class="current-actions">
         <view v-if="!isCurrentDone" class="hint">可按任意顺序勾选组数</view>
         <liquid-glass-button v-if="hasNextEx" text="下一个动作 →" variant="ghost" size="sm" :block="false" @tap="nextExercise" />
-        <liquid-glass-button v-if="allDone" :text="finishing ? '提交中...' : '完成训练 🎉'" variant="primary" :disabled="finishing" @tap="finishSession" />
+        <liquid-glass-button v-if="allDone" :text="finishing ? '提交中...' : '完成训练'" variant="primary" :disabled="finishing" @tap="finishSession" />
       </view>
     </view>
 
@@ -442,7 +442,7 @@ async function finishSession() {
   try {
     const finished = await trainingApi.finishSession(session.value!.id);
     session.value = finished;
-    uni.showToast({ title: '训练完成 🎉', icon: 'success' });
+    uni.showToast({ title: '训练完成', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/training/index'), 800);
   } catch (e: any) {
     // 训练已结束（重复点击等场景）时，直接返回，避免报错
