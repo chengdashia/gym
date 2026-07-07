@@ -2,10 +2,16 @@
   <view class="plan-edit-page">
     <view class="header">
       <view class="title">{{ id ? '编辑训练计划' : '创建训练计划' }}</view>
-      <view class="save-btn" @tap="save">{{ saving ? '保存中...' : '保存' }}</view>
+      <liquid-glass-button
+        variant="primary"
+        size="sm"
+        :block="false"
+        :text="saving ? '保存中...' : '保存'"
+        @tap="save"
+      />
     </view>
 
-    <view class="form-card">
+    <liquid-glass-card variant="light" radius="20rpx" padding="24rpx">
       <view class="row">
         <text class="label">计划名称</text>
         <input v-model="plan.name" placeholder="例如：胸部+三头训练" class="input" />
@@ -13,41 +19,52 @@
       <view class="row column">
         <text class="label">排期方式</text>
         <view class="seg">
-          <view
+          <liquid-glass-pill
             v-for="s in SCHEDULE_TYPES"
             :key="s.value"
-            :class="['seg-item', { active: plan.schedule_type === s.value }]"
+            :text="s.label"
+            :variant="plan.schedule_type === s.value ? 'primary' : 'default'"
+            :active="plan.schedule_type === s.value"
+            interactive
+            size="md"
             @tap="plan.schedule_type = s.value as 'sequence' | 'weekly'"
-          >
-            <view class="seg-name">{{ s.label }}</view>
-            <view class="seg-desc">{{ s.desc }}</view>
-          </view>
+          />
         </view>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <!-- 模板选择 -->
-    <view v-if="!id && templates.length" class="section">
+    <liquid-glass-card v-if="!id && templates.length" variant="light" radius="20rpx" padding="24rpx">
       <view class="section-title">从模板开始</view>
       <view class="tpl-grid">
-        <view
+        <liquid-glass-card
           v-for="t in templates"
           :key="t.id"
-          :class="['tpl-card', { active: selectedTplId === t.id }]"
+          :tint="selectedTplId === t.id"
+          :highlight="true"
+          hoverable
+          radius="12rpx"
+          padding="16rpx"
           @tap="pickTemplate(t)"
         >
           <view class="tpl-name">{{ t.name }}</view>
           <view class="tpl-desc">{{ t.description }}</view>
           <view class="tpl-meta">{{ t.days?.length || 0 }} 个训练日</view>
-        </view>
+        </liquid-glass-card>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <!-- 训练日列表 -->
-    <view class="section">
+    <liquid-glass-card variant="light" radius="20rpx" padding="24rpx">
       <view class="section-head">
         <text class="section-title">训练日</text>
-        <view class="add-day-btn" @tap="addDay">+ 添加训练日</view>
+        <liquid-glass-button
+          variant="primary"
+          size="sm"
+          :block="false"
+          text="+ 添加训练日"
+          @tap="addDay"
+        />
       </view>
 
       <view v-if="plan.days.length === 0" class="day-empty">
@@ -55,22 +72,30 @@
         <view>还没有训练日，点击右上角添加</view>
       </view>
 
-      <view v-for="(day, di) in plan.days" :key="di" class="day-card">
+      <liquid-glass-card
+        v-for="(day, di) in plan.days"
+        :key="di"
+        variant="light"
+        radius="16rpx"
+        padding="24rpx"
+      >
         <view class="day-head">
-          <input v-model="day.day_name" placeholder="训练日名称" class="day-name-input" />
-          <view class="day-weekday" v-if="plan.schedule_type === 'weekly'">
-            <picker
-              mode="selector"
-              :range="weekdayLabels"
-              :value="(day.weekday || 1) - 1"
-              @change="(e: any) => day.weekday = Number(e.detail.value) + 1"
-            >
-              <text>{{ weekdayLabels[(day.weekday || 1) - 1] }}</text>
-            </picker>
+          <view class="day-name-row">
+            <input v-model="day.day_name" placeholder="训练日名称" class="day-name-input" />
+            <view v-if="plan.schedule_type === 'weekly'" class="day-weekday">
+              <picker
+                mode="selector"
+                :range="weekdayLabels"
+                :value="(day.weekday || 1) - 1"
+                @change="(e: any) => day.weekday = Number(e.detail.value) + 1"
+              >
+                <text>{{ weekdayLabels[(day.weekday || 1) - 1] }}</text>
+              </picker>
+            </view>
           </view>
           <view class="day-actions">
-            <view class="da-btn" @tap="addExercise(di)">+ 动作</view>
-            <view class="da-btn danger" @tap="removeDay(di)">删除</view>
+            <liquid-glass-button variant="primary" size="sm" :block="false" text="+ 动作" @tap="addExercise(di)" />
+            <liquid-glass-button variant="ghost" size="sm" :block="false" text="删除日" @tap="removeDay(di)" />
           </view>
         </view>
 
@@ -78,81 +103,114 @@
           暂无动作
         </view>
 
-        <view v-for="(ex, ei) in day.exercises" :key="ei" class="ex-row">
-          <view class="ex-info">
-            <view class="ex-name">{{ ex.exercise_name_snapshot }}</view>
-            <view class="ex-meta">{{ ex.target_sets }} 组 × {{ ex.target_reps }} 次 · {{ ex.target_weight_kg || '-' }} kg · 休息 {{ ex.rest_seconds }}s</view>
-          </view>
-          <view class="ex-actions">
-            <view class="ea-btn" @tap="editExercise(di, ei)">编辑</view>
-            <view class="ea-btn danger" @tap="removeExercise(di, ei)">删除</view>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 动作编辑弹窗 -->
-    <view v-if="showExEditor" class="ex-mask" @tap="cancelEx">
-      <view class="ex-picker" @tap.stop>
-        <view class="ex-title">{{ exIdx === null ? '选择动作' : '编辑动作' }}</view>
-
-        <view v-if="exIdx === null" class="ex-search">
-          <input v-model="exSearchKw" placeholder="搜索动作" class="input" @confirm="searchExercises" />
-          <view class="search-btn" @tap="searchExercises">搜索</view>
-        </view>
-
-        <view v-if="exIdx === null" class="ex-search-list">
-          <view
-            v-for="ex in exSearchList"
-            :key="`${ex.source}-${ex.id}`"
-            class="ex-search-item"
-            @tap="selectExerciseFromSearch(ex)"
-          >
-            <view class="ex-info">
-              <view class="ex-name">{{ ex.name }}</view>
-              <view class="ex-meta">{{ ex.body_part }}</view>
+        <view v-for="(ex, ei) in day.exercises" :key="ei" class="ex-row" :class="{ 'ex-row-editing': isEditing(di, ei) }">
+          <template v-if="isEditing(di, ei)">
+            <view class="ex-edit-form">
+              <view class="ex-edit-title">编辑动作</view>
+              <view class="ex-edit-grid">
+                <view class="ex-edit-field">
+                  <text class="ex-edit-label">动作名</text>
+                  <input v-model="exEditing.name" class="ex-edit-input" placeholder="动作名称" />
+                </view>
+                <view class="ex-edit-field">
+                  <text class="ex-edit-label">部位</text>
+                  <input v-model="exEditing.body_part" class="ex-edit-input" placeholder="部位" />
+                </view>
+                <view class="ex-edit-field sm">
+                  <text class="ex-edit-label">组数</text>
+                  <input v-model.number="exEditing.target_sets" type="number" class="ex-edit-input" />
+                </view>
+                <view class="ex-edit-field sm">
+                  <text class="ex-edit-label">次数</text>
+                  <input v-model.number="exEditing.target_reps" type="number" class="ex-edit-input" />
+                </view>
+                <view class="ex-edit-field sm">
+                  <text class="ex-edit-label">重量</text>
+                  <input v-model.number="exEditing.target_weight_kg" type="digit" class="ex-edit-input" placeholder="kg" />
+                </view>
+                <view class="ex-edit-field sm">
+                  <text class="ex-edit-label">休息</text>
+                  <input v-model.number="exEditing.rest_seconds" type="number" class="ex-edit-input" placeholder="秒" />
+                </view>
+              </view>
+              <view class="ex-edit-actions">
+                <liquid-glass-button variant="ghost" size="sm" :block="false" text="取消" @tap="cancelEx" />
+                <liquid-glass-button variant="primary" size="sm" :block="false" text="保存" @tap="confirmEditEx" />
+              </view>
             </view>
-            <view class="add-icon">+</view>
-          </view>
-          <view v-if="exSearchList.length === 0 && exSearched" class="empty-tip">
-            没有找到动作，试试其它关键词
-          </view>
+          </template>
+          <template v-else>
+            <view class="ex-info">
+              <view class="ex-name">{{ ex.exercise_name_snapshot }}</view>
+              <view class="ex-meta">{{ ex.target_sets }} 组 × {{ ex.target_reps }} 次 · {{ ex.target_weight_kg || '-' }} kg · 休息 {{ ex.rest_seconds }}s</view>
+            </view>
+            <view class="ex-actions">
+              <liquid-glass-button variant="soft" size="sm" :block="false" text="编辑" @tap="editExercise(di, ei)" />
+              <liquid-glass-button variant="ghost" size="sm" :block="false" text="删除" @tap="removeExercise(di, ei)" />
+            </view>
+          </template>
         </view>
 
-        <view v-else class="ex-form">
-          <view class="row">
-            <text class="label">动作名</text>
-            <text class="value">{{ exEditing.name }}</text>
+        <!-- 新增动作：行内搜索/表单 -->
+        <view v-if="isAdding(di)" class="ex-add-panel">
+          <view class="ex-edit-title">添加动作</view>
+          <view class="ex-search-bar">
+            <input v-model="exSearchKw" placeholder="搜索动作名称" class="ex-search-input" @confirm="searchExercises" />
+            <liquid-glass-button variant="primary" size="sm" :block="false" text="搜索" @tap="searchExercises" />
           </view>
-          <view class="row">
-            <text class="label">部位</text>
-            <text class="value">{{ exEditing.body_part }}</text>
-          </view>
-          <view class="row">
-            <text class="label">组数</text>
-            <input v-model.number="exEditing.target_sets" type="number" class="input" />
-          </view>
-          <view class="row">
-            <text class="label">次数</text>
-            <input v-model.number="exEditing.target_reps" type="number" class="input" />
-          </view>
-          <view class="row">
-            <text class="label">重量 (kg)</text>
-            <input v-model.number="exEditing.target_weight_kg" type="digit" class="input" placeholder="可选" />
-          </view>
-          <view class="row">
-            <text class="label">组间休息</text>
-            <input v-model.number="exEditing.rest_seconds" type="number" class="input" />
-            <text class="unit">秒</text>
+          <scroll-view v-if="exEditing.exIdx === null" scroll-y class="ex-search-scroll">
+            <view
+              v-for="ex in exSearchList"
+              :key="`${ex.source}-${ex.id}`"
+              class="ex-search-item"
+              @tap="selectExerciseFromSearch(ex)"
+            >
+              <view class="ex-search-info">
+                <view class="ex-search-name">{{ ex.name }}</view>
+                <view class="ex-search-meta">{{ ex.body_part }}</view>
+              </view>
+              <view class="add-icon">+</view>
+            </view>
+            <view v-if="exSearchList.length === 0 && exSearched" class="empty-tip">
+              没有找到动作，试试其它关键词
+            </view>
+          </scroll-view>
+          <view v-if="exEditing.exIdx === -1" class="ex-edit-form compact">
+            <view class="ex-edit-grid">
+              <view class="ex-edit-field">
+                <text class="ex-edit-label">动作名</text>
+                <input v-model="exEditing.name" class="ex-edit-input" placeholder="动作名称" />
+              </view>
+              <view class="ex-edit-field">
+                <text class="ex-edit-label">部位</text>
+                <input v-model="exEditing.body_part" class="ex-edit-input" placeholder="部位" />
+              </view>
+              <view class="ex-edit-field sm">
+                <text class="ex-edit-label">组数</text>
+                <input v-model.number="exEditing.target_sets" type="number" class="ex-edit-input" />
+              </view>
+              <view class="ex-edit-field sm">
+                <text class="ex-edit-label">次数</text>
+                <input v-model.number="exEditing.target_reps" type="number" class="ex-edit-input" />
+              </view>
+              <view class="ex-edit-field sm">
+                <text class="ex-edit-label">重量</text>
+                <input v-model.number="exEditing.target_weight_kg" type="digit" class="ex-edit-input" placeholder="kg" />
+              </view>
+              <view class="ex-edit-field sm">
+                <text class="ex-edit-label">休息</text>
+                <input v-model.number="exEditing.rest_seconds" type="number" class="ex-edit-input" placeholder="秒" />
+              </view>
+            </view>
+            <view class="ex-edit-actions">
+              <liquid-glass-button variant="ghost" size="sm" :block="false" text="取消" @tap="cancelEx" />
+              <liquid-glass-button variant="primary" size="sm" :block="false" text="保存" @tap="confirmEditEx" />
+            </view>
           </view>
         </view>
+      </liquid-glass-card>
+    </liquid-glass-card>
 
-        <view class="ex-picker-actions">
-          <view class="ghost" @tap="cancelEx">取消</view>
-          <view v-if="exEditing.exIdx !== null && exEditing.exIdx >= 0" class="primary" @tap="confirmEditEx">确定</view>
-        </view>
-      </view>
-    </view>
   </view>
 </template>
 
@@ -160,7 +218,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import { trainingApi, TrainingTemplate, PlanDay, PlanExercise } from '@/api/training';
 import { exerciseApi } from '@/api/exercises';
-import { SCHEDULE_TYPES, WEEKDAY_CN } from '@/utils/constants';
+import { SCHEDULE_TYPES } from '@/utils/constants';
+import { safeNavigateBack } from '@/utils/nav';
 
 const id = ref(0);
 const saving = ref(false);
@@ -216,20 +275,23 @@ onMounted(async () => {
         sort_order: d.sort_order || 0,
         exercises: d.exercises || [],
       }));
-    } catch {}
+    } catch (e) {
+      uni.showToast({ title: '加载计划失败', icon: 'none' });
+    }
   }
 
   try {
     const res = await trainingApi.getTemplates();
     templates.value = res.items || [];
-  } catch {}
+  } catch (e) {
+    uni.showToast({ title: '加载模板失败', icon: 'none' });
+  }
 });
 
 function pickTemplate(t: TrainingTemplate) {
   selectedTplId.value = t.id;
   plan.source_template_id = t.id;
   plan.name = plan.name || t.name;
-  plan.schedule_type = 'weekly';
   plan.days = (t.days || []).map((d, i) => ({
     day_index: d.day_index || i + 1,
     day_name: d.day_name,
@@ -237,16 +299,17 @@ function pickTemplate(t: TrainingTemplate) {
     weekday: d.weekday || null,
     sort_order: i,
     exercises: (d.exercises || []).map((ex, j) => ({
-      exercise_source: ex.exercise_source,
+      exercise_source: ex.exercise_source || 'system',
       exercise_id: ex.exercise_id,
-      custom_exercise_id: ex.custom_exercise_id,
+      custom_exercise_id: ex.custom_exercise_id || null,
       exercise_name_snapshot: ex.exercise_name_snapshot,
-      body_part_snapshot: ex.body_part_snapshot,
+      body_part_snapshot: ex.body_part_snapshot || '',
       target_sets: ex.target_sets,
       target_reps: ex.target_reps,
-      target_weight_kg: ex.target_weight_kg,
+      target_weight_kg: ex.target_weight_kg || null,
       rest_seconds: ex.rest_seconds,
       sort_order: j,
+      note: ex.note,
     })),
   }));
 }
@@ -304,6 +367,14 @@ function removeExercise(di: number, ei: number) {
   plan.days[di].exercises.splice(ei, 1);
 }
 
+function isEditing(di: number, ei: number) {
+  return showExEditor.value && exEditing.dayIdx === di && exEditing.exIdx === ei;
+}
+
+function isAdding(di: number) {
+  return showExEditor.value && exEditing.dayIdx === di && exEditing.exIdx === null;
+}
+
 async function searchExercises() {
   try {
     const res = await exerciseApi.search({ keyword: exSearchKw.value, page_size: 30 });
@@ -335,6 +406,19 @@ function cancelEx() {
 
 function confirmEditEx() {
   if (exEditing.dayIdx < 0 || exEditing.exIdx === null || exEditing.exIdx < -1) return;
+  const sets = exEditing.target_sets;
+  const reps = exEditing.target_reps;
+  const weight = exEditing.target_weight_kg;
+  const rest = exEditing.rest_seconds;
+  if (
+    !Number.isFinite(sets) || !Number.isInteger(sets) || sets <= 0 ||
+    !Number.isFinite(reps) || !Number.isInteger(reps) || reps <= 0 ||
+    !Number.isFinite(weight) || weight < 0 ||
+    !Number.isFinite(rest) || !Number.isInteger(rest) || rest <= 0
+  ) {
+    uni.showToast({ title: '请输入有效的数值', icon: 'none' });
+    return;
+  }
   const payload: PlanExercise = {
     exercise_source: exEditing.exercise_source,
     exercise_id: exEditing.exercise_id,
@@ -356,6 +440,7 @@ function confirmEditEx() {
 }
 
 async function save() {
+  if (saving.value) return;
   if (!plan.name.trim()) {
     safeToast('请填写计划名称', 'none');
     return;
@@ -393,16 +478,10 @@ async function save() {
     if (id.value) {
       await trainingApi.updatePlan(id.value, payload);
     } else {
-      const created = await trainingApi.createPlan(payload);
-      if (created && (created as any).id) {
-        // 后端 /activate 可能在某些版本不存在；静默兜底，避免阻塞保存
-        try { await trainingApi.setActive((created as any).id); } catch { /* noop */ }
-      }
+      await trainingApi.createPlan(payload);
     }
     safeToast('已保存', 'success');
-    setTimeout(() => {
-      if (typeof uni !== 'undefined' && uni.navigateBack) uni.navigateBack();
-    }, 600);
+    setTimeout(() => safeNavigateBack('/pages/training/index'), 600);
   } catch (e: any) {
     safeToast(e?.message || '保存失败', 'none');
   } finally {
@@ -423,7 +502,6 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
 
 <style lang="scss" scoped>
 .plan-edit-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
@@ -439,22 +517,7 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   font-weight: 700;
   color: $text-1;
 }
-.save-btn {
-  padding: 12rpx 28rpx;
-  background: $primary;
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  font-weight: 500;
-}
 
-.form-card, .section {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-sm;
-}
 .row {
   display: flex;
   align-items: center;
@@ -478,41 +541,11 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   color: $text-1;
   text-align: right;
 }
-.unit {
-  color: $text-3;
-  font-size: $fs-sm;
-}
-.value {
-  flex: 1;
-  text-align: right;
-  font-size: $fs-md;
-  color: $text-1;
-}
 
 .seg {
   display: flex;
   gap: $gap-2;
-}
-.seg-item {
-  flex: 1;
-  padding: $gap-2;
-  background: $bg-2;
-  border-radius: $r-12;
-  text-align: center;
-  &.active {
-    background: $primary-tint;
-    border: 2rpx solid $primary;
-  }
-}
-.seg-name {
-  font-size: $fs-md;
-  font-weight: 600;
-  color: $text-1;
-}
-.seg-desc {
-  font-size: $fs-xs;
-  color: $text-3;
-  margin-top: 4rpx;
+  flex-wrap: wrap;
 }
 
 .section-head {
@@ -526,28 +559,11 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   font-weight: 600;
   color: $text-1;
 }
-.add-day-btn {
-  padding: 8rpx 20rpx;
-  background: $primary-tint;
-  color: $primary-deep;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-}
 
 .tpl-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: $gap-2;
-}
-.tpl-card {
-  padding: $gap-2;
-  background: $bg;
-  border-radius: $r-12;
-  border: 2rpx solid transparent;
-  &.active {
-    background: $primary-tint;
-    border-color: $primary;
-  }
 }
 .tpl-name {
   font-size: $fs-md;
@@ -575,28 +591,27 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   margin-bottom: $gap-1;
 }
 
-.day-card {
-  background: $bg;
-  border-radius: $r-16;
-  padding: $gap-3;
+.day-head {
+  display: flex;
+  flex-direction: column;
+  gap: $gap-2;
   margin-bottom: $gap-2;
 }
-.day-head {
+.day-name-row {
   display: flex;
   align-items: center;
   gap: $gap-2;
-  margin-bottom: $gap-2;
-  flex-wrap: wrap;
+  width: 100%;
 }
 .day-name-input {
   flex: 1;
-  min-width: 200rpx;
   font-size: $fs-md;
   color: $text-1;
   font-weight: 600;
   background: $card;
   padding: 12rpx $gap-2;
   border-radius: $r-12;
+  min-width: 0;
 }
 .day-weekday {
   padding: 8rpx 16rpx;
@@ -604,21 +619,11 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   color: $primary-deep;
   border-radius: $r-pill;
   font-size: $fs-sm;
+  flex-shrink: 0;
 }
 .day-actions {
   display: flex;
   gap: 8rpx;
-}
-.da-btn {
-  padding: 6rpx 16rpx;
-  background: $card;
-  border-radius: $r-pill;
-  font-size: $fs-xs;
-  color: $text-2;
-  &.danger {
-    background: #FFE2E2;
-    color: $danger;
-  }
 }
 
 .ex-empty {
@@ -633,9 +638,11 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   justify-content: space-between;
   padding: $gap-2 0;
   border-top: 1rpx solid $divider;
+  gap: $gap-2;
 }
 .ex-info {
   flex: 1;
+  min-width: 0;
 }
 .ex-name {
   font-size: $fs-md;
@@ -650,73 +657,100 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
 .ex-actions {
   display: flex;
   gap: 8rpx;
-}
-.ea-btn {
-  padding: 6rpx 16rpx;
-  background: $bg-2;
-  border-radius: $r-pill;
-  font-size: $fs-xs;
-  color: $text-2;
-  &.danger {
-    background: #FFE2E2;
-    color: $danger;
-  }
+  flex-shrink: 0;
 }
 
-.ex-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
+// ----- 动作行内编辑 -----
+.ex-row-editing {
+  flex-direction: column;
+  align-items: stretch;
+  background: $primary-tint;
+  border-radius: $r-12;
+  padding: $gap-2;
+  margin: 8rpx 0;
 }
-.ex-picker {
+.ex-edit-form {
   width: 100%;
-  max-height: 80vh;
-  background: $card;
-  border-radius: $r-24 $r-24 0 0;
-  padding: $gap-3;
-  overflow-y: auto;
-  padding-bottom: calc(#{$gap-3} + env(safe-area-inset-bottom));
 }
-.ex-title {
-  font-size: $fs-xl;
+.ex-edit-title {
+  font-size: $fs-md;
   font-weight: 600;
   color: $text-1;
   margin-bottom: $gap-2;
 }
-.ex-search {
-  display: flex;
-  align-items: center;
-  background: $bg-2;
-  border-radius: $r-12;
-  padding: 4rpx 4rpx 4rpx $gap-2;
-  margin-bottom: $gap-2;
+.ex-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $gap-2;
 }
-.ex-search .input {
-  flex: 1;
-  text-align: left;
-  background: transparent;
-}
-.search-btn {
-  padding: 14rpx 24rpx;
-  background: $primary;
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-}
-.ex-search-list {
+.ex-edit-field {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 4rpx;
+}
+.ex-edit-label {
+  font-size: $fs-xs;
+  color: $text-2;
+}
+.ex-edit-input {
+  background: $card;
+  border-radius: $r-12;
+  padding: 12rpx $gap-2;
+  font-size: $fs-md;
+  color: $text-1;
+}
+.ex-edit-actions {
+  display: flex;
+  gap: $gap-2;
+  margin-top: $gap-3;
+  justify-content: flex-end;
+}
+
+// ----- 添加动作面板 -----
+.ex-add-panel {
+  background: $primary-tint;
+  border-radius: $r-12;
+  padding: $gap-2;
+  margin-top: $gap-2;
+}
+.ex-search-bar {
+  display: flex;
+  align-items: center;
+  gap: $gap-2;
+  margin-bottom: $gap-2;
+}
+.ex-search-input {
+  flex: 1;
+  background: $card;
+  border-radius: $r-12;
+  padding: 12rpx $gap-2;
+  font-size: $fs-md;
+  color: $text-1;
+}
+.ex-search-scroll {
+  max-height: 40vh;
 }
 .ex-search-item {
   display: flex;
   align-items: center;
   padding: $gap-2;
-  background: $bg-2;
+  background: $card;
   border-radius: $r-12;
+  margin-bottom: 8rpx;
+}
+.ex-search-info {
+  flex: 1;
+  min-width: 0;
+}
+.ex-search-name {
+  font-size: $fs-md;
+  color: $text-1;
+  font-weight: 500;
+}
+.ex-search-meta {
+  font-size: $fs-xs;
+  color: $text-3;
+  margin-top: 4rpx;
 }
 .add-icon {
   width: 48rpx;
@@ -729,31 +763,11 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
   justify-content: center;
   font-size: $fs-lg;
   font-weight: 600;
+  flex-shrink: 0;
 }
 .empty-tip {
   text-align: center;
   color: $text-3;
   padding: $gap-3 0;
-}
-.ex-picker-actions {
-  display: flex;
-  gap: $gap-2;
-  margin-top: $gap-3;
-}
-.ghost, .primary {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx;
-  border-radius: $r-16;
-  font-size: $fs-md;
-}
-.ghost {
-  background: $bg-2;
-  color: $text-2;
-}
-.primary {
-  background: $primary;
-  color: #fff;
-  font-weight: 500;
 }
 </style>

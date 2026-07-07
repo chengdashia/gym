@@ -9,33 +9,37 @@
           placeholder-class="ph"
           confirm-type="search"
           @confirm="search"
+          @input="onSearchInput"
           class="input"
         />
+        <text v-if="searching" class="searching-tip">搜索中...</text>
         <view v-if="keyword" class="clear" @tap="clearSearch">✕</view>
       </view>
     </view>
 
     <view v-if="results.length" class="result-list">
-      <view
-        v-for="r in results"
-        :key="`${r.source}-${r.id}`"
-        class="result-item"
-        @tap="pickFood(r)"
-      >
-        <view class="ri-info">
-          <view class="ri-name">{{ r.name }}</view>
-          <view class="ri-cat">{{ r.category || '-' }} · {{ Math.round(r.calories_per_100g) }} kcal/100g</view>
+      <liquid-glass-card :highlight="true" padding="0" class="result-card">
+        <view
+          v-for="r in results"
+          :key="`${r.source}-${r.id}`"
+          class="result-item"
+          @tap="pickFood(r)"
+        >
+          <view class="ri-info">
+            <view class="ri-name">{{ r.name }}</view>
+            <view class="ri-cat">{{ r.category || '-' }} · {{ Math.round(r.calories_per_100g) }} kcal/100g</view>
+          </view>
+          <view class="ri-tag">
+            <Tag :text="r.source === 'custom' ? '自定义' : '系统'" :variant="r.source === 'custom' ? 'warn' : 'soft'" />
+          </view>
         </view>
-        <view class="ri-tag">
-          <Tag :text="r.source === 'custom' ? '自定义' : '系统'" :variant="r.source === 'custom' ? 'warn' : 'soft'" />
-        </view>
-      </view>
+      </liquid-glass-card>
     </view>
 
     <view v-else-if="searched" class="empty-block">
       <EmptyState emoji="🍽️" title="没有找到相关食物" desc="试试更短的关键词，或自定义食物">
         <view class="empty-actions">
-          <view class="ea-btn" @tap="goCustom">自定义食物</view>
+          <liquid-glass-button variant="primary" size="sm" :block="false" text="自定义食物" @tap="goCustom" />
         </view>
       </EmptyState>
     </view>
@@ -51,11 +55,23 @@
         <view class="picker-cat">{{ picked.category || '-' }} · {{ picked.calories_per_100g }} kcal/100g</view>
 
         <view class="seg">
-          <view :class="['seg-item', { active: unit === 'g' }]" @tap="setUnit('g')">按克数</view>
-          <view
-            :class="['seg-item', { active: unit === 'serving', disabled: !picked.serving_weight_g }]"
+          <liquid-glass-pill
+            text="按克数"
+            :variant="unit === 'g' ? 'primary' : 'default'"
+            size="md"
+            interactive
+            :active="unit === 'g'"
+            @tap="setUnit('g')"
+          />
+          <liquid-glass-pill
+            text="按份数"
+            :variant="unit === 'serving' ? 'primary' : 'default'"
+            size="md"
+            interactive
+            :active="unit === 'serving'"
+            :custom-style="picked.serving_weight_g ? '' : 'opacity:0.4;'"
             @tap="picked.serving_weight_g && setUnit('serving')"
-          >按份数</view>
+          />
         </view>
 
         <view v-if="unit === 'g'" class="form-row">
@@ -72,12 +88,16 @@
         <view class="form-row">
           <text class="form-label">餐次</text>
           <view class="meal-chips">
-            <view
+            <liquid-glass-pill
               v-for="m in mealTypes"
               :key="m.value"
-              :class="['chip', { active: meal === m.value }]"
+              :text="m.label"
+              :variant="meal === m.value ? 'primary' : 'default'"
+              size="sm"
+              interactive
+              :active="meal === m.value"
               @tap="meal = m.value as MealType"
-            >{{ m.label }}</view>
+            />
           </view>
         </view>
 
@@ -94,8 +114,8 @@
         </view>
 
         <view class="picker-actions">
-          <view class="btn-secondary" @tap="cancelPick">取消</view>
-          <PrimaryButton text="保存记录" @tap="save" />
+          <liquid-glass-button variant="ghost" size="md" :block="false" text="取消" @tap="cancelPick" />
+          <liquid-glass-button variant="primary" size="md" :block="false" text="保存记录" @tap="save" />
         </view>
       </view>
     </view>
@@ -104,8 +124,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import EmptyState from '@/components/EmptyState.vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
 import Tag from '@/components/Tag.vue';
 import { foodApi, FoodItem } from '@/api/food';
 import { dietApi } from '@/api/diet';
@@ -113,6 +133,7 @@ import { useDietStore } from '@/store/diet';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { calcNutrition } from '@/utils/nutrition';
 import { formatTime, today } from '@/utils/date';
+import { safeNavigateBack } from '@/utils/nav';
 
 const mealTypes = MEAL_TYPES;
 const dietStore = useDietStore();
@@ -120,13 +141,23 @@ const dietStore = useDietStore();
 const keyword = ref('');
 const results = ref<FoodItem[]>([]);
 const searched = ref(false);
+const searching = ref(false);
 const picked = ref<FoodItem | null>(null);
 const unit = ref<'g' | 'serving'>('g');
 const amount = ref<number>(100);
-const meal = ref<MealType>((getCurrentMeal()));
+const meal = ref<MealType>(getCurrentMeal());
 const time = ref(formatTime(new Date()));
+const date = ref(dietStore.selectedDate || today());
 
-const date = computed(() => dietStore.selectedDate || today());
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+onLoad((options: any) => {
+  if (options?.date) date.value = options.date;
+  const m = options?.meal;
+  if (m && ['breakfast', 'lunch', 'dinner', 'snack'].includes(m)) {
+    meal.value = m as MealType;
+  }
+});
 
 function getCurrentMeal(): MealType {
   const h = new Date().getHours();
@@ -137,18 +168,30 @@ function getCurrentMeal(): MealType {
   return 'snack';
 }
 
+function onSearchInput() {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    search();
+  }, 300);
+}
+
 async function search() {
+  if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
   if (!keyword.value.trim()) {
     results.value = [];
     searched.value = false;
+    searching.value = false;
     return;
   }
+  searching.value = true;
   try {
     const res = await foodApi.search({ keyword: keyword.value.trim(), page_size: 50 });
     results.value = res.items || [];
     searched.value = true;
   } catch {
     results.value = [];
+  } finally {
+    searching.value = false;
   }
 }
 
@@ -156,6 +199,7 @@ function clearSearch() {
   keyword.value = '';
   results.value = [];
   searched.value = false;
+  searching.value = false;
 }
 
 function pickFood(f: FoodItem) {
@@ -205,8 +249,8 @@ const previewMacros = computed(() => {
 
 async function save() {
   if (!picked.value) return;
-  if (!amount.value || amount.value <= 0) {
-    uni.showToast({ title: '请输入有效数量', icon: 'none' });
+  if (!Number.isFinite(amount.value) || amount.value <= 0) {
+    uni.showToast({ title: '请输入有效的数量', icon: 'none' });
     return;
   }
   uni.showLoading({ title: '保存中...' });
@@ -225,7 +269,7 @@ async function save() {
     });
     uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 600);
+    setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
   } catch (e: any) {
     uni.hideLoading();
@@ -240,7 +284,6 @@ function goCustom() {
 
 <style lang="scss" scoped>
 .add-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
@@ -267,16 +310,22 @@ function goCustom() {
 .ph {
   color: $text-3;
 }
+.searching-tip {
+  font-size: $fs-xs;
+  color: $text-3;
+  padding: 0 8rpx;
+}
 .clear {
   color: $text-3;
   padding: 4rpx 8rpx;
 }
 
 .result-list {
-  background: $card;
-  border-radius: $r-16;
+  margin-bottom: $gap-3;
+}
+.result-card {
+  margin-bottom: 0;
   overflow: hidden;
-  box-shadow: $shadow-sm;
 }
 .result-item {
   display: flex;
@@ -306,13 +355,7 @@ function goCustom() {
 .empty-actions {
   display: flex;
   gap: $gap-2;
-}
-.ea-btn {
-  padding: 14rpx 36rpx;
-  background: $primary;
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
+  margin-top: $gap-3;
 }
 
 .picker-mask {
@@ -343,26 +386,8 @@ function goCustom() {
 
 .seg {
   display: flex;
-  background: $bg-2;
-  border-radius: $r-pill;
-  padding: 4rpx;
+  gap: 12rpx;
   margin: $gap-3 0;
-}
-.seg-item {
-  flex: 1;
-  text-align: center;
-  padding: 16rpx 0;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-    font-weight: 500;
-  }
-  &.disabled {
-    opacity: 0.4;
-  }
 }
 
 .form-row {
@@ -393,18 +418,6 @@ function goCustom() {
   gap: 12rpx;
   justify-content: flex-end;
   flex-wrap: wrap;
-}
-.chip {
-  padding: 8rpx 20rpx;
-  border-radius: $r-pill;
-  background: $bg-2;
-  font-size: $fs-sm;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-    font-weight: 500;
-  }
 }
 .time-picker {
   flex: 1;
@@ -438,12 +451,6 @@ function goCustom() {
   gap: $gap-2;
   align-items: center;
   margin-top: $gap-3;
-}
-.btn-secondary {
-  padding: 24rpx 32rpx;
-  background: $bg-2;
-  border-radius: $r-16;
-  color: $text-2;
-  font-size: $fs-md;
+  justify-content: flex-end;
 }
 </style>

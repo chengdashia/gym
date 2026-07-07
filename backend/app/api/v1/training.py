@@ -60,9 +60,11 @@ def _tpl_day_to_dict(d: TrainingTemplateDay) -> dict:
         "exercises": [
             {
                 "id": te.id,
+                "exercise_source": "system",
                 "exercise_id": te.exercise_id,
-                "name": te.exercise.name,
-                "body_part": te.exercise.body_part,
+                "custom_exercise_id": None,
+                "exercise_name_snapshot": te.exercise.name,
+                "body_part_snapshot": te.exercise.body_part,
                 "sort_order": te.sort_order,
                 "target_sets": te.target_sets,
                 "target_reps": te.target_reps,
@@ -243,11 +245,14 @@ def update_plan(
     p.name = body.name
     p.schedule_type = body.schedule_type
     p.source_template_id = body.source_template_id
-    # Re-create days + exercises
+    # Re-create days + exercises — use subqueries to avoid ORM session cache issues
     db.query(TrainingPlanExercise).filter(
-        TrainingPlanExercise.plan_day_id.in_([d.id for d in p.days])
+        TrainingPlanExercise.plan_day_id.in_(
+            db.query(TrainingPlanDay.id).filter(TrainingPlanDay.plan_id == p.id)
+        )
     ).delete(synchronize_session=False)
-    db.query(TrainingPlanDay).filter(TrainingPlanDay.plan_id == p.id).delete()
+    db.query(TrainingPlanDay).filter(TrainingPlanDay.plan_id == p.id).delete(synchronize_session=False)
+    db.flush()
 
     for d in body.days:
         day = TrainingPlanDay(

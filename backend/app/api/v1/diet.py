@@ -109,6 +109,20 @@ def list_records(
     })
 
 
+@router.get("/records/{record_id}")
+def get_record(
+    record_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    r = db.query(DietRecord).filter(
+        DietRecord.id == record_id, DietRecord.user_id == user.id, DietRecord.deleted_at.is_(None)
+    ).first()
+    if not r:
+        raise BizException(40401, "饮食记录不存在")
+    return ok(_record_to_dict(r))
+
+
 @router.post("/records")
 def create_record(
     body: DietRecordIn,

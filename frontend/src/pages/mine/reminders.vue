@@ -1,13 +1,21 @@
 <template>
   <view class="reminders-page">
-    <view class="head-card">
-      <view class="head-emoji">🔔</view>
-      <view class="head-text">每日提醒</view>
-      <view class="head-sub">开启提醒后，会通过系统通知按时提示</view>
-    </view>
+    <liquid-glass-card variant="tint" :highlight="true" custom-style="margin-bottom:0">
+      <view class="head-content">
+        <view class="head-emoji">🔔</view>
+        <view class="head-text">每日提醒</view>
+        <view class="head-sub">开启提醒后，会通过系统通知按时提示</view>
+      </view>
+    </liquid-glass-card>
 
     <view class="reminder-list">
-      <view v-for="r in items" :key="r.reminder_type" class="reminder-card">
+      <liquid-glass-card
+        v-for="r in items"
+        :key="r.reminder_type"
+        variant="light"
+        :highlight="true"
+        custom-style="margin-top:16rpx;margin-bottom:0"
+      >
         <view class="rc-head">
           <view class="rc-icon" :style="iconStyle(r.reminder_type)">
             {{ iconText(r.reminder_type) }}
@@ -42,22 +50,26 @@
             </view>
           </view>
         </view>
-      </view>
+      </liquid-glass-card>
     </view>
 
     <view class="actions">
-      <PrimaryButton text="保存设置" @tap="save" />
+      <liquid-glass-button text="保存设置" variant="primary" @tap="save" />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
+import { ref, onMounted } from 'vue';
+import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
+import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
 import { useUserStore } from '@/store/user';
+import { useAuthStore } from '@/store/auth';
+import { safeNavigateBack } from '@/utils/nav';
 import { ReminderItem } from '@/api/user';
 
 const userStore = useUserStore();
+const auth = useAuthStore();
 
 const weekdayLabels = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -68,7 +80,11 @@ const items = ref<ReminderItem[]>([
 ]);
 
 onMounted(async () => {
-  await userStore.fetchReminders().catch(() => {});
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
+  await userStore.fetchReminders().catch(() => {
+    uni.showToast({ title: '加载失败', icon: 'none' });
+  });
   if (userStore.reminders?.length) {
     items.value = items.value.map((it) => {
       const found = userStore.reminders.find((r) => r.reminder_type === it.reminder_type);
@@ -122,7 +138,7 @@ async function save() {
     await userStore.updateReminders(items.value);
     uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 600);
+    setTimeout(() => safeNavigateBack('/pages/mine/index'), 600);
   } catch (e: any) {
     uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
@@ -132,17 +148,11 @@ async function save() {
 
 <style lang="scss" scoped>
 .reminders-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
-.head-card {
-  background: $gradient-primary;
-  border-radius: $r-24;
-  padding: $gap-3;
-  margin-bottom: $gap-3;
+.head-content {
   text-align: center;
-  color: #fff;
 }
 .head-emoji {
   font-size: 56rpx;
@@ -151,19 +161,17 @@ async function save() {
   margin-top: $gap-1;
   font-size: 28rpx;
   font-weight: 700;
+  color: $primary-deep;
 }
 .head-sub {
   margin-top: 4rpx;
   font-size: $fs-xs;
+  color: $text-2;
   opacity: 0.85;
 }
 
-.reminder-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  margin-bottom: $gap-2;
-  box-shadow: $shadow-sm;
+.reminder-list {
+  margin-top: $gap-3;
 }
 .rc-head {
   display: flex;

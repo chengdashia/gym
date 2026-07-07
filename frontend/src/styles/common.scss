@@ -39,7 +39,6 @@ input, textarea {
 
 // 容器
 .container {
-  min-height: 100vh;
   padding: 0 $gap-3;
   padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
 }

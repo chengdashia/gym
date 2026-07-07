@@ -3,12 +3,12 @@
     <view class="title">{{ title }}</view>
     <view class="meta">版本：v1.0 · 最后更新：2026-07-06</view>
 
-    <view class="content">
+    <liquid-glass-card variant="light" :highlight="true" custom-style="margin-top:24rpx;margin-bottom:0">
       <view v-for="(s, i) in sections" :key="i" class="section">
         <view class="s-title">{{ i + 1 }}. {{ s.title }}</view>
         <view v-for="(p, j) in s.paragraphs" :key="j" class="p">{{ p }}</view>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <view class="footer">本协议最终解释权归健身饮食小程序所有</view>
   </view>
@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
 
 const type = ref<'agreement' | 'privacy'>('agreement');
 
@@ -100,7 +101,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .agreement-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
@@ -113,13 +113,6 @@ onMounted(() => {
   margin-top: 4rpx;
   font-size: $fs-sm;
   color: $text-3;
-}
-.content {
-  margin-top: $gap-3;
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-sm;
 }
 .section {
   margin-bottom: $gap-3;

@@ -71,6 +71,11 @@
         <text class="mi-label">账号与数据</text>
         <text class="mi-arrow">›</text>
       </view>
+      <view class="menu-item" @tap="goTrainingHistory">
+        <view class="mi-emoji" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">📜</view>
+        <text class="mi-label">训练历史</text>
+        <text class="mi-arrow">›</text>
+      </view>
     </liquid-glass-card>
 
     <!-- 菜单 2 -->
@@ -130,6 +135,8 @@ const goalLabel = computed(() => {
 const enabledReminderCount = computed(() => userStore.reminders.filter((r) => r.enabled).length);
 
 async function load() {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
   if (!userStore.me) await userStore.fetchMe().catch(() => {});
   if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
   await userStore.fetchReminders().catch(() => {});
@@ -138,7 +145,7 @@ async function load() {
 onMounted(load);
 onShow(() => {
   syncTabBar();
-  load();
+  if (auth.isLogged) load();
 });
 
 function goProfile() { uni.navigateTo({ url: '/pages/mine/profile' }); }
@@ -146,6 +153,7 @@ function goGoals() { uni.navigateTo({ url: '/pages/mine/goals' }); }
 function goReminders() { uni.navigateTo({ url: '/pages/mine/reminders' }); }
 function goAccount() { uni.navigateTo({ url: '/pages/mine/account' }); }
 function goWeight() { uni.navigateTo({ url: '/pages/mine/account?action=weight' }); }
+function goTrainingHistory() { uni.navigateTo({ url: '/pages/training/history' }); }
 function goAgreement(t: 'agreement' | 'privacy') { uni.navigateTo({ url: `/pages/mine/agreement?type=${t}` }); }
 
 function logout() {
@@ -165,10 +173,8 @@ function logout() {
 
 <style lang="scss" scoped>
 .mine-page {
-  min-height: 100vh;
   padding: $gap-3;
-  padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
-  animation: lg-fade-up 0.4s $ease-spring both;
+  padding-bottom: calc(#{$tabbar-height} + #{$gap-4});
 }
 
 // ----- Profile Panel -----

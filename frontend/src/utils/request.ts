@@ -45,13 +45,20 @@ export function clearAuth() {
 }
 
 let authInvalidated = false;
+function isLoginPage() {
+  const pages = getCurrentPages();
+  const route = pages[pages.length - 1]?.route || '';
+  return route.startsWith('pages/login/');
+}
 function onUnauthorized() {
   if (authInvalidated) return;
   authInvalidated = true;
   clearAuth();
   uni.showToast({ title: '登录已失效，请重新登录', icon: 'none' });
   setTimeout(() => {
-    uni.reLaunch({ url: '/pages/login/onboarding' });
+    if (!isLoginPage()) {
+      uni.reLaunch({ url: '/pages/login/onboarding' });
+    }
     authInvalidated = false;
   }, 600);
 }
@@ -83,9 +90,15 @@ export function request<T = any>(opts: RequestOptions): Promise<T> {
       url: url.startsWith('http') ? url : `${API_BASE}${url}`,
       method,
       data,
+      timeout: 10000,
       header: buildHeaders(header),
       success: (res: any) => {
         if (showLoading) uni.hideLoading();
+        if (res.statusCode === 401) {
+          onUnauthorized();
+          reject(res.data || { code: 40101, message: '未登录或 token 失效' });
+          return;
+        }
         const body = res.data as BizResponse<T>;
         if (!raw && body && typeof body === 'object' && 'code' in body) {
           if (body.code === 0) {

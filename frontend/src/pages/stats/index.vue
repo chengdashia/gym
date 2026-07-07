@@ -14,6 +14,8 @@
       />
     </view>
 
+    <view v-if="loading" class="loading">加载中...</view>
+
     <!-- 饮食 -->
     <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
@@ -81,6 +83,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint } from '@/api/stats';
+import { useAuthStore } from '@/store/auth';
 import { chartTheme } from '@/utils/echarts';
 import EChartsView from '@/components/EChartsView.vue';
 
@@ -91,6 +94,8 @@ function syncTabBar() {
   const tabBar = (page as any)?.getTabBar?.();
   if (tabBar) tabBar.setData({ activeIdx: 3 });
 }
+
+const auth = useAuthStore();
 
 const ranges = [
   { value: 7, label: '7 天' },
@@ -340,7 +345,12 @@ const weightOption = computed(() => {
   };
 });
 
+const loading = ref(false);
+
 async function load() {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
+  loading.value = true;
   try {
     const [d, t, w] = await Promise.all([
       statsApi.diet(range.value),
@@ -351,9 +361,12 @@ async function load() {
     trainingData.value = t.items || [];
     weightData.value = w.items || [];
   } catch {
+    uni.showToast({ title: '加载失败，请重试', icon: 'none' });
     dietData.value = [];
     trainingData.value = [];
     weightData.value = [];
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -366,11 +379,15 @@ onMounted(() => {
   syncTabBar();
   load();
 });
+
+onShow(() => {
+  syncTabBar();
+  if (auth.isLogged) load();
+});
 </script>
 
 <style lang="scss" scoped>
 .stats-page {
-  min-height: 100vh;
   padding: $gap-3;
   padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
   animation: lg-fade-up 0.4s $ease-spring both;
@@ -381,6 +398,13 @@ onMounted(() => {
   gap: 12rpx;
   margin-bottom: $gap-3;
   padding: 6rpx 0;
+}
+
+.loading {
+  text-align: center;
+  padding: $gap-4 0;
+  color: $text-3;
+  font-size: $fs-sm;
 }
 
 .chart-card {

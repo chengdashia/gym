@@ -1,12 +1,16 @@
 <template>
   <view class="history-page">
     <view class="filter">
-      <view
+      <liquid-glass-pill
         v-for="r in ranges"
         :key="r"
-        :class="['seg', { active: range === r }]"
+        :text="`${r} 天`"
+        :variant="range === r ? 'primary' : 'default'"
+        :active="range === r"
+        interactive
+        size="md"
         @tap="setRange(r)"
-      >{{ r }} 天</view>
+      />
     </view>
 
     <view v-if="sessions.length === 0" class="empty">
@@ -14,10 +18,13 @@
     </view>
 
     <view v-else class="list">
-      <view
+      <liquid-glass-card
         v-for="s in sessions"
         :key="s.id"
-        class="session-card"
+        variant="light"
+        hoverable
+        radius="20rpx"
+        padding="24rpx"
         @tap="goDetail(s.id)"
       >
         <view class="row">
@@ -37,7 +44,7 @@
           />
           <text class="more">详情 ›</text>
         </view>
-      </view>
+      </liquid-glass-card>
     </view>
   </view>
 </template>
@@ -46,21 +53,26 @@
 import { ref, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { trainingApi, TrainingSession } from '@/api/training';
+import { useAuthStore } from '@/store/auth';
 import EmptyState from '@/components/EmptyState.vue';
 import Tag from '@/components/Tag.vue';
 import { humanizeDuration, rangeDays, today } from '@/utils/date';
 
+const auth = useAuthStore();
 const ranges = [7, 30, 90];
 const range = ref(30);
 const sessions = ref<TrainingSession[]>([]);
 
 async function load() {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
   const dates = rangeDays(today(), range.value);
   try {
     const res = await trainingApi.listSessions({ start_date: dates[0], end_date: dates[dates.length - 1] });
     sessions.value = res.items || [];
-  } catch {
+  } catch (e) {
     sessions.value = [];
+    uni.showToast({ title: '加载历史失败', icon: 'none' });
   }
 }
 
@@ -78,12 +90,13 @@ function goDetail(id: number) {
 }
 
 onMounted(load);
-onShow(load);
+onShow(() => {
+  if (auth.isLogged) load();
+});
 </script>
 
 <style lang="scss" scoped>
 .history-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
@@ -91,29 +104,12 @@ onShow(load);
   display: flex;
   gap: $gap-2;
   margin-bottom: $gap-3;
-}
-.seg {
-  padding: 12rpx 24rpx;
-  background: $card;
-  border-radius: $r-pill;
-  font-size: $fs-sm;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-    font-weight: 500;
-  }
+  flex-wrap: wrap;
 }
 .list {
   display: flex;
   flex-direction: column;
   gap: $gap-2;
-}
-.session-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-sm;
 }
 .row {
   display: flex;

@@ -1,12 +1,14 @@
 <template>
   <view class="goals-page">
-    <view class="head-card">
-      <view class="head-emoji">🎯</view>
-      <view class="head-text">每日营养目标</view>
-      <view class="head-sub">系统会基于你的基础信息推荐，可手动调整</view>
-    </view>
+    <liquid-glass-card variant="tint" :highlight="true" custom-style="margin-bottom:0">
+      <view class="head-content">
+        <view class="head-emoji">🎯</view>
+        <view class="head-text">每日营养目标</view>
+        <view class="head-sub">系统会基于你的基础信息推荐，可手动调整</view>
+      </view>
+    </liquid-glass-card>
 
-    <view class="form-card">
+    <liquid-glass-card variant="light" :highlight="true" custom-style="margin-top:24rpx;margin-bottom:0">
       <view class="row">
         <text class="label">热量</text>
         <input v-model.number="goal.calories_kcal" type="number" class="input" />
@@ -27,21 +29,25 @@
         <input v-model.number="goal.fat_g" type="digit" class="input" />
         <text class="unit">g</text>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <view class="actions">
-      <view class="btn-secondary" @tap="recommend">使用推荐值</view>
-      <PrimaryButton text="保存目标" @tap="save" />
+      <liquid-glass-button text="使用推荐值" variant="ghost" @tap="recommend" />
+      <liquid-glass-button text="保存目标" variant="primary" @tap="save" />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { reactive, onMounted } from 'vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
+import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
+import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
 import { useUserStore } from '@/store/user';
+import { useAuthStore } from '@/store/auth';
+import { safeNavigateBack } from '@/utils/nav';
 
 const userStore = useUserStore();
+const auth = useAuthStore();
 
 const goal = reactive({
   calories_kcal: 0,
@@ -51,7 +57,13 @@ const goal = reactive({
 });
 
 onMounted(async () => {
-  if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
+  if (!userStore.goal?.calories_kcal) {
+    await userStore.fetchGoal().catch(() => {
+      uni.showToast({ title: '加载失败', icon: 'none' });
+    });
+  }
   Object.assign(goal, userStore.goal);
 });
 
@@ -61,18 +73,32 @@ async function recommend() {
     const data = await userStore.recommendGoal();
     Object.assign(goal, data);
     uni.hideLoading();
-  } catch {
+  } catch (e) {
     uni.hideLoading();
+    uni.showToast({ title: '推荐失败，请重试', icon: 'none' });
   }
 }
 
+function validateGoal() {
+  const { calories_kcal, carbs_g, protein_g, fat_g } = goal;
+  if (!Number.isFinite(calories_kcal) || calories_kcal <= 0) return false;
+  if (!Number.isFinite(carbs_g) || carbs_g < 0) return false;
+  if (!Number.isFinite(protein_g) || protein_g < 0) return false;
+  if (!Number.isFinite(fat_g) || fat_g < 0) return false;
+  return true;
+}
+
 async function save() {
+  if (!validateGoal()) {
+    uni.showToast({ title: '请输入有效的目标值', icon: 'none' });
+    return;
+  }
   uni.showLoading({ title: '保存中...' });
   try {
     await userStore.updateGoal({ ...goal });
     uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 600);
+    setTimeout(() => safeNavigateBack('/pages/mine/index'), 600);
   } catch (e: any) {
     uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
@@ -82,17 +108,11 @@ async function save() {
 
 <style lang="scss" scoped>
 .goals-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
-.head-card {
-  background: $gradient-primary;
-  border-radius: $r-24;
-  padding: $gap-4 $gap-3;
-  margin-bottom: $gap-3;
+.head-content {
   text-align: center;
-  color: #fff;
 }
 .head-emoji {
   font-size: 64rpx;
@@ -101,17 +121,13 @@ async function save() {
   margin-top: $gap-1;
   font-size: 32rpx;
   font-weight: 700;
+  color: $primary-deep;
 }
 .head-sub {
   margin-top: 4rpx;
   font-size: $fs-sm;
+  color: $text-2;
   opacity: 0.85;
-}
-.form-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-sm;
 }
 .row {
   display: flex;
@@ -141,14 +157,5 @@ async function save() {
   display: flex;
   flex-direction: column;
   gap: $gap-2;
-}
-.btn-secondary {
-  text-align: center;
-  padding: 24rpx;
-  background: $card;
-  border-radius: $r-16;
-  color: $primary;
-  font-size: $fs-md;
-  font-weight: 500;
 }
 </style>

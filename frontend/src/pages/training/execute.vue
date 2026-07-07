@@ -1,43 +1,44 @@
 <template>
-  <view v-if="session" class="execute-page">
-    <view class="head">
-      <view class="head-info">
-        <view class="title">{{ session.session_name }}</view>
-        <view class="meta">
-          {{ formatDateTime(session.started_at) }} · {{ statusText }}
-        </view>
-      </view>
-      <view class="head-actions">
-        <view class="ghost-btn" @tap="confirmQuit">退出</view>
-      </view>
-    </view>
-
-    <view class="progress-bar">
-      <view class="bar-info">
-        <text>{{ completedSets }} / {{ totalSets }} 组完成</text>
-        <text>{{ formatDuration(session.duration_seconds) }}</text>
-      </view>
-      <view class="bar-track">
-        <view class="bar-fill" :style="{ width: progressPct + '%' }" />
-      </view>
-    </view>
-
-    <scroll-view scroll-y class="exercise-list">
-      <view
-        v-for="(ex, ei) in session.exercises || []"
-        :key="ei"
-        :class="['exercise-card', { done: isExerciseDone(ei) }]"
-      >
-        <view class="ex-head">
-          <view class="ex-info">
-            <view class="ex-name">{{ ex.exercise_name_snapshot }}</view>
-            <view class="ex-meta">
-              <text v-if="ex.body_part_snapshot">部位：{{ ex.body_part_snapshot }} · </text>
-              <text>目标 {{ ex.planned_sets }} 组</text>
-            </view>
+  <view v-if="loading" class="loading">加载中...</view>
+  <view v-else-if="session" class="execute-page">
+    <!-- 顶部：进度 + 退出 -->
+    <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="hero-panel">
+      <view class="head">
+        <view class="head-info">
+          <view class="title">{{ session.session_name }}</view>
+          <view class="meta">
+            {{ formatDateTime(session.started_at) }} · {{ statusText }}
           </view>
         </view>
+        <view class="head-actions">
+          <liquid-glass-button text="退出" variant="ghost" size="sm" :block="false" @tap="confirmQuit" />
+        </view>
+      </view>
 
+      <!-- 进度条 -->
+      <view class="progress-bar">
+        <view class="bar-info">
+          <text>{{ completedSets }} / {{ totalSets }} 组完成</text>
+          <text>动作 {{ currentExIdx + 1 }} / {{ session.exercises?.length || 0 }}</text>
+        </view>
+        <view class="bar-track">
+          <view class="bar-fill" :style="{ width: progressPct + '%' }" />
+        </view>
+      </view>
+    </liquid-glass-panel>
+
+    <!-- 引导式训练：当前动作 -->
+    <view v-if="currentEx" class="current-area">
+      <liquid-glass-card variant="light" :highlight="true" class="current-card">
+        <view class="current-head">
+          <view class="current-idx">动作 {{ currentExIdx + 1 }}</view>
+          <view v-if="isCurrentDone" class="done-tag">已完成 ✓</view>
+        </view>
+        <view class="current-name">{{ currentEx.exercise_name_snapshot }}</view>
+        <view v-if="currentEx.body_part_snapshot" class="current-meta">部位：{{ currentEx.body_part_snapshot }}</view>
+        <view class="current-meta">目标 {{ currentEx.planned_sets }} 组 · 组间休息 {{ currentEx.rest_seconds }}s</view>
+
+        <!-- 组列表 -->
         <view class="set-list">
           <view class="set-head">
             <text class="set-h">#</text>
@@ -46,7 +47,7 @@
             <text class="set-h">完成</text>
           </view>
           <view
-            v-for="(s, si) in ex.sets"
+            v-for="(s, si) in currentEx.sets"
             :key="si"
             :class="['set-row', { done: s.completed }]"
           >
@@ -70,15 +71,47 @@
               />
             </view>
             <view class="done-cell">
-              <view :class="['check-btn', { done: s.completed }]" @tap="toggleSet(ei, si)">
+              <view :class="['check-btn', { done: s.completed }]" @tap="toggleSet(si)">
                 {{ s.completed ? '✓' : '' }}
               </view>
             </view>
           </view>
         </view>
-      </view>
-    </scroll-view>
+      </liquid-glass-card>
 
+      <!-- 当前动作操作 -->
+      <view class="current-actions">
+        <view v-if="!isCurrentDone" class="hint">完成所有组后进入下一个动作</view>
+        <liquid-glass-button v-else-if="hasNextEx" text="下一个动作 →" variant="primary" @tap="nextExercise" />
+        <liquid-glass-button v-else text="完成训练 🎉" variant="primary" @tap="finishSession" />
+      </view>
+    </view>
+
+    <!-- 全部动作概览（可折叠） -->
+    <liquid-glass-card variant="light" :highlight="true" class="overview-card">
+      <view class="overview-head" @tap="showOverview = !showOverview">
+        <text>全部动作（{{ session.exercises?.length || 0 }}）</text>
+        <text class="overview-toggle">{{ showOverview ? '收起 ▲' : '展开 ▼' }}</text>
+      </view>
+      <view v-if="showOverview" class="overview-list">
+        <view
+          v-for="(ex, ei) in session.exercises || []"
+          :key="ei"
+          :class="['overview-item', { current: ei === currentExIdx, done: isExerciseDone(ei) }]"
+          @tap="jumpTo(ei)"
+        >
+          <view class="ov-idx">{{ ei + 1 }}</view>
+          <view class="ov-info">
+            <view class="ov-name">{{ ex.exercise_name_snapshot }}</view>
+            <view class="ov-meta">{{ ex.completed_sets }}/{{ ex.planned_sets }} 组</view>
+          </view>
+          <view v-if="ei === currentExIdx" class="ov-tag">当前</view>
+          <view v-else-if="isExerciseDone(ei)" class="ov-tag done">✓</view>
+        </view>
+      </view>
+    </liquid-glass-card>
+
+    <!-- 组间歇倒计时 -->
     <RestTimer
       :visible="timer.visible"
       :remaining="timer.remaining"
@@ -90,19 +123,15 @@
       @close="timerClose"
     />
 
-    <view class="bottom-bar">
-      <view class="bb-btn ghost" @tap="saveProgress">保存进度</view>
-      <view class="bb-btn primary" @tap="finishSession">完成训练</view>
-    </view>
-
+    <!-- 退出确认 -->
     <ModalConfirm
       :visible="showQuit"
       title="退出训练"
       message="选择如何处理当前训练？"
       cancel-text="继续训练"
       confirm-text="保存进度"
-      @confirm="saveAndQuit"
-      @cancel="confirmAbandon"
+      @confirm="saveProgress"
+      @cancel="closeExitModal"
     />
 
     <ModalConfirm
@@ -123,16 +152,20 @@ import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
 import { useTrainingStore } from '@/store/training';
 import { trainingApi, TrainingSession } from '@/api/training';
 import { createTimer } from '@/utils/timer';
-import { formatDateTime, humanizeDuration } from '@/utils/date';
+import { formatDateTime } from '@/utils/date';
+import { safeNavigateBack } from '@/utils/nav';
 import RestTimer from '@/components/RestTimer.vue';
 import ModalConfirm from '@/components/ModalConfirm.vue';
 
 const id = ref(0);
 const session = ref<TrainingSession | null>(null);
+const loading = ref(true);
 const trainingStore = useTrainingStore();
 const showQuit = ref(false);
 const showAbandon = ref(false);
 const saving = ref(false);
+const currentExIdx = ref(0);
+const showOverview = ref(false);
 
 const timer = reactive({
   visible: false,
@@ -154,6 +187,21 @@ let timerInstance = createTimer(
     uni.vibrateShort({ type: 'medium' });
   },
 );
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+const currentEx = computed(() => session.value?.exercises?.[currentExIdx.value] || null);
+
+const isCurrentDone = computed(() => {
+  const ex = currentEx.value;
+  if (!ex || !ex.sets?.length) return false;
+  return ex.sets.every((s) => s.completed);
+});
+
+const hasNextEx = computed(() => {
+  const total = session.value?.exercises?.length || 0;
+  return currentExIdx.value < total - 1;
+});
 
 const completedSets = computed(() => {
   if (!session.value?.exercises) return 0;
@@ -184,21 +232,40 @@ onMounted(async () => {
   const opt = (pages[pages.length - 1] as any)?.options || {};
   id.value = Number(opt.id || 0);
   await loadSession();
+  // 跳到第一个未完成的动作
+  jumpToFirstUndone();
 });
 
 onUnmounted(() => {
   timerInstance.stop();
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
 });
 
 async function loadSession() {
-  if (!id.value) return;
+  if (!id.value) {
+    loading.value = false;
+    return;
+  }
+  loading.value = true;
   try {
     const s = await trainingApi.getSession(id.value);
     if (!s.exercises) s.exercises = [];
     session.value = s;
   } catch (e: any) {
     uni.showToast({ title: '加载失败', icon: 'none' });
+  } finally {
+    loading.value = false;
   }
+}
+
+function jumpToFirstUndone() {
+  const exs = session.value?.exercises;
+  if (!exs || !exs.length) return;
+  const idx = exs.findIndex((e) => !e.sets.every((s) => s.completed));
+  currentExIdx.value = idx >= 0 ? idx : 0;
 }
 
 function isExerciseDone(ei: number) {
@@ -207,21 +274,41 @@ function isExerciseDone(ei: number) {
   return ex.sets.every((s) => s.completed);
 }
 
-function toggleSet(ei: number, si: number) {
-  const ex = session.value!.exercises![ei];
+function sanitizeNum(v: any): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+function toggleSet(si: number) {
+  const ex = currentEx.value;
+  if (!ex) return;
   const s = ex.sets[si];
   s.completed = !s.completed;
+  ex.completed_sets = ex.sets.filter((x) => x.completed).length;
   if (s.completed) {
-    ex.completed_sets = ex.sets.filter((x) => x.completed).length;
-    // 自动启动倒计时
+    // 自动启动组间歇倒计时
     timer.total = ex.rest_seconds;
     timer.remaining = ex.rest_seconds;
     timer.running = true;
     timer.visible = true;
     timerInstance.start(ex.rest_seconds);
-  } else {
-    ex.completed_sets = ex.sets.filter((x) => x.completed).length;
+    // 保存进度
+    schedulePersist();
   }
+}
+
+function nextExercise() {
+  if (hasNextEx.value) {
+    currentExIdx.value += 1;
+    uni.vibrateShort({ type: 'light' });
+  }
+}
+
+function jumpTo(ei: number) {
+  currentExIdx.value = ei;
+  showOverview.value = false;
 }
 
 function timerToggle() {
@@ -247,8 +334,19 @@ function timerClose() {
   timer.visible = false;
 }
 
+function schedulePersist() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    void persist('in_progress');
+  }, 600);
+}
+
 async function persist(status: 'in_progress' | 'paused' | 'completed' | 'cancelled' = 'in_progress') {
-  if (!session.value) return;
+  if (!session.value) return null;
   saving.value = true;
   try {
     const payload = {
@@ -264,8 +362,8 @@ async function persist(status: 'in_progress' | 'paused' | 'completed' | 'cancell
         sets: (ex.sets || []).map((s) => ({
           set_id: (s as any).id ?? s.set_id,
           set_index: s.set_index,
-          actual_reps: s.actual_reps,
-          actual_weight_kg: s.actual_weight_kg,
+          actual_reps: sanitizeNum(s.actual_reps),
+          actual_weight_kg: sanitizeNum(s.actual_weight_kg),
           completed: !!s.completed,
         })),
       })),
@@ -282,20 +380,50 @@ async function persist(status: 'in_progress' | 'paused' | 'completed' | 'cancell
 }
 
 async function saveProgress() {
-  const res = await persist('paused');
-  if (res) {
+  if (!session.value) return;
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  try {
+    const payload = (session.value.exercises || []).map((ex) => ({
+      session_exercise_id: (ex as any).id ?? (ex as any).session_exercise_id,
+      exercise_name_snapshot: ex.exercise_name_snapshot,
+      body_part_snapshot: ex.body_part_snapshot,
+      sort_order: ex.sort_order,
+      planned_sets: ex.planned_sets,
+      completed_sets: ex.completed_sets,
+      rest_seconds: ex.rest_seconds,
+      sets: (ex.sets || []).map((s) => ({
+        set_id: (s as any).id ?? s.set_id,
+        set_index: s.set_index,
+        actual_reps: sanitizeNum(s.actual_reps),
+        actual_weight_kg: sanitizeNum(s.actual_weight_kg),
+        completed: !!s.completed,
+      })),
+    }));
+    await trainingApi.updateSession(session.value.id, { status: 'paused', exercises: payload });
     uni.showToast({ title: '已保存进度', icon: 'success' });
+    showQuit.value = false;
+    setTimeout(() => safeNavigateBack('/pages/training/index'), 800);
+  } catch (e) {
+    uni.showToast({ title: '保存失败', icon: 'none' });
   }
 }
 
 async function finishSession() {
+  if (!session.value) return;
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   const res = await persist('in_progress');
   if (!res) return;
   try {
     const finished = await trainingApi.finishSession(session.value!.id);
     session.value = finished;
     uni.showToast({ title: '训练完成 🎉', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 800);
+    setTimeout(() => safeNavigateBack('/pages/training/index'), 800);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '完成失败', icon: 'none' });
   }
@@ -305,23 +433,19 @@ function confirmQuit() {
   showQuit.value = true;
 }
 
-async function saveAndQuit() {
+function closeExitModal() {
   showQuit.value = false;
-  await persist('paused');
-  uni.navigateBack();
-}
-
-function confirmAbandon() {
-  showQuit.value = false;
-  showAbandon.value = true;
 }
 
 async function abandonSession() {
+  if (!session.value) return;
   showAbandon.value = false;
   try {
     await trainingApi.cancelSession(session.value!.id);
-    uni.navigateBack();
-  } catch {}
+    safeNavigateBack('/pages/training/index');
+  } catch (e) {
+    uni.showToast({ title: '操作失败', icon: 'none' });
+  }
 }
 </script>
 
@@ -330,13 +454,29 @@ async function abandonSession() {
   min-height: 100vh;
   background: $bg;
   padding: $gap-3;
-  padding-bottom: 200rpx;
+  padding-bottom: calc(#{$gap-3} + env(safe-area-inset-bottom));
 }
+
+.loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $bg;
+  color: $text-3;
+  font-size: $fs-md;
+}
+
+// ----- 顶部 Hero Panel -----
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: $gap-3;
+}
+.head-info {
+  flex: 1;
+  min-width: 0;
 }
 .title {
   font-size: 32rpx;
@@ -348,21 +488,7 @@ async function abandonSession() {
   color: $text-3;
   margin-top: 4rpx;
 }
-.ghost-btn {
-  padding: 12rpx 24rpx;
-  background: $bg-2;
-  border-radius: $r-pill;
-  color: $text-2;
-  font-size: $fs-sm;
-}
 
-.progress-bar {
-  background: $card;
-  border-radius: $r-16;
-  padding: $gap-2 $gap-3;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-sm;
-}
 .bar-info {
   display: flex;
   justify-content: space-between;
@@ -383,32 +509,48 @@ async function abandonSession() {
   transition: width 0.4s ease;
 }
 
-.exercise-list {
-  height: calc(100vh - 480rpx);
+// ----- 当前动作卡片 -----
+.current-area {
+  margin-bottom: $gap-3;
 }
-.exercise-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  margin-bottom: $gap-2;
-  box-shadow: $shadow-sm;
-  &.done {
-    opacity: 0.6;
-  }
+.current-card {
+  margin-bottom: 0;
 }
-.ex-name {
-  font-size: $fs-lg;
-  font-weight: 600;
-  color: $text-1;
+.current-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $gap-1;
 }
-.ex-meta {
+.current-idx {
   font-size: $fs-xs;
+  color: $primary;
+  font-weight: 600;
+  background: $primary-tint;
+  padding: 4rpx 16rpx;
+  border-radius: $r-pill;
+}
+.done-tag {
+  font-size: $fs-xs;
+  color: #fff;
+  background: $primary;
+  padding: 4rpx 16rpx;
+  border-radius: $r-pill;
+}
+.current-name {
+  font-size: $fs-xl;
+  font-weight: 700;
+  color: $text-1;
+  margin-bottom: 4rpx;
+}
+.current-meta {
+  font-size: $fs-sm;
   color: $text-3;
-  margin-top: 4rpx;
+  margin-top: 2rpx;
 }
 
 .set-list {
-  margin-top: $gap-2;
+  margin-top: $gap-3;
 }
 .set-head, .set-row {
   display: grid;
@@ -484,31 +626,92 @@ async function abandonSession() {
   }
 }
 
-.bottom-bar {
-  position: fixed;
-  left: $gap-3;
-  right: $gap-3;
-  bottom: calc(#{$tabbar-height} + #{$gap-3});
+.current-actions {
+  margin-top: $gap-3;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: $gap-2;
-  z-index: 30;
 }
-.bb-btn {
-  flex: 1;
-  text-align: center;
-  padding: 22rpx;
-  border-radius: $r-16;
-  font-size: $fs-md;
+.hint {
+  font-size: $fs-sm;
+  color: $text-3;
+}
+
+// ----- 全部动作概览 -----
+.overview-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: $fs-sm;
+  color: $text-2;
   font-weight: 600;
-  &.ghost {
-    background: $card;
-    color: $text-2;
-    box-shadow: $shadow-md;
+}
+.overview-toggle {
+  font-size: $fs-xs;
+  color: $primary;
+}
+.overview-list {
+  margin-top: $gap-2;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.overview-item {
+  display: flex;
+  align-items: center;
+  padding: $gap-2;
+  background: $bg-2;
+  border-radius: $r-12;
+  &.current {
+    background: $primary-tint;
+    border: 2rpx solid $primary;
   }
-  &.primary {
-    background: $primary;
-    color: #fff;
-    box-shadow: 0 8rpx 24rpx rgba(95, 175, 145, 0.35);
+  &.done {
+    opacity: 0.6;
+  }
+}
+.ov-idx {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: $card;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $fs-sm;
+  font-weight: 600;
+  color: $text-2;
+  margin-right: $gap-2;
+  flex-shrink: 0;
+}
+.ov-info {
+  flex: 1;
+  min-width: 0;
+}
+.ov-name {
+  font-size: $fs-md;
+  color: $text-1;
+  font-weight: 500;
+}
+.ov-meta {
+  font-size: $fs-xs;
+  color: $text-3;
+  margin-top: 2rpx;
+}
+.ov-tag {
+  font-size: $fs-xs;
+  color: $primary;
+  font-weight: 600;
+  &.done {
+    color: $primary;
+    background: $card;
+    width: 40rpx;
+    height: 40rpx;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 </style>

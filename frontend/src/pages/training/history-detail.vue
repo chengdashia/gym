@@ -1,6 +1,6 @@
 <template>
   <view v-if="session" class="detail-page">
-    <view class="header-card">
+    <liquid-glass-card variant="tint" radius="24rpx" padding="24rpx">
       <view class="title">{{ session.session_name }}</view>
       <view class="meta">{{ session.session_date }} · {{ humanizeDuration(session.duration_seconds) }}</view>
       <view class="stats">
@@ -17,10 +17,16 @@
           <view class="stat-unit">动作数</view>
         </view>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <view class="exercises">
-      <view v-for="(ex, ei) in session.exercises || []" :key="ei" class="ex-card">
+      <liquid-glass-card
+        v-for="(ex, ei) in session.exercises || []"
+        :key="ei"
+        variant="light"
+        radius="20rpx"
+        padding="24rpx"
+      >
         <view class="ex-name">{{ ex.exercise_name_snapshot }}</view>
         <view class="ex-meta">{{ ex.body_part_snapshot || '' }}</view>
         <view class="set-list">
@@ -39,9 +45,10 @@
             <text :class="['set-status', { done: s.completed }]">{{ s.completed ? '✓' : '—' }}</text>
           </view>
         </view>
-      </view>
+      </liquid-glass-card>
     </view>
   </view>
+  <view v-else-if="loading" class="loading">加载中...</view>
 </template>
 
 <script setup lang="ts">
@@ -51,6 +58,7 @@ import { humanizeDuration } from '@/utils/date';
 
 const id = ref(0);
 const session = ref<TrainingSession | null>(null);
+const loading = ref(false);
 
 const completedSets = computed(() => {
   if (!session.value?.exercises) return 0;
@@ -61,26 +69,22 @@ onMounted(async () => {
   const pages = getCurrentPages();
   const opt = (pages[pages.length - 1] as any)?.options || {};
   id.value = Number(opt.id || 0);
-  if (id.value) {
-    try {
-      session.value = await trainingApi.getSession(id.value);
-    } catch {}
+  if (!id.value) return;
+  loading.value = true;
+  try {
+    session.value = await trainingApi.getSession(id.value);
+  } catch (e) {
+    uni.showToast({ title: '加载详情失败', icon: 'none' });
+  } finally {
+    loading.value = false;
   }
 });
 </script>
 
 <style lang="scss" scoped>
 .detail-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
-}
-.header-card {
-  background: $gradient-card;
-  border-radius: $r-24;
-  padding: $gap-3;
-  margin-bottom: $gap-3;
-  box-shadow: $shadow-md;
 }
 .title {
   font-size: 36rpx;
@@ -113,13 +117,6 @@ onMounted(async () => {
   margin-top: 4rpx;
 }
 
-.ex-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  margin-bottom: $gap-2;
-  box-shadow: $shadow-sm;
-}
 .ex-name {
   font-size: $fs-lg;
   font-weight: 600;
@@ -166,5 +163,15 @@ onMounted(async () => {
   font-size: $fs-md;
   color: $text-3;
   &.done { color: $primary; font-weight: 700; }
+}
+
+.loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $bg;
+  color: $text-3;
+  font-size: $fs-md;
 }
 </style>

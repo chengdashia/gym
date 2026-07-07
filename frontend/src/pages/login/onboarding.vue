@@ -1,48 +1,93 @@
 <template>
   <view class="onboarding">
-    <!-- 步骤1：协议 -->
-    <view v-if="step === 0" class="step">
-      <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="hero-panel">
+    <!-- 步骤1：登录 / 注册 -->
+    <view v-if="step === 0" class="step step-auth">
+      <view class="auth-center">
         <view class="logo-wrap">
           <view class="logo">🌿</view>
           <view class="brand">健身饮食</view>
           <view class="brand-sub">让健康管理更轻盈</view>
         </view>
-      </liquid-glass-panel>
 
-      <liquid-glass-card :highlight="true" class="protocol-card">
-        <view class="protocol-title">欢迎使用</view>
-        <view class="protocol-desc">请仔细阅读以下协议条款，开始你的健康之旅。</view>
-
-        <view class="protocol-item">
-          <view class="protocol-name">📄 用户协议</view>
-          <view class="protocol-content">
-            欢迎使用健身饮食小程序（以下简称"本服务"）。在使用本服务前，请仔细阅读本协议。你使用本服务即视为同意本协议全部条款，包括个人信息处理规则、健康数据存储方式及第三方服务（微信登录、对象存储、模拟 AI 识别）的接入范围。
+        <view class="auth-card">
+          <view class="auth-tabs">
+            <view
+              :class="['auth-tab', { active: authMode === 'login' }]"
+              @tap="switchMode('login')"
+            >登录</view>
+            <view
+              :class="['auth-tab', { active: authMode === 'register' }]"
+              @tap="switchMode('register')"
+            >注册</view>
           </view>
+
+          <view class="auth-field">
+            <text class="auth-field-label">手机号</text>
+            <input
+              v-model="authForm.phone"
+              type="number"
+              maxlength="11"
+              placeholder="请输入手机号"
+              class="auth-field-input"
+            />
+          </view>
+
+          <view class="auth-field">
+            <text class="auth-field-label">密码</text>
+            <input
+              v-model="authForm.password"
+              password
+              placeholder="请输入密码"
+              class="auth-field-input"
+            />
+          </view>
+
+          <template v-if="authMode === 'register'">
+            <view class="auth-field">
+              <text class="auth-field-label">确认密码</text>
+              <input
+                v-model="authForm.confirmPassword"
+                password
+                placeholder="请再次输入密码"
+                class="auth-field-input"
+              />
+            </view>
+
+            <view class="auth-field captcha-row">
+              <text class="auth-field-label">验证码</text>
+              <view class="captcha-wrap">
+                <input
+                  v-model="authForm.captchaCode"
+                  placeholder="请输入验证码"
+                  class="auth-field-input captcha-input"
+                />
+                <image
+                  v-if="captcha.svg"
+                  :src="captcha.svg"
+                  mode="aspectFit"
+                  class="captcha-img"
+                  @tap="refreshCaptcha"
+                />
+              </view>
+            </view>
+
+            <view class="agree-row" @tap="agreed = !agreed">
+              <view :class="['checkbox', { checked: agreed }]">
+                <text v-if="agreed">✓</text>
+              </view>
+              <text class="agree-text">我已阅读并同意《用户协议》和《隐私政策》</text>
+            </view>
+          </template>
         </view>
 
-        <view class="protocol-item">
-          <view class="protocol-name">🔒 隐私政策</view>
-          <view class="protocol-content">
-            我们非常重视你的隐私。本服务仅在为你提供饮食与训练记录功能所必需的范围内，收集你的头像、昵称、身体数据、饮食记录、训练记录和体重记录。你可以随时在「我的-账号与数据」中删除个人数据或注销账号。
-          </view>
-        </view>
-
-        <view class="agree-row" @tap="agreed = !agreed">
-          <view :class="['checkbox', { checked: agreed }]">
-            <text v-if="agreed">✓</text>
-          </view>
-          <text class="agree-text">我已阅读并同意《用户协议》和《隐私政策》</text>
-        </view>
-      </liquid-glass-card>
-
-      <liquid-glass-button
-        text="同意并继续"
-        variant="primary"
-        size="lg"
-        :disabled="!agreed"
-        @tap="next"
-      />
+        <button
+          :class="['auth-submit', { disabled: authDisabled }]"
+          :disabled="authDisabled"
+          @tap="submitAuth"
+        >
+          {{ authMode === 'login' ? '登录' : '注册并登录' }}
+        </button>
+      </view>
     </view>
 
     <!-- 步骤2：基础资料 -->
@@ -76,28 +121,40 @@
           </view>
         </view>
 
-        <view class="form-row">
-          <text class="form-label">年龄</text>
-          <input v-model.number="form.age" type="number" placeholder="请输入年龄" class="form-input" />
-          <text class="form-unit">岁</text>
+        <view class="form-row column">
+          <view class="form-row-line">
+            <text class="form-label">年龄</text>
+            <input v-model.number="form.age" type="number" placeholder="请输入年龄" class="form-input" />
+            <text class="form-unit">岁</text>
+          </view>
+          <slider :min="10" :max="100" :step="1" :value="form.age" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.age = e.detail.value" class="form-slider" />
         </view>
 
-        <view class="form-row">
-          <text class="form-label">身高</text>
-          <input v-model.number="form.height_cm" type="digit" placeholder="请输入身高" class="form-input" />
-          <text class="form-unit">cm</text>
+        <view class="form-row column">
+          <view class="form-row-line">
+            <text class="form-label">身高</text>
+            <input v-model.number="form.height_cm" type="digit" placeholder="请输入身高" class="form-input" />
+            <text class="form-unit">cm</text>
+          </view>
+          <slider :min="120" :max="220" :step="1" :value="form.height_cm" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.height_cm = e.detail.value" class="form-slider" />
         </view>
 
-        <view class="form-row">
-          <text class="form-label">当前体重</text>
-          <input v-model.number="form.current_weight_kg" type="digit" placeholder="请输入当前体重" class="form-input" />
-          <text class="form-unit">kg</text>
+        <view class="form-row column">
+          <view class="form-row-line">
+            <text class="form-label">当前体重</text>
+            <input v-model.number="form.current_weight_kg" type="digit" placeholder="请输入当前体重" class="form-input" />
+            <text class="form-unit">kg</text>
+          </view>
+          <slider :min="30" :max="200" :step="0.5" :value="form.current_weight_kg" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.current_weight_kg = e.detail.value" class="form-slider" />
         </view>
 
-        <view class="form-row">
-          <text class="form-label">目标体重</text>
-          <input v-model.number="form.target_weight_kg" type="digit" placeholder="请输入目标体重" class="form-input" />
-          <text class="form-unit">kg</text>
+        <view class="form-row column">
+          <view class="form-row-line">
+            <text class="form-label">目标体重</text>
+            <input v-model.number="form.target_weight_kg" type="digit" placeholder="请输入目标体重" class="form-input" />
+            <text class="form-unit">kg</text>
+          </view>
+          <slider :min="30" :max="200" :step="0.5" :value="form.target_weight_kg" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.target_weight_kg = e.detail.value" class="form-slider" />
         </view>
 
         <view class="form-row column">
@@ -197,13 +254,24 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/store/auth';
 import { useUserStore } from '@/store/user';
+import { authApi } from '@/api/auth';
 import { FITNESS_GOALS, TRAINING_FREQUENCIES, FitnessGoal } from '@/utils/constants';
 
 const step = ref(0);
 const agreed = ref(false);
+const authMode = ref<'login' | 'register'>('login');
+
+const authForm = reactive({
+  phone: '',
+  password: '',
+  confirmPassword: '',
+  captchaCode: '',
+});
+
+const captcha = reactive({ id: '', svg: '' });
 
 const form = reactive({
   gender: 'male' as 'male' | 'female',
@@ -228,22 +296,61 @@ const frequencies = TRAINING_FREQUENCIES;
 const auth = useAuthStore();
 const userStore = useUserStore();
 
-async function next() {
-  if (!agreed.value) return;
-  uni.showLoading({ title: '登录中...' });
+const phoneReg = /^1[3-9]\d{9}$/;
+
+const authDisabled = computed(() => {
+  if (!phoneReg.test(authForm.phone) || authForm.password.length < 6) return true;
+  if (authMode.value === 'register') {
+    if (authForm.confirmPassword.length < 6 || authForm.captchaCode.length < 4 || !agreed.value) return true;
+  }
+  return false;
+});
+
+onMounted(() => {
+  refreshCaptcha();
+});
+
+function switchMode(mode: 'login' | 'register') {
+  authMode.value = mode;
+  agreed.value = false;
+}
+
+async function refreshCaptcha() {
   try {
-    if (!auth.token) {
-      await auth.login();
+    const res = await authApi.getCaptcha();
+    captcha.id = res.captcha_id;
+    captcha.svg = res.svg;
+  } catch {
+    captcha.id = '';
+    captcha.svg = '';
+  }
+}
+
+async function submitAuth() {
+  if (authDisabled.value) return;
+  uni.showLoading({ title: authMode.value === 'login' ? '登录中...' : '注册中...' });
+  try {
+    let data;
+    if (authMode.value === 'login') {
+      data = await auth.phoneLogin(authForm.phone, authForm.password);
+    } else {
+      data = await auth.register(
+        authForm.phone,
+        authForm.password,
+        authForm.confirmPassword,
+        captcha.id,
+        authForm.captchaCode,
+      );
     }
-    await userStore.fetchMe();
-    if (userStore.me?.agreement_confirmed) {
+    if (data.user.agreement_confirmed) {
       uni.hideLoading();
       goHome();
       return;
     }
     step.value = 1;
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '登录失败', icon: 'none' });
+    uni.showToast({ title: e?.message || (authMode.value === 'login' ? '登录失败' : '注册失败'), icon: 'none' });
+    refreshCaptcha();
   } finally {
     uni.hideLoading();
   }
@@ -297,118 +404,205 @@ function goHome() {
   flex-direction: column;
 }
 
-// ----- Step 1: 协议 -----
-.hero-panel {
-  margin-bottom: $gap-4;
-  padding: $gap-5 $gap-3;
-}
-
-.logo-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.logo {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 40rpx;
-  background: $gradient-primary;
-  display: flex;
-  align-items: center;
+// ----- Step 1: 登录 / 注册 -----
+.step-auth {
+  min-height: 100vh;
   justify-content: center;
-  font-size: 80rpx;
-  box-shadow:
-    0 16rpx 40rpx rgba(95, 175, 145, 0.35),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
-}
-
-.brand {
-  margin-top: $gap-3;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: $primary-deep;
-  letter-spacing: 1rpx;
-}
-
-.brand-sub {
-  margin-top: $gap-1;
-  font-size: $fs-md;
-  color: $text-3;
-}
-
-.protocol-card {
-  margin-bottom: $gap-4;
-}
-
-.protocol-title {
-  font-size: $fs-xl;
-  font-weight: 700;
-  color: $text-1;
-  text-align: center;
-}
-
-.protocol-desc {
-  margin-top: $gap-1;
-  text-align: center;
-  color: $text-3;
-  font-size: $fs-sm;
-  margin-bottom: $gap-3;
-}
-
-.protocol-item {
-  margin-bottom: $gap-2;
-  padding: $gap-2;
-  background: rgba(234, 248, 241, 0.5);
-  border-radius: $r-16;
-}
-
-.protocol-name {
-  font-size: $fs-md;
-  font-weight: 600;
-  color: $primary-deep;
-  margin-bottom: 8rpx;
-}
-
-.protocol-content {
-  font-size: $fs-sm;
-  color: $text-2;
-  line-height: 1.6;
-}
-
-.agree-row {
-  display: flex;
   align-items: center;
-  margin-top: $gap-3;
-  gap: $gap-2;
-}
+  padding: $gap-4 $gap-4 $gap-6;
 
-.checkbox {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: $r-12;
-  background: rgba(255, 255, 255, 0.7);
-  border: 2rpx solid rgba(95, 175, 145, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: $fs-md;
-  font-weight: 700;
-  transition: all 0.3s $ease-spring;
-}
+  .auth-center {
+    width: 100%;
+    max-width: 640rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-.checkbox.checked {
-  background: $gradient-primary;
-  border-color: transparent;
-  box-shadow: 0 4rpx 12rpx rgba(95, 175, 145, 0.35);
-}
+  .logo-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: $gap-5;
+  }
 
-.agree-text {
-  font-size: $fs-sm;
-  color: $text-2;
-  flex: 1;
-  line-height: 1.5;
+  .logo {
+    width: 128rpx;
+    height: 128rpx;
+    border-radius: 28rpx;
+    background: $gradient-primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64rpx;
+    box-shadow: 0 12rpx 32rpx rgba(95, 175, 145, 0.28);
+  }
+
+  .brand {
+    margin-top: $gap-2;
+    font-size: 40rpx;
+    font-weight: 700;
+    color: $primary-deep;
+    letter-spacing: 1rpx;
+  }
+
+  .brand-sub {
+    margin-top: $gap-1;
+    font-size: $fs-sm;
+    color: $text-3;
+  }
+
+  .auth-card {
+    width: 100%;
+    background: $glass-bg-soft;
+    border-radius: $r-24;
+    padding: $gap-4;
+    box-shadow: 0 8rpx 32rpx rgba(31, 42, 42, 0.08);
+    border: 1rpx solid rgba(255, 255, 255, 0.65);
+    margin-bottom: $gap-4;
+  }
+
+  .auth-tabs {
+    display: flex;
+    gap: $gap-4;
+    margin-bottom: $gap-4;
+  }
+
+  .auth-tab {
+    position: relative;
+    padding: $gap-1 0;
+    font-size: $fs-lg;
+    font-weight: 600;
+    color: $text-3;
+    transition: color 0.25s $ease-glass;
+
+    &.active {
+      color: $primary-deep;
+
+      &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -4rpx;
+        height: 4rpx;
+        background: $gradient-primary;
+        border-radius: $r-pill;
+      }
+    }
+  }
+
+  .auth-field {
+    margin-bottom: $gap-3;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .auth-field-label {
+    display: block;
+    font-size: $fs-sm;
+    color: $text-2;
+    margin-bottom: $gap-1;
+    font-weight: 500;
+  }
+
+  .auth-field-input {
+    width: 100%;
+    height: 76rpx;
+    padding: 0 $gap-3;
+    background: $primary-tint;
+    border-radius: $r-12;
+    font-size: $fs-md;
+    color: $text-1;
+    box-sizing: border-box;
+
+    &::placeholder {
+      color: $text-3;
+    }
+  }
+
+  .captcha-wrap {
+    display: flex;
+    align-items: center;
+    gap: $gap-2;
+  }
+
+  .captcha-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .captcha-img {
+    width: 180rpx;
+    height: 76rpx;
+    border-radius: $r-12;
+    background: $card;
+    flex-shrink: 0;
+  }
+
+  .agree-row {
+    display: flex;
+    align-items: center;
+    margin-top: $gap-3;
+    gap: $gap-2;
+  }
+
+  .checkbox {
+    width: 40rpx;
+    height: 40rpx;
+    border-radius: $r-12;
+    background: rgba(255, 255, 255, 0.7);
+    border: 2rpx solid rgba(95, 175, 145, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: $fs-md;
+    font-weight: 700;
+    transition: all 0.3s $ease-spring;
+
+    &.checked {
+      background: $gradient-primary;
+      border-color: transparent;
+      box-shadow: 0 4rpx 12rpx rgba(95, 175, 145, 0.35);
+    }
+  }
+
+  .agree-text {
+    font-size: $fs-sm;
+    color: $text-2;
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .auth-submit {
+    width: 100%;
+    height: 88rpx;
+    line-height: 88rpx;
+    border-radius: $r-16;
+    border: none;
+    background: $gradient-primary;
+    color: #fff;
+    font-size: $fs-lg;
+    font-weight: 600;
+    box-shadow: 0 8rpx 24rpx rgba(95, 175, 145, 0.32);
+    transition: opacity 0.25s $ease-glass, transform 0.15s $ease-glass;
+
+    &.disabled {
+      opacity: 0.5;
+      box-shadow: none;
+    }
+
+    &:active:not(.disabled) {
+      transform: scale(0.98);
+    }
+
+    &::after {
+      border: none;
+    }
+  }
 }
 
 // ----- Step 2/3 通用 -----
@@ -448,6 +642,18 @@ function goHome() {
   }
 
   &:last-child { border-bottom: none; }
+}
+
+.form-row-line {
+  display: flex;
+  align-items: center;
+  gap: $gap-2;
+  width: 100%;
+}
+
+.form-slider {
+  width: 100%;
+  margin: 0;
 }
 
 .form-label {

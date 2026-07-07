@@ -136,6 +136,7 @@ import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useDietStore } from '@/store/diet';
 import { useUserStore } from '@/store/user';
+import { useAuthStore } from '@/store/auth';
 import ProgressRing from '@/components/ProgressRing.vue';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { addDays, formatDate, weekdayCN } from '@/utils/date';
@@ -151,6 +152,7 @@ function syncTabBar() {
 
 const dietStore = useDietStore();
 const userStore = useUserStore();
+const auth = useAuthStore();
 
 const mealTypes = MEAL_TYPES;
 const selectedDate = computed(() => dietStore.selectedDate);
@@ -185,6 +187,8 @@ const weekDates = computed(() => {
 });
 
 async function load() {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
   if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
   await dietStore.fetch();
 }
@@ -192,7 +196,7 @@ async function load() {
 onMounted(load);
 onShow(() => {
   syncTabBar();
-  load();
+  if (auth.isLogged) load();
 });
 
 function selectDate(d: string) {
@@ -243,7 +247,6 @@ function go(action: 'add' | 'custom' | 'photo') {
 
 <style lang="scss" scoped>
 .diet-page {
-  min-height: 100vh;
   padding-bottom: calc(#{$tabbar-height} + #{$gap-5});
   animation: lg-fade-up 0.4s $ease-spring both;
 }
@@ -505,7 +508,8 @@ function go(action: 'add' | 'custom' | 'photo') {
 .fab-wrap {
   position: fixed;
   right: $gap-3;
-  bottom: calc(#{$tabbar-height} + #{$gap-3});
+  top: 50%;
+  transform: translateY(-50%);
   z-index: $z-fab;
 }
 

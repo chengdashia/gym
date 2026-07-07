@@ -6,6 +6,9 @@
     <view v-if="actionText" class="action" @tap="$emit('action')">
       <text>{{ actionText }}</text>
     </view>
+    <view v-if="$slots.default">
+      <slot />
+    </view>
   </view>
 </template>
 

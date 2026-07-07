@@ -8,3 +8,4 @@ alembic==1.18.5
 PyJWT==2.10.1
 python-multipart==0.0.20
 cryptography>=42.0.0
+pillow==11.2.1

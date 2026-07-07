@@ -56,6 +56,9 @@ export const dietApi = {
   list(date: string) {
     return http.get<DietRecordsResponse>('/diet/records', { date });
   },
+  getRecord(id: number) {
+    return http.get<DietRecord>(`/diet/records/${id}`);
+  },
   create(payload: CreateDietPayload) {
     return http.post<DietRecord>('/diet/records', payload);
   },

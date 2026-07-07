@@ -2,49 +2,59 @@
   <view class="account-page">
     <view class="section">
       <view class="section-title">体重记录</view>
-      <view class="card quick-weight">
-        <view class="row">
-          <text class="label">最新体重</text>
-          <text class="value">{{ latestWeight ? latestWeight.weight_kg + ' kg' : '暂无' }}</text>
-        </view>
-        <view class="row">
-          <text class="label">记录时间</text>
-          <text class="value">{{ latestWeight ? latestWeight.record_date : '-' }}</text>
-        </view>
-        <view class="form-row">
-          <text class="label">新体重 (kg)</text>
-          <input v-model.number="newWeight" type="digit" placeholder="例 65.5" class="input" />
-        </view>
-        <view class="weight-actions">
-          <PrimaryButton text="保存体重" @tap="saveWeight" />
-        </view>
+      <view :class="['weight-section', { highlight: highlightWeight }]">
+        <liquid-glass-card variant="light" :highlight="true" custom-style="margin-bottom:0">
+          <template v-if="loading">
+            <view class="row">
+              <text class="label">最新体重</text>
+              <text class="value">加载中...</text>
+            </view>
+          </template>
+          <template v-else>
+            <view class="row">
+              <text class="label">最新体重</text>
+              <text class="value">{{ latestWeight ? latestWeight.weight_kg + ' kg' : '暂无' }}</text>
+            </view>
+            <view class="row">
+              <text class="label">记录时间</text>
+              <text class="value">{{ latestWeight ? latestWeight.record_date : '-' }}</text>
+            </view>
+          </template>
+          <view class="form-row">
+            <text class="label">新体重 (kg)</text>
+            <input v-model.number="newWeight" type="digit" placeholder="例 65.5" class="input" />
+          </view>
+          <view class="weight-actions">
+            <liquid-glass-button text="保存体重" variant="primary" @tap="saveWeight" />
+          </view>
+        </liquid-glass-card>
       </view>
     </view>
 
     <view class="section">
       <view class="section-title">账号与数据</view>
-      <view class="card menu">
-        <view class="menu-item">
+      <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
+        <view class="menu-item disabled">
           <view class="mi-emoji">📱</view>
           <text class="mi-label">手机号授权</text>
-          <text class="mi-value">{{ userStore.me?.phone || '未授权' }}</text>
+          <text class="mi-value">功能开发中</text>
         </view>
-        <view class="menu-item" @tap="exportData">
+        <view class="menu-item disabled">
           <view class="mi-emoji">📤</view>
           <text class="mi-label">数据导出</text>
-          <text class="mi-arrow">›</text>
+          <text class="mi-value">功能开发中</text>
         </view>
         <view class="menu-item" @tap="clearCache">
           <view class="mi-emoji">🧹</view>
           <text class="mi-label">清除缓存</text>
           <text class="mi-value">{{ cacheSize }}</text>
         </view>
-      </view>
+      </liquid-glass-card>
     </view>
 
     <view class="section danger-section">
       <view class="section-title">危险操作</view>
-      <view class="card menu">
+      <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item" @tap="confirmDeleteData">
           <view class="mi-emoji">🗑️</view>
           <text class="mi-label danger">删除个人数据</text>
@@ -55,7 +65,7 @@
           <text class="mi-label danger">注销账号</text>
           <text class="mi-arrow">›</text>
         </view>
-      </view>
+      </liquid-glass-card>
     </view>
 
     <ModalConfirm
@@ -82,38 +92,67 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
-import PrimaryButton from '@/components/PrimaryButton.vue';
+import { onShow, onLoad } from '@dcloudio/uni-app';
+import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
+import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
 import ModalConfirm from '@/components/ModalConfirm.vue';
 import { useUserStore } from '@/store/user';
+import { useAuthStore } from '@/store/auth';
 import { weightApi, WeightRecord } from '@/api/weight';
 import { clearAllCache } from '@/utils/cache';
-import { formatDateTime, today } from '@/utils/date';
+import { today } from '@/utils/date';
 
 const userStore = useUserStore();
+const auth = useAuthStore();
 const newWeight = ref<number>(0);
 const latestWeight = ref<WeightRecord | null>(null);
 const showDeleteData = ref(false);
 const showCancel = ref(false);
 const cacheSize = ref('0 KB');
+const loading = ref(false);
+const highlightWeight = ref(false);
+
+onLoad((options: any) => {
+  if (options?.action === 'weight') {
+    setTimeout(() => {
+      uni.pageScrollTo({ selector: '.weight-section', duration: 300 });
+      highlightWeight.value = true;
+      setTimeout(() => {
+        highlightWeight.value = false;
+      }, 600);
+    }, 400);
+  }
+});
 
 onMounted(async () => {
-  if (!userStore.me) await userStore.fetchMe().catch(() => {});
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
+  if (!userStore.me) await userStore.fetchMe().catch(() => {
+    uni.showToast({ title: '加载失败', icon: 'none' });
+  });
   await loadWeight();
   computeCache();
 });
 
 onShow(async () => {
-  if (!userStore.me) await userStore.fetchMe().catch(() => {});
+  if (!auth.isLogged) return;
+  if (!userStore.me) await userStore.fetchMe().catch(() => {
+    uni.showToast({ title: '加载失败', icon: 'none' });
+  });
   await loadWeight();
 });
 
 async function loadWeight() {
+  loading.value = true;
   try {
     const res = await weightApi.list(30);
     const items = (res.items || []).slice().reverse();
     latestWeight.value = items[0] || null;
-  } catch {}
+  } catch (e) {
+    uni.showToast({ title: '加载体重记录失败', icon: 'none' });
+  } finally {
+    loading.value = false;
+  }
 }
 
 function computeCache() {
@@ -149,14 +188,10 @@ async function saveWeight() {
   }
 }
 
-function exportData() {
-  uni.showToast({ title: '数据导出功能开发中', icon: 'none' });
-}
-
 function clearCache() {
   uni.showModal({
     title: '清除缓存',
-    content: '将清除所有本地缓存（包括 token 除外），确定吗？',
+    content: '将清除所有本地缓存（token 除外），确定吗？',
     success: async (r) => {
       if (r.confirm) {
         clearAllCache();
@@ -205,7 +240,6 @@ async function cancelAccount() {
 
 <style lang="scss" scoped>
 .account-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
@@ -220,12 +254,19 @@ async function cancelAccount() {
   padding-left: $gap-1;
 }
 
-.card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-sm;
+.weight-section {
+  border-radius: $r-24;
+  &.highlight {
+    animation: weight-highlight 600ms ease-out;
+  }
 }
+
+@keyframes weight-highlight {
+  0% { background-color: rgba(91, 200, 154, 0); }
+  50% { background-color: rgba(91, 200, 154, 0.3); }
+  100% { background-color: rgba(91, 200, 154, 0); }
+}
+
 .row {
   display: flex;
   justify-content: space-between;
@@ -263,9 +304,17 @@ async function cancelAccount() {
 .menu-item {
   display: flex;
   align-items: center;
-  padding: $gap-2 0;
+  padding: $gap-3;
   border-bottom: 1rpx solid $divider;
+  transition: background 0.3s $ease-glass;
+  &:active {
+    background: rgba(255, 255, 255, 0.5);
+  }
   &:last-child { border-bottom: none; }
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
 }
 .mi-emoji {
   width: 64rpx;
@@ -282,7 +331,7 @@ async function cancelAccount() {
   flex: 1;
   font-size: $fs-md;
   color: $text-1;
-  &.danger { color: $danger; }
+  &.danger { color: $danger; font-weight: 600; }
 }
 .mi-value {
   color: $text-3;

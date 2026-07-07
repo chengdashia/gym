@@ -174,5 +174,4 @@
       "^liquid-glass-panel$": "@/components/LiquidGlassPanel.vue"
     }
   }
-  }
 }

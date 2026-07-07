@@ -22,6 +22,26 @@ class WechatLoginIn(BaseModel):
     avatar_url: Optional[str] = None
 
 
+class PhoneLoginIn(BaseModel):
+    phone: str = Field(..., min_length=11, max_length=11, pattern=r"^1[3-9]\d{9}$")
+    password: str = Field(..., min_length=6, max_length=64)
+
+
+class RegisterIn(BaseModel):
+    phone: str = Field(..., min_length=11, max_length=11, pattern=r"^1[3-9]\d{9}$")
+    password: str = Field(..., min_length=6, max_length=64)
+    confirm_password: str = Field(..., min_length=6, max_length=64)
+    captcha_id: str = Field(..., min_length=1)
+    captcha_code: str = Field(..., min_length=1, max_length=10)
+    nickname: Optional[str] = Field(default=None, max_length=100)
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
+
+
+class CaptchaOut(BaseModel):
+    captcha_id: str
+    svg: str
+
+
 class UserSummary(BaseModel):
     id: int
     openid: Optional[str] = None

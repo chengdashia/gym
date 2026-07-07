@@ -145,20 +145,26 @@ def put_nutrition_goal(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    g = db.query(NutritionGoal).filter(NutritionGoal.user_id == user.id).first()
-    is_new = g is None
-    if is_new:
-        g = NutritionGoal(user_id=user.id)
-        db.add(g)
-    g.calories_kcal = body.calories_kcal
-    g.carbs_g = body.carbs_g
-    g.protein_g = body.protein_g
-    g.fat_g = body.fat_g
-    g.source = "manual"
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+    stmt = mysql_insert(NutritionGoal).values(
+        user_id=user.id,
+        calories_kcal=body.calories_kcal,
+        carbs_g=body.carbs_g,
+        protein_g=body.protein_g,
+        fat_g=body.fat_g,
+        source="manual",
+    )
+    stmt = stmt.on_duplicate_key_update(
+        calories_kcal=stmt.inserted.calories_kcal,
+        carbs_g=stmt.inserted.carbs_g,
+        protein_g=stmt.inserted.protein_g,
+        fat_g=stmt.inserted.fat_g,
+        source="manual",
+    )
+    db.execute(stmt)
     db.add(OperationLog(user_id=user.id, action="users.nutrition_goal.update"))
     db.commit()
-    # 序列化前刷新，避免 commit 后访问属性触发 DetachedInstanceError → 500
-    db.refresh(g)
+    g = db.query(NutritionGoal).filter(NutritionGoal.user_id == user.id).first()
     return ok(_goal_dict(g))
 
 

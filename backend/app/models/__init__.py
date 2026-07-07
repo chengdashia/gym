@@ -25,9 +25,10 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    openid: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    openid: Mapped[Optional[str]] = mapped_column(String(128), unique=True, nullable=True)
     unionid: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     nickname: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")

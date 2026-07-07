@@ -3,8 +3,8 @@
     <view v-if="!imagePath" class="upload-block">
       <EmptyState emoji="📷" title="拍照识别食物" desc="支持拍照或从相册选择">
         <view class="upload-actions">
-          <view class="up-btn" @tap="chooseCamera">📸 拍照</view>
-          <view class="up-btn ghost" @tap="chooseAlbum">🖼️ 相册</view>
+          <liquid-glass-button variant="primary" size="md" :block="false" text="📸 拍照" @tap="chooseCamera" />
+          <liquid-glass-button variant="ghost" size="md" :block="false" text="🖼️ 相册" @tap="chooseAlbum" />
         </view>
       </EmptyState>
     </view>
@@ -19,7 +19,7 @@
 
     <view v-else-if="!picked" class="candidates-block">
       <image :src="imagePath" mode="aspectFill" class="preview-img" />
-      <view class="card">
+      <liquid-glass-card :highlight="true" class="card">
         <view class="card-title">识别结果</view>
         <view v-if="candidates.length === 0" class="empty-tip">
           未能识别出食物，你可以手动搜索添加
@@ -48,12 +48,16 @@
           <view class="form-row">
             <text class="form-label">餐次</text>
             <view class="meal-chips">
-              <view
+              <liquid-glass-pill
                 v-for="m in mealTypes"
                 :key="m.value"
-                :class="['chip', { active: meal === m.value }]"
+                :text="m.label"
+                :variant="meal === m.value ? 'primary' : 'default'"
+                size="sm"
+                interactive
+                :active="meal === m.value"
                 @tap="meal = m.value as MealType"
-              >{{ m.label }}</view>
+              />
             </view>
           </view>
 
@@ -66,11 +70,11 @@
         </view>
 
         <view class="card-actions">
-          <view class="ghost" @tap="reset">重新选择</view>
-          <view v-if="selectedCandidate" class="primary" @tap="save">保存记录</view>
-          <view v-else class="primary" @tap="goSearch">搜索添加</view>
+          <liquid-glass-button variant="ghost" size="md" :block="false" custom-style="flex:1;" text="重新选择" @tap="reset" />
+          <liquid-glass-button v-if="selectedCandidate" variant="primary" size="md" :block="false" custom-style="flex:1;" text="保存记录" @tap="save" />
+          <liquid-glass-button v-else variant="primary" size="md" :block="false" custom-style="flex:1;" text="搜索添加" @tap="goSearch" />
         </view>
-      </view>
+      </liquid-glass-card>
     </view>
   </view>
 </template>
@@ -85,6 +89,7 @@ import { dietApi } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { formatTime, today } from '@/utils/date';
+import { safeNavigateBack } from '@/utils/nav';
 
 const dietStore = useDietStore();
 const mealTypes = MEAL_TYPES;
@@ -178,7 +183,7 @@ async function save() {
     });
     uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 600);
+    setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
   } catch (e: any) {
     uni.hideLoading();
@@ -189,7 +194,6 @@ async function save() {
 
 <style lang="scss" scoped>
 .photo-page {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
@@ -200,17 +204,7 @@ async function save() {
   display: flex;
   gap: $gap-2;
   margin-top: $gap-3;
-}
-.up-btn {
-  padding: 18rpx 36rpx;
-  background: $primary;
-  color: #fff;
-  border-radius: $r-pill;
-  font-size: $fs-md;
-  &.ghost {
-    background: $bg-2;
-    color: $text-2;
-  }
+  justify-content: center;
 }
 
 .preview-img {
@@ -254,10 +248,7 @@ async function save() {
   gap: $gap-3;
 }
 .card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-sm;
+  margin-bottom: 0;
 }
 .card-title {
   font-size: $fs-lg;
@@ -342,17 +333,6 @@ async function save() {
   justify-content: flex-end;
   flex-wrap: wrap;
 }
-.chip {
-  padding: 6rpx 16rpx;
-  border-radius: $r-pill;
-  background: $bg-2;
-  font-size: $fs-xs;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-  }
-}
 .save-row {
   padding: $gap-2 0;
 }
@@ -382,21 +362,5 @@ async function save() {
   display: flex;
   gap: $gap-2;
   margin-top: $gap-3;
-}
-.ghost, .primary {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx;
-  border-radius: $r-16;
-  font-size: $fs-md;
-}
-.ghost {
-  background: $bg-2;
-  color: $text-2;
-}
-.primary {
-  background: $primary;
-  color: #fff;
-  font-weight: 500;
 }
 </style>

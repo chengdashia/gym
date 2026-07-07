@@ -1,6 +1,6 @@
 <template>
   <view class="custom-food">
-    <view class="form-card">
+    <liquid-glass-card variant="light" :highlight="true" class="form-card">
       <view class="form-row">
         <text class="form-label">食物名称</text>
         <input v-model="form.name" placeholder="例如：自制鸡胸饭" class="form-input" />
@@ -8,12 +8,16 @@
       <view class="form-row">
         <text class="form-label">分类</text>
         <view class="cat-chips">
-          <view
+          <liquid-glass-pill
             v-for="c in categories"
             :key="c"
-            :class="['chip', { active: form.category === c }]"
+            :text="c"
+            :variant="form.category === c ? 'primary' : 'default'"
+            size="sm"
+            interactive
+            :active="form.category === c"
             @tap="form.category = c"
-          >{{ c }}</view>
+          />
         </view>
       </view>
 
@@ -42,19 +46,19 @@
         <input v-model.number="form.serving_weight_g" type="digit" placeholder="可选，例 200" class="form-input" />
         <text class="form-unit">g</text>
       </view>
-    </view>
+    </liquid-glass-card>
 
     <view class="action-bar">
-      <PrimaryButton text="保存食物" @tap="save" />
+      <liquid-glass-button variant="primary" text="保存食物" @tap="save" />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { reactive } from 'vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
 import { foodApi } from '@/api/food';
 import { FOOD_CATEGORIES } from '@/utils/constants';
+import { safeNavigateBack } from '@/utils/nav';
 
 const categories = FOOD_CATEGORIES;
 
@@ -73,8 +77,9 @@ async function save() {
     uni.showToast({ title: '请输入食物名称', icon: 'none' });
     return;
   }
-  if (form.calories_per_100g < 0) {
-    uni.showToast({ title: '请输入正确的营养数据', icon: 'none' });
+  const nums = [form.calories_per_100g, form.carbs_per_100g, form.protein_per_100g, form.fat_per_100g];
+  if (nums.some(n => !Number.isFinite(n) || n < 0)) {
+    uni.showToast({ title: '营养值需为非负数字', icon: 'none' });
     return;
   }
   uni.showLoading({ title: '保存中...' });
@@ -91,7 +96,7 @@ async function save() {
     });
     uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.navigateBack(), 600);
+    setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
   } catch (e: any) {
     uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
@@ -101,15 +106,11 @@ async function save() {
 
 <style lang="scss" scoped>
 .custom-food {
-  min-height: 100vh;
   background: $bg;
   padding: $gap-3;
 }
 .form-card {
-  background: $card;
-  border-radius: $r-20;
-  padding: $gap-3;
-  box-shadow: $shadow-sm;
+  margin-bottom: 0;
 }
 .form-row {
   display: flex;
@@ -140,17 +141,6 @@ async function save() {
   flex-wrap: wrap;
   gap: 12rpx;
   justify-content: flex-end;
-}
-.chip {
-  padding: 8rpx 20rpx;
-  border-radius: $r-pill;
-  background: $bg-2;
-  font-size: $fs-sm;
-  color: $text-2;
-  &.active {
-    background: $primary;
-    color: #fff;
-  }
 }
 .divider {
   height: 1rpx;

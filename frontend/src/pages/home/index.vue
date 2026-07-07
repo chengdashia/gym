@@ -160,6 +160,7 @@ import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { homeApi, HomeSummary } from '@/api/home';
 import { useUserStore } from '@/store/user';
+import { useAuthStore } from '@/store/auth';
 import { useTrainingStore } from '@/store/training';
 import ProgressRing from '@/components/ProgressRing.vue';
 import MacroBar from '@/components/MacroBar.vue';
@@ -218,14 +219,20 @@ async function load() {
 }
 
 onMounted(async () => {
-  if (!userStore.me) await userStore.fetchMe().catch(() => {});
-  if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
-  await load();
+  const auth = useAuthStore();
+  if (!auth.ready) await auth.bootstrap();
+  if (auth.isLogged) {
+    if (!userStore.me) await userStore.fetchMe().catch(() => {});
+    if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
+    await load();
+  }
 });
 
-onShow(() => {
+onShow(async () => {
   syncTabBar();
-  if (userStore.me) load();
+  const auth = useAuthStore();
+  if (!auth.ready) await auth.bootstrap();
+  if (auth.isLogged && userStore.me) load();
 });
 
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
@@ -241,7 +248,9 @@ async function startSession() {
   try {
     const session = await trainingStore.startSession(t.plan_id, t.plan_day_id, today());
     uni.navigateTo({ url: `/pages/training/execute?id=${session.id}` });
-  } catch (e) {}
+  } catch (e) {
+    uni.showToast({ title: '开始训练失败', icon: 'none' });
+  }
 }
 
 function continueSession() {
@@ -257,7 +266,6 @@ function recordWeight() {
 
 <style lang="scss" scoped>
 .home {
-  min-height: 100vh;
   padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
   animation: lg-fade-up 0.4s $ease-spring both;
 }

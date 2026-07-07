@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { getToken, setToken, clearAuth } from '@/utils/request';
-import { authApi } from '@/api/auth';
+import { authApi, AuthResult } from '@/api/auth';
 import { STORAGE_KEYS } from '@/utils/constants';
 
 interface UserBrief {
@@ -17,6 +17,8 @@ export const useAuthStore = defineStore('auth', {
     token: '' as string,
     user: null as UserBrief | null,
     bootstrapped: false,
+    ready: false,
+    initPromise: null as Promise<void> | null,
   }),
 
   getters: {
@@ -25,7 +27,13 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    bootstrap() {
+    bootstrap(): Promise<void> {
+      if (this.initPromise) return this.initPromise;
+      this.initPromise = this._doBootstrap();
+      return this.initPromise;
+    },
+
+    async _doBootstrap() {
       const t = getToken();
       if (t) this.token = t;
       try {
@@ -33,6 +41,38 @@ export const useAuthStore = defineStore('auth', {
         if (cached) this.user = cached;
       } catch {}
       this.bootstrapped = true;
+
+      if (!this.token) {
+        this.ready = true;
+        return;
+      }
+
+      try {
+        const me = await (await import('@/api/user')).userApi.getMe();
+        const u = (await import('@/store/user')).useUserStore();
+        u.me = me;
+        this.setUser({
+          id: me.id,
+          nickname: me.nickname,
+          avatar_url: me.avatar_url,
+          is_new_user: false,
+          agreement_confirmed: me.agreement_confirmed,
+          is_member: me.is_member,
+        });
+      } catch {
+        // Token invalid or network error - clear it
+        this.token = '';
+        this.user = null;
+        clearAuth();
+      }
+      this.ready = true;
+    },
+
+    _setAuthData(data: AuthResult) {
+      this.token = data.access_token;
+      setToken(data.access_token);
+      this.user = data.user;
+      uni.setStorageSync(STORAGE_KEYS.user, data.user);
     },
 
     async login(payload?: { nickname?: string; avatar_url?: string }) {
@@ -68,10 +108,25 @@ export const useAuthStore = defineStore('auth', {
         nickname: payload?.nickname,
         avatar_url: payload?.avatar_url,
       });
-      this.token = data.access_token;
-      setToken(data.access_token);
-      this.user = data.user;
-      uni.setStorageSync(STORAGE_KEYS.user, data.user);
+      this._setAuthData(data);
+      return data;
+    },
+
+    async phoneLogin(phone: string, password: string) {
+      const data = await authApi.phoneLogin({ phone, password });
+      this._setAuthData(data);
+      return data;
+    },
+
+    async register(phone: string, password: string, confirmPassword: string, captchaId: string, captchaCode: string) {
+      const data = await authApi.register({
+        phone,
+        password,
+        confirm_password: confirmPassword,
+        captcha_id: captchaId,
+        captcha_code: captchaCode,
+      });
+      this._setAuthData(data);
       return data;
     },
 
