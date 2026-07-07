@@ -38,11 +38,16 @@
           </view>
         </view>
         <view class="footer">
-          <Tag
-            :text="statusText(s.status)"
-            :variant="s.status === 'completed' ? 'primary' : s.status === 'cancelled' ? 'danger' : 'soft'"
-          />
-          <text class="more">详情 ›</text>
+          <view class="footer-left">
+            <Tag
+              :text="statusText(s.status)"
+              :variant="s.status === 'completed' ? 'primary' : s.status === 'cancelled' ? 'danger' : 'soft'"
+            />
+          </view>
+          <view class="footer-right">
+            <text class="more">详情 ›</text>
+            <text class="del-btn" @tap.stop="confirmDelete(s)">删除</text>
+          </view>
         </view>
       </liquid-glass-card>
     </view>
@@ -87,6 +92,24 @@ function statusText(s: string) {
 
 function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/training/history-detail?id=${id}` });
+}
+
+function confirmDelete(s: TrainingSession) {
+  uni.showModal({
+    title: '删除训练记录',
+    content: `确定删除「${s.session_name}」记录？删除后不可恢复。`,
+    confirmColor: '#F26565',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await trainingApi.deleteSession(s.id);
+        uni.showToast({ title: '已删除', icon: 'success' });
+        await load();
+      } catch (e: any) {
+        uni.showToast({ title: e?.message || '删除失败', icon: 'none' });
+      }
+    },
+  });
 }
 
 onMounted(load);
@@ -146,8 +169,28 @@ onShow(() => {
   padding-top: $gap-2;
   border-top: 1rpx solid $divider;
 }
+.footer-left {
+  display: flex;
+  align-items: center;
+}
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: $gap-2;
+}
 .more {
   font-size: $fs-sm;
   color: $text-3;
+}
+.del-btn {
+  font-size: $fs-xs;
+  color: #F26565;
+  padding: 4rpx 12rpx;
+  border-radius: $r-pill;
+  background: rgba(242, 101, 101, 0.08);
+
+  &:active {
+    background: rgba(242, 101, 101, 0.15);
+  }
 }
 </style>

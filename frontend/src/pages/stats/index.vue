@@ -294,7 +294,7 @@ const weightOption = computed(() => {
   if (!valid.length) return null;
   const dates = weightData.value.map((d) => d.date.slice(5));
   const weights = weightData.value.map((d) => d.weight_kg);
-  const target = weightData.value[0]?.target_weight_kg;
+  const target = valid[0]?.target_weight_kg;
 
   return {
     color: [chartTheme.primary, chartTheme.warm],

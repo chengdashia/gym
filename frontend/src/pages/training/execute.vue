@@ -81,9 +81,9 @@
 
       <!-- 当前动作操作 -->
       <view class="current-actions">
-        <view v-if="!isCurrentDone" class="hint">完成所有组后进入下一个动作</view>
-        <liquid-glass-button v-else-if="hasNextEx" text="下一个动作 →" variant="primary" @tap="nextExercise" />
-        <liquid-glass-button v-else text="完成训练 🎉" variant="primary" @tap="finishSession" />
+        <view v-if="!isCurrentDone" class="hint">可按任意顺序勾选组数</view>
+        <liquid-glass-button v-if="hasNextEx" text="下一个动作 →" variant="ghost" size="sm" :block="false" @tap="nextExercise" />
+        <liquid-glass-button v-if="allDone" :text="finishing ? '提交中...' : '完成训练 🎉'" variant="primary" :disabled="finishing" @tap="finishSession" />
       </view>
     </view>
 
@@ -164,6 +164,7 @@ const trainingStore = useTrainingStore();
 const showQuit = ref(false);
 const showAbandon = ref(false);
 const saving = ref(false);
+const finishing = ref(false);
 const currentExIdx = ref(0);
 const showOverview = ref(false);
 
@@ -201,6 +202,13 @@ const isCurrentDone = computed(() => {
 const hasNextEx = computed(() => {
   const total = session.value?.exercises?.length || 0;
   return currentExIdx.value < total - 1;
+});
+
+// 所有动作的所有组是否全部完成，作为允许结束训练的条件
+const allDone = computed(() => {
+  const exs = session.value?.exercises;
+  if (!exs || !exs.length) return false;
+  return exs.every((e) => e.sets.length > 0 && e.sets.every((s) => s.completed));
 });
 
 const completedSets = computed(() => {
@@ -288,6 +296,13 @@ function toggleSet(si: number) {
   s.completed = !s.completed;
   ex.completed_sets = ex.sets.filter((x) => x.completed).length;
   if (s.completed) {
+    // 勾选完成时，若未填写实际值，自动用目标值预填，避免详情里实际数据全为空
+    if (s.actual_reps == null || s.actual_reps === undefined) {
+      s.actual_reps = s.target_reps ?? null;
+    }
+    if (s.actual_weight_kg == null || s.actual_weight_kg === undefined) {
+      s.actual_weight_kg = s.target_weight_kg ?? null;
+    }
     // 自动启动组间歇倒计时
     timer.total = ex.rest_seconds;
     timer.remaining = ex.rest_seconds;
@@ -413,19 +428,32 @@ async function saveProgress() {
 
 async function finishSession() {
   if (!session.value) return;
+  if (finishing.value) return;
+  finishing.value = true;
   if (persistTimer) {
     clearTimeout(persistTimer);
     persistTimer = null;
   }
   const res = await persist('in_progress');
-  if (!res) return;
+  if (!res) {
+    finishing.value = false;
+    return;
+  }
   try {
     const finished = await trainingApi.finishSession(session.value!.id);
     session.value = finished;
     uni.showToast({ title: '训练完成 🎉', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/training/index'), 800);
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '完成失败', icon: 'none' });
+    // 训练已结束（重复点击等场景）时，直接返回，避免报错
+    if (e?.code === 40901 || (e?.message || '').includes('已结束')) {
+      uni.showToast({ title: '训练已完成', icon: 'success' });
+      setTimeout(() => safeNavigateBack('/pages/training/index'), 600);
+    } else {
+      uni.showToast({ title: e?.message || '完成失败', icon: 'none' });
+    }
+  } finally {
+    finishing.value = false;
   }
 }
 

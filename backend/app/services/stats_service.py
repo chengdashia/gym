@@ -90,6 +90,13 @@ def weight_series(db: Session, user_id: int, days: int, end: date | None = None,
     for r in rows:
         d = r.record_date.date()
         latest_by_day[d] = float(r.weight_kg)
+
+    # 没有任何体重记录时，用 profile.current_weight_kg 在今天补一个点，避免图表空白
+    if not latest_by_day:
+        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        if profile and profile.current_weight_kg is not None:
+            latest_by_day[end] = float(profile.current_weight_kg)
+
     out = []
     first = next(iter(latest_by_day.values()), None)
     for d in sorted({d for d in range_dates(days, end)}):

@@ -115,12 +115,18 @@ def home_summary(
     ).order_by(WeightRecord.record_date.desc(), WeightRecord.record_time.desc()).first()
     profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
     target = float(profile.target_weight_kg) if profile and profile.target_weight_kg is not None else None
-    cw = float(w.weight_kg) if w else None
+    if w:
+        cw = float(w.weight_kg)
+        last_recorded_at = datetime.combine(w.record_date.date(), w.record_time)
+    else:
+        # 没有体重记录时，回退到个人资料中填写的当前体重
+        cw = float(profile.current_weight_kg) if profile and profile.current_weight_kg is not None else None
+        last_recorded_at = None
     weight = {
         "current_weight_kg": cw,
         "target_weight_kg": target,
         "diff_kg": round(cw - target, 2) if cw is not None and target is not None else None,
-        "last_recorded_at": datetime.combine(w.record_date.date(), w.record_time) if w else None,
+        "last_recorded_at": last_recorded_at,
     }
 
     return ok({

@@ -362,6 +362,7 @@ def today(
         "title": None,
         "exercise_count": 0,
         "today_day": None,
+        "today_completed": False,
         "incomplete_session": _session_to_dict(incomplete) if incomplete else None,
     }
 
@@ -377,6 +378,19 @@ def today(
             if incomplete and incomplete.plan_id == active_plan.id and incomplete.plan_day_id == today_day.id:
                 out["session_id"] = incomplete.id
                 out["session_status"] = incomplete.status
+            # 检查今日该训练日是否已完成训练
+            start_dt = datetime.combine(d, datetime.min.time())
+            end_dt = datetime.combine(d, datetime.max.time())
+            done_today = db.query(TrainingSession).filter(
+                TrainingSession.plan_id == active_plan.id,
+                TrainingSession.plan_day_id == today_day.id,
+                TrainingSession.deleted_at.is_(None),
+                TrainingSession.status == "completed",
+                TrainingSession.session_date >= start_dt,
+                TrainingSession.session_date <= end_dt,
+            ).first()
+            if done_today:
+                out["today_completed"] = True
         else:
             out["is_rest_day"] = True
     return ok(out)
@@ -439,6 +453,29 @@ def create_session(body: SessionCreateIn, user: User = Depends(get_current_user)
     ).first()
     if not day:
         raise BizException(40401, "训练日不存在")
+
+    # sequence 计划：若该训练日当天已有已完成 session，则推进指针到下一个训练日，
+    # 让“今日训练”进入下一个循环
+    if plan.schedule_type == "sequence" and plan.is_active:
+        today_date = body.session_date
+        start_dt = datetime.combine(today_date, datetime.min.time())
+        end_dt = datetime.combine(today_date, datetime.max.time())
+        done_today = db.query(TrainingSession).filter(
+            TrainingSession.plan_id == plan.id,
+            TrainingSession.plan_day_id == day.id,
+            TrainingSession.deleted_at.is_(None),
+            TrainingSession.status == "completed",
+            TrainingSession.session_date >= start_dt,
+            TrainingSession.session_date <= end_dt,
+        ).first()
+        if done_today:
+            advance_sequence_plan(db, plan)
+            db.flush()
+            # 重新解析今日训练日
+            from app.services.schedule import resolve_today_day
+            new_day = resolve_today_day(db, plan, today_date)
+            if new_day and new_day.id != day.id:
+                day = new_day
 
     s = TrainingSession(
         user_id=user.id, plan_id=plan.id, plan_day_id=day.id,
@@ -595,12 +632,17 @@ def finish_session(session_id: int, user: User = Depends(get_current_user), db: 
     s.ended_at = datetime.utcnow()
     s.duration_seconds = int((s.ended_at - s.started_at).total_seconds())
     s.status = "completed"
-    # advance sequence plans
-    if s.plan_id:
-        plan = db.query(TrainingPlan).filter(TrainingPlan.id == s.plan_id).first()
-        if plan and plan.schedule_type == "sequence" and plan.is_active:
-            advance_sequence_plan(db, plan)
-
+    # 完成训练时重算总容量，防止前端最后一次 persist 未触发导致的 0
+    total = 0
+    for se in s.exercises:
+        for st in se.sets:
+            try:
+                total += float(st.volume or 0)
+            except Exception:
+                pass
+    s.total_volume = total
+    # 完成训练时不立刻推进 sequence plan 的 current_day_index，
+    # 避免训练页面 hero 立刻切到下一天；指针在下次创建 session 时按需推进。
     db.add(OperationLog(user_id=user.id, action="training.session.finish", target_type="session", target_id=s.id))
     db.commit()
     db.refresh(s)
@@ -621,3 +663,17 @@ def cancel_session(session_id: int, user: User = Depends(get_current_user), db: 
     db.add(OperationLog(user_id=user.id, action="training.session.cancel", target_type="session", target_id=s.id))
     db.commit()
     return ok(_session_to_dict(s))
+
+
+@router.delete("/sessions/{session_id}")
+def delete_session(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = db.query(TrainingSession).filter(
+        TrainingSession.id == session_id, TrainingSession.user_id == user.id,
+        TrainingSession.deleted_at.is_(None),
+    ).first()
+    if not s:
+        raise BizException(40401, "训练记录不存在")
+    s.deleted_at = datetime.utcnow()
+    db.add(OperationLog(user_id=user.id, action="training.session.delete", target_type="session", target_id=s.id))
+    db.commit()
+    return ok({"deleted": session_id})

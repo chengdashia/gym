@@ -127,7 +127,7 @@
             <input v-model.number="form.age" type="number" placeholder="请输入年龄" class="form-input" />
             <text class="form-unit">岁</text>
           </view>
-          <slider :min="10" :max="100" :step="1" :value="form.age" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.age = e.detail.value" class="form-slider" />
+          <slider :min="10" :max="100" :step="1" :value="form.age" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @changing="e => form.age = e.detail.value" @change="e => form.age = e.detail.value" class="form-slider" />
         </view>
 
         <view class="form-row column">
@@ -136,7 +136,7 @@
             <input v-model.number="form.height_cm" type="digit" placeholder="请输入身高" class="form-input" />
             <text class="form-unit">cm</text>
           </view>
-          <slider :min="120" :max="220" :step="1" :value="form.height_cm" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.height_cm = e.detail.value" class="form-slider" />
+          <slider :min="120" :max="220" :step="1" :value="form.height_cm" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @changing="e => form.height_cm = e.detail.value" @change="e => form.height_cm = e.detail.value" class="form-slider" />
         </view>
 
         <view class="form-row column">
@@ -145,7 +145,7 @@
             <input v-model.number="form.current_weight_kg" type="digit" placeholder="请输入当前体重" class="form-input" />
             <text class="form-unit">kg</text>
           </view>
-          <slider :min="30" :max="200" :step="0.5" :value="form.current_weight_kg" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.current_weight_kg = e.detail.value" class="form-slider" />
+          <slider :min="30" :max="200" :step="0.5" :value="form.current_weight_kg" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @changing="e => form.current_weight_kg = e.detail.value" @change="e => form.current_weight_kg = e.detail.value" class="form-slider" />
         </view>
 
         <view class="form-row column">
@@ -154,7 +154,7 @@
             <input v-model.number="form.target_weight_kg" type="digit" placeholder="请输入目标体重" class="form-input" />
             <text class="form-unit">kg</text>
           </view>
-          <slider :min="30" :max="200" :step="0.5" :value="form.target_weight_kg" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @change="e => form.target_weight_kg = e.detail.value" class="form-slider" />
+          <slider :min="30" :max="200" :step="0.5" :value="form.target_weight_kg" activeColor="#3FA67C" blockColor="#3FA67C" block-size="20" @changing="e => form.target_weight_kg = e.detail.value" @change="e => form.target_weight_kg = e.detail.value" class="form-slider" />
         </view>
 
         <view class="form-row column">

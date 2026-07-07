@@ -129,26 +129,6 @@
           <view v-if="weight.last_recorded_at" class="weight-foot">最近记录：{{ formatDateTime(weight.last_recorded_at) }}</view>
         </view>
       </liquid-glass-card>
-
-      <!-- 快捷入口 -->
-      <view class="quick-grid">
-        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goAddDiet" class="quick-item">
-          <view class="qi-icon" style="background: linear-gradient(135deg, #C5ECDB, #5BC89A);">🥗</view>
-          <view class="qi-label">添加饮食</view>
-        </liquid-glass-card>
-        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goPhoto" class="quick-item">
-          <view class="qi-icon" style="background: linear-gradient(135deg, #FFEED9, #FFD79A);">📷</view>
-          <view class="qi-label">拍照识别</view>
-        </liquid-glass-card>
-        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goTraining" class="quick-item">
-          <view class="qi-icon" style="background: linear-gradient(135deg, #D4E5F4, #6BA8D6);">🏋️</view>
-          <view class="qi-label">训练计划</view>
-        </liquid-glass-card>
-        <liquid-glass-card :highlight="true" hoverable radius="24rpx" padding="20rpx 0" @tap="goStats" class="quick-item">
-          <view class="qi-icon" style="background: linear-gradient(135deg, #EBDAF2, #C490E0);">📊</view>
-          <view class="qi-label">数据趋势</view>
-        </liquid-glass-card>
-      </view>
     </view>
 
     <!-- 自定义液态玻璃 TabBar 由 pages.json tabBar.custom 渲染 -->
@@ -238,8 +218,6 @@ onShow(async () => {
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
-function goAddDiet() { uni.switchTab({ url: '/pages/diet/index' }); }
-function goPhoto() { uni.navigateTo({ url: '/pages/diet/photo-recognize' }); }
 function goCreatePlan() { uni.navigateTo({ url: '/pages/training/plan-edit' }); }
 
 async function startSession() {
@@ -569,37 +547,5 @@ function recordWeight() {
   font-size: $fs-xs;
   color: $text-3;
   text-align: center;
-}
-
-// ----- Quick Grid -----
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: $gap-2;
-  margin-top: $gap-2;
-}
-
-.quick-item {
-  text-align: center;
-}
-
-.qi-icon {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40rpx;
-  margin: 0 auto 8rpx;
-  box-shadow:
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.6),
-    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
-}
-
-.qi-label {
-  font-size: $fs-xs;
-  color: $text-2;
-  font-weight: 500;
 }
 </style>

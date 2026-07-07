@@ -32,6 +32,14 @@
             @tap="continueSession"
           />
           <liquid-glass-button
+            v-else-if="todayInfo && todayInfo.today_completed && todayInfo.plan_id"
+            text="再练一次"
+            variant="soft"
+            size="md"
+            :block="false"
+            @tap="startSession"
+          />
+          <liquid-glass-button
             v-else-if="todayInfo && !todayInfo.is_rest_day && todayInfo.plan_id"
             text="开始今日训练"
             variant="primary"
@@ -87,7 +95,7 @@
           v-for="p in plans"
           :key="p.id"
           :class="['plan-card-wrap', { active: p.is_active }]"
-          @tap="onPlanTap(p)"
+          @tap="goEditPlan(p.id)"
         >
           <liquid-glass-card
             :variant="p.is_active ? 'tint' : 'light'"
@@ -113,9 +121,6 @@
                   <text>{{ scheduleTypeLabel(p.schedule_type) }}</text>
                 </view>
               </view>
-              <view class="plan-action" @tap.stop="goEditPlan(p.id)">
-                <text class="plan-action-text">编辑</text>
-              </view>
             </view>
 
             <view v-if="p.days && p.days.length > 0" class="plan-days-preview">
@@ -124,7 +129,7 @@
                 :key="di"
                 :class="['day-chip', { rest: d.is_rest_day }]"
               >
-                {{ d.is_rest_day ? '休' : d.day_name?.slice(0, 2) || `D${d.day_index}` }}
+                {{ dayChipLabel(d) }}
               </view>
               <view v-if="p.days.length > 5" class="day-chip more">+{{ p.days.length - 5 }}</view>
             </view>
@@ -158,7 +163,7 @@ import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useTrainingStore } from '@/store/training';
 import { useAuthStore } from '@/store/auth';
-import { trainingApi, TrainingPlan } from '@/api/training';
+import { trainingApi } from '@/api/training';
 import { today } from '@/utils/date';
 
 function syncTabBar() {
@@ -180,6 +185,7 @@ const heroTitle = computed(() => {
   if (loading.value) return '加载中...';
   if (!t || !t.has_plan) return '开始你的训练';
   if (t.is_rest_day) return '今日是休息日';
+  if (t.today_completed) return '今日已完成训练';
   return t.title || '今日训练';
 });
 
@@ -187,6 +193,7 @@ const heroSubtitle = computed(() => {
   const t = todayInfo.value;
   if (!t || !t.has_plan) return '创建计划，开启每一次进步';
   if (t.is_rest_day) return '好好休息，肌肉在休息中生长 💪';
+  if (t.today_completed) return '辛苦了！点击下方可再练一次进入下一循环';
   if (t.session_status === 'in_progress') return '训练进行中，加油！';
   if (t.exercise_count > 0) return `准备好挑战 ${t.exercise_count} 个动作了吗？`;
   return '今天是训练日';
@@ -196,6 +203,7 @@ const heroIcon = computed(() => {
   const t = todayInfo.value;
   if (!t || !t.has_plan) return '🏋️';
   if (t.is_rest_day) return '😴';
+  if (t.today_completed) return '✅';
   if (t.session_status === 'in_progress') return '🔥';
   return '💪';
 });
@@ -204,6 +212,7 @@ const heroVariant = computed<'mint' | 'warm' | 'light' | 'dark'>(() => {
   const t = todayInfo.value;
   if (!t || !t.has_plan) return 'light';
   if (t.is_rest_day) return 'light';
+  if (t.today_completed) return 'mint';
   if (t.session_status === 'in_progress') return 'warm';
   return 'mint';
 });
@@ -213,6 +222,7 @@ const heroStatusText = computed(() => {
   if (loading.value) return '加载中';
   if (!t || !t.has_plan) return '未设置计划';
   if (t.is_rest_day) return '休息日';
+  if (t.today_completed) return '已完成';
   if (t.session_status === 'in_progress') return '进行中';
   return '今日训练';
 });
@@ -228,6 +238,16 @@ function scheduleTypeLabel(type: string | null): string {
   if (type === 'weekly') return '按周排期';
   if (type === 'sequence') return '顺序循环';
   return '';
+}
+
+// 训练日缩略标签：取括号前的部分，避免出现「推（」「拉（」这类残缺显示
+function dayChipLabel(d: { is_rest_day?: boolean; day_name?: string; day_index?: number }): string {
+  if (d.is_rest_day) return '休';
+  const name = d.day_name || '';
+  const base = name.split(/[（(]/)[0].trim();
+  if (base) return base.slice(0, 2);
+  if (name) return name.slice(0, 2);
+  return `D${d.day_index ?? ''}`;
 }
 
 async function load() {
@@ -269,66 +289,6 @@ async function startSession() {
 function continueSession() {
   if (todayInfo.value?.session_id) {
     uni.navigateTo({ url: `/pages/training/execute?id=${todayInfo.value.session_id}` });
-  }
-}
-
-async function onPlanTap(p: TrainingPlan) {
-  if (p.is_active) {
-    const t = todayInfo.value;
-    if (t && !t.is_rest_day && t.plan_id && t.plan_day_id) {
-      if (t.session_id) {
-        continueSession();
-      } else {
-        await startSession();
-      }
-    } else if (t && t.is_rest_day) {
-      uni.showToast({ title: '今天是休息日', icon: 'none' });
-    } else {
-      await refreshAndStart(p.id);
-    }
-  } else {
-    uni.showModal({
-      title: '激活计划',
-      content: `确定将「${p.name}」设为当前训练计划吗？`,
-      success: async (res) => {
-        if (res.confirm) {
-          await activatePlan(p.id);
-        }
-      },
-    });
-  }
-}
-
-async function refreshAndStart(planId: number) {
-  try {
-    await trainingStore.fetchToday(today());
-    const t = trainingStore.today;
-    if (t && !t.is_rest_day && t.plan_id && t.plan_day_id) {
-      if (t.session_id) {
-        uni.navigateTo({ url: `/pages/training/execute?id=${t.session_id}` });
-      } else {
-        const session = await trainingStore.startSession(t.plan_id, t.plan_day_id, today());
-        uni.navigateTo({ url: `/pages/training/execute?id=${session.id}` });
-      }
-    } else {
-      uni.showToast({ title: '今天是休息日', icon: 'none' });
-    }
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
-  }
-}
-
-async function activatePlan(planId: number) {
-  uni.showLoading({ title: '激活中...' });
-  try {
-    await trainingApi.setActive(planId);
-    await trainingStore.fetchPlans().catch(() => {});
-    await trainingStore.fetchToday(today()).catch(() => {});
-    uni.hideLoading();
-    uni.showToast({ title: '已激活', icon: 'success' });
-  } catch (e: any) {
-    uni.hideLoading();
-    uni.showToast({ title: e?.message || '激活失败', icon: 'none' });
   }
 }
 
@@ -567,19 +527,6 @@ function goEditPlan(id: number) {
 
 .dot {
   opacity: 0.5;
-}
-
-.plan-action {
-  padding: 8rpx 16rpx;
-  background: rgba(91, 200, 154, 0.1);
-  border-radius: $r-pill;
-  flex-shrink: 0;
-}
-
-.plan-action-text {
-  font-size: $fs-xs;
-  color: $primary;
-  font-weight: 600;
 }
 
 .plan-days-preview {

@@ -106,24 +106,24 @@
       </view>
     </view>
 
-    <!-- 添加方式选择：底部弹出玻璃 Sheet -->
+    <!-- 添加方式选择：居中弹出玻璃面板 -->
     <view v-if="showAddSheet" class="sheet-mask" @tap="showAddSheet = false">
       <view class="sheet-wrap" @tap.stop>
         <view class="sheet-grip" />
         <view class="sheet-title">添加饮食</view>
-        <liquid-glass-card
-          v-for="opt in addOptions"
-          :key="opt.action"
-          :highlight="true"
-          hoverable
-          padding="20rpx 24rpx"
-          class="sheet-item"
-          @tap="go(opt.action)"
-        >
-          <view class="sheet-emoji">{{ opt.emoji }}</view>
-          <view class="sheet-text">{{ opt.text }}</view>
-          <view class="sheet-arrow">›</view>
-        </liquid-glass-card>
+        <view class="sheet-subtitle">选择一种记录方式</view>
+        <view class="sheet-grid">
+          <view
+            v-for="opt in addOptions"
+            :key="opt.action"
+            class="sheet-grid-item"
+            @tap="go(opt.action)"
+          >
+            <view class="sheet-emoji" :style="{ background: opt.bg }">{{ opt.emoji }}</view>
+            <view class="sheet-text">{{ opt.text }}</view>
+            <view class="sheet-desc">{{ opt.desc }}</view>
+          </view>
+        </view>
         <view class="sheet-cancel" @tap="showAddSheet = false">取消</view>
       </view>
     </view>
@@ -167,9 +167,9 @@ const showAddSheet = ref(false);
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
 
 const addOptions = [
-  { action: 'add' as const,    emoji: '🔍', text: '搜索食物' },
-  { action: 'custom' as const, emoji: '✏️', text: '自定义食物' },
-  { action: 'photo' as const,  emoji: '📷', text: '拍照识别' },
+  { action: 'add' as const,    emoji: '🔍', text: '搜索食物', desc: '从食物库查找', bg: 'linear-gradient(135deg, #C5ECDB, #5BC89A)' },
+  { action: 'custom' as const, emoji: '✏️', text: '自定义食物', desc: '手动录入营养', bg: 'linear-gradient(135deg, #FFEED9, #FFD79A)' },
+  { action: 'photo' as const,  emoji: '📷', text: '拍照识别', desc: 'AI 智能识别', bg: 'linear-gradient(135deg, #D4E5F4, #6BA8D6)' },
 ];
 
 const weekDates = computed(() => {
@@ -248,7 +248,13 @@ function go(action: 'add' | 'custom' | 'photo') {
 <style lang="scss" scoped>
 .diet-page {
   padding-bottom: calc(#{$tabbar-height} + #{$gap-5});
-  animation: lg-fade-up 0.4s $ease-spring both;
+  animation: diet-page-in 0.4s $ease-spring both;
+}
+
+// 仅淡入不使用 transform，避免破坏子元素 position:fixed 的定位基准
+@keyframes diet-page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 // ----- Header -----
@@ -550,14 +556,16 @@ function go(action: 'add' | 'custom' | 'photo') {
   pointer-events: none;
 }
 
-// ----- Sheet -----
+// ----- Sheet (居中弹窗) -----
 .sheet-mask {
   position: fixed;
   inset: 0;
   background: rgba(31, 42, 42, 0.45);
   z-index: $z-sheet;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
+  padding: $gap-4;
   animation: sheet-fade-in 0.3s $ease-glass both;
 }
 
@@ -568,83 +576,106 @@ function go(action: 'add' | 'custom' | 'photo') {
 
 .sheet-wrap {
   width: 100%;
-  background: rgba(247, 250, 248, 0.95);
+  max-width: 580rpx;
+  background: rgba(247, 250, 248, 0.97);
   // #ifdef H5 || APP-PLUS
-  backdrop-filter: blur(32rpx) saturate(180%);
-  -webkit-backdrop-filter: blur(32rpx) saturate(180%);
+  backdrop-filter: blur(40rpx) saturate(180%);
+  -webkit-backdrop-filter: blur(40rpx) saturate(180%);
   // #endif
-  border-radius: 32rpx 32rpx 0 0;
-  padding: $gap-2 $gap-3 calc(#{$gap-3} + env(safe-area-inset-bottom));
-  box-shadow: 0 -8rpx 32rpx rgba(31, 42, 42, 0.15);
-  animation: sheet-up 0.4s $ease-spring both;
+  border-radius: 36rpx;
+  padding: $gap-3 $gap-3 $gap-3;
+  box-shadow: 0 24rpx 64rpx rgba(31, 42, 42, 0.25);
+  animation: sheet-pop 0.35s $ease-spring both;
 }
 
-@keyframes sheet-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+@keyframes sheet-pop {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .sheet-grip {
-  width: 60rpx;
+  width: 64rpx;
   height: 6rpx;
-  background: rgba(143, 163, 161, 0.4);
+  background: rgba(143, 163, 161, 0.35);
   border-radius: $r-pill;
   margin: 0 auto $gap-2;
 }
 
 .sheet-title {
   text-align: center;
-  font-size: $fs-md;
+  font-size: $fs-xl;
   font-weight: 700;
   color: $text-1;
+  letter-spacing: 0.5rpx;
+}
+
+.sheet-subtitle {
+  text-align: center;
+  font-size: $fs-xs;
+  color: $text-3;
+  margin-top: 4rpx;
   margin-bottom: $gap-3;
 }
 
-.sheet-item {
+.sheet-grid {
+  display: flex;
+  flex-direction: column;
+  gap: $gap-2;
+}
+
+.sheet-grid-item {
   display: flex;
   align-items: center;
-  margin-bottom: $gap-2;
+  padding: $gap-3;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s $ease-spring, background 0.3s $ease-glass;
+
+  &:active {
+    transform: scale(0.97);
+    background: rgba(255, 255, 255, 0.85);
+  }
 }
 
 .sheet-emoji {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 18rpx;
-  background: linear-gradient(135deg, #C5ECDB, #5BC89A);
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 22rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32rpx;
-  margin-right: $gap-2;
-  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
+  font-size: 44rpx;
+  margin-right: $gap-3;
+  flex-shrink: 0;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.6),
+    0 4rpx 12rpx rgba(95, 175, 145, 0.15);
 }
 
 .sheet-text {
-  flex: 1;
   font-size: $fs-md;
   color: $text-1;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.3rpx;
 }
 
-.sheet-arrow {
-  font-size: $fs-lg;
+.sheet-desc {
+  font-size: $fs-xs;
   color: $text-3;
+  margin-top: 4rpx;
 }
 
 .sheet-cancel {
   margin-top: $gap-3;
   text-align: center;
-  padding: $gap-3;
-  background: rgba(238, 244, 241, 0.7);
-  border-radius: $r-16;
+  padding: $gap-2;
   color: $text-2;
   font-size: $fs-md;
-  font-weight: 600;
-  transition: background 0.3s $ease-glass, transform 0.3s $ease-spring;
+  font-weight: 500;
 
   &:active {
-    background: rgba(238, 244, 241, 1);
-    transform: scale(0.98);
+    opacity: 0.6;
   }
 }
 </style>

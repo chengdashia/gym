@@ -104,6 +104,7 @@ export interface TodayTraining {
   title: string | null;
   exercise_count: number;
   schedule_type: string | null;
+  today_completed?: boolean;
 }
 
 export const trainingApi = {
@@ -145,6 +146,9 @@ export const trainingApi = {
   },
   cancelSession(id: number) {
     return http.post<TrainingSession>(`/training/sessions/${id}/cancel`);
+  },
+  deleteSession(id: number) {
+    return http.del(`/training/sessions/${id}`);
   },
   listSessions(params: { start_date?: string; end_date?: string }) {
     return http.get<{ items: TrainingSession[] }>('/training/sessions', params);

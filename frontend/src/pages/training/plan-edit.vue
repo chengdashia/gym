@@ -211,6 +211,25 @@
       </liquid-glass-card>
     </liquid-glass-card>
 
+    <!-- 计划操作 -->
+    <view v-if="id" class="plan-actions">
+      <liquid-glass-button
+        variant="soft"
+        size="md"
+        :block="false"
+        :text="activating ? '设置中...' : '设为当前计划'"
+        :disabled="activating"
+        @tap="setActive"
+      />
+      <liquid-glass-button
+        variant="danger"
+        size="md"
+        :block="false"
+        text="删除计划"
+        @tap="removePlan"
+      />
+    </view>
+
   </view>
 </template>
 
@@ -223,6 +242,7 @@ import { safeNavigateBack } from '@/utils/nav';
 
 const id = ref(0);
 const saving = ref(false);
+const activating = ref(false);
 
 const weekdayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
@@ -498,12 +518,52 @@ function safeToast(title: string, icon: 'success' | 'none' | 'error' = 'none') {
     /* 页面已销毁，忽略 */
   }
 }
+
+async function setActive() {
+  if (!id.value || activating.value) return;
+  activating.value = true;
+  try {
+    await trainingApi.setActive(id.value);
+    safeToast('已设为当前计划', 'success');
+    setTimeout(() => safeNavigateBack('/pages/training/index'), 600);
+  } catch (e: any) {
+    safeToast(e?.message || '设置失败', 'none');
+  } finally {
+    activating.value = false;
+  }
+}
+
+async function removePlan() {
+  if (!id.value) return;
+  uni.showModal({
+    title: '删除计划',
+    content: '确定删除该训练计划？删除后不可恢复。',
+    confirmColor: '#F26565',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await trainingApi.deletePlan(id.value);
+        safeToast('已删除', 'success');
+        setTimeout(() => safeNavigateBack('/pages/training/index'), 600);
+      } catch (e: any) {
+        safeToast(e?.message || '删除失败', 'none');
+      }
+    },
+  });
+}
 </script>
 
 <style lang="scss" scoped>
 .plan-edit-page {
   background: $bg;
   padding: $gap-3;
+}
+
+.plan-actions {
+  display: flex;
+  gap: $gap-2;
+  margin-top: $gap-3;
+  justify-content: center;
 }
 .header {
   display: flex;
