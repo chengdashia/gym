@@ -145,6 +145,7 @@ import { useTrainingStore } from '@/store/training';
 import ProgressRing from '@/components/ProgressRing.vue';
 import MacroBar from '@/components/MacroBar.vue';
 import { today, weekdayCN, dateMD, formatDateTime } from '@/utils/date';
+import { requireAuth } from '@/utils/auth-guard';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -201,6 +202,13 @@ async function load() {
 onMounted(async () => {
   const auth = useAuthStore();
   if (!auth.ready) await auth.bootstrap();
+  // 登录态但未确认协议 → 跳到 onboarding 完善资料
+  // 放在首页 onMounted 中执行（页面 webview 已 ready），避免 onLaunch 过早 reLaunch
+  // 触发「routeDone with a webviewId X is not found」错误
+  if (auth.token && auth.user && !auth.user.agreement_confirmed) {
+    uni.reLaunch({ url: '/pages/login/onboarding' });
+    return;
+  }
   if (auth.isLogged) {
     if (!userStore.me) await userStore.fetchMe().catch(() => {});
     if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
@@ -212,15 +220,17 @@ onShow(async () => {
   syncTabBar();
   const auth = useAuthStore();
   if (!auth.ready) await auth.bootstrap();
-  if (auth.isLogged && userStore.me) load();
+  if (!auth.isLogged) return;
+  if (!userStore.me) await userStore.fetchMe().catch(() => {});
+  load();
 });
 
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
-function goCreatePlan() { uni.navigateTo({ url: '/pages/training/plan-edit' }); }
 
 async function startSession() {
+  if (!requireAuth({ redirect: '/pages/home/index' })) return;
   const t = training.value;
   if (!t.plan_id || !t.plan_day_id) return;
   try {
@@ -232,12 +242,19 @@ async function startSession() {
 }
 
 function continueSession() {
+  if (!requireAuth({ redirect: '/pages/home/index' })) return;
   if (training.value.session_id) {
     uni.navigateTo({ url: `/pages/training/execute?id=${training.value.session_id}` });
   }
 }
 
+function goCreatePlan() {
+  if (!requireAuth({ redirect: '/pages/home/index' })) return;
+  uni.navigateTo({ url: '/pages/training/plan-edit' });
+}
+
 function recordWeight() {
+  if (!requireAuth({ redirect: '/pages/home/index' })) return;
   uni.navigateTo({ url: '/pages/mine/account?action=weight' });
 }
 </script>

@@ -89,6 +89,7 @@ import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { FITNESS_GOALS, TRAINING_FREQUENCIES } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -134,7 +135,7 @@ function syncFromStore() {
 onMounted(async () => {
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) {
-    ready.value = true;
+    requireAuth({ redirect: '/pages/mine/profile' });
     return;
   }
   if (!userStore.me) {

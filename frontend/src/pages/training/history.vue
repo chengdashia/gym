@@ -62,6 +62,7 @@ import { useAuthStore } from '@/store/auth';
 import EmptyState from '@/components/EmptyState.vue';
 import Tag from '@/components/Tag.vue';
 import { humanizeDuration, rangeDays, today } from '@/utils/date';
+import { requireAuth } from '@/utils/auth-guard';
 
 const auth = useAuthStore();
 const ranges = [7, 30, 90];
@@ -70,7 +71,10 @@ const sessions = ref<TrainingSession[]>([]);
 
 async function load() {
   if (!auth.ready) await auth.bootstrap();
-  if (!auth.isLogged) return;
+  if (!auth.isLogged) {
+    requireAuth({ redirect: '/pages/training/history' });
+    return;
+  }
   const dates = rangeDays(today(), range.value);
   try {
     const res = await trainingApi.listSessions({ start_date: dates[0], end_date: dates[dates.length - 1] });

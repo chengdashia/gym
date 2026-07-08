@@ -150,10 +150,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
 import { useTrainingStore } from '@/store/training';
+import { useAuthStore } from '@/store/auth';
 import { trainingApi, TrainingSession } from '@/api/training';
 import { createTimer } from '@/utils/timer';
 import { formatDateTime } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 import RestTimer from '@/components/RestTimer.vue';
 import ModalConfirm from '@/components/ModalConfirm.vue';
 
@@ -161,6 +163,7 @@ const id = ref(0);
 const session = ref<TrainingSession | null>(null);
 const loading = ref(true);
 const trainingStore = useTrainingStore();
+const auth = useAuthStore();
 const showQuit = ref(false);
 const showAbandon = ref(false);
 const saving = ref(false);
@@ -239,6 +242,16 @@ onMounted(async () => {
   const pages = getCurrentPages();
   const opt = (pages[pages.length - 1] as any)?.options || {};
   id.value = Number(opt.id || 0);
+
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) {
+    const redirect = id.value
+      ? `/pages/training/execute?id=${id.value}`
+      : '/pages/training/execute';
+    requireAuth({ redirect });
+    return;
+  }
+
   await loadSession();
   // 跳到第一个未完成的动作
   jumpToFirstUndone();

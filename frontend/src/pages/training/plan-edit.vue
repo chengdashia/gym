@@ -239,6 +239,8 @@ import { trainingApi, TrainingTemplate, PlanDay, PlanExercise } from '@/api/trai
 import { exerciseApi } from '@/api/exercises';
 import { SCHEDULE_TYPES } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
+import { useAuthStore } from '@/store/auth';
+import { requireAuth } from '@/utils/auth-guard';
 
 const id = ref(0);
 const saving = ref(false);
@@ -276,7 +278,20 @@ const exSearchKw = ref('');
 const exSearchList = ref<{ id: number; name: string; body_part: string; source: 'system' | 'custom' }[]>([]);
 const exSearched = ref(false);
 
+const auth = useAuthStore();
+
 onMounted(async () => {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) {
+    const pages = getCurrentPages();
+    const opt = (pages[pages.length - 1] as any)?.options || {};
+    const redirect = opt.id
+      ? `/pages/training/plan-edit?id=${opt.id}`
+      : '/pages/training/plan-edit';
+    requireAuth({ redirect });
+    return;
+  }
+
   const pages = getCurrentPages();
   const opt = (pages[pages.length - 1] as any)?.options || {};
   id.value = Number(opt.id || 0);

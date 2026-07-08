@@ -1,6 +1,98 @@
 <template>
   <view class="account-page">
-    <view class="section">
+    <!-- 记录体重专用模式 -->
+    <view v-if="isWeightAction" class="weight-only-page">
+      <!-- Hero：当前体重 + 变化 + BMI + 目标 -->
+      <liquid-glass-card variant="light" :highlight="true" class="hero-card">
+        <view class="hero-top">
+          <view>
+            <view class="hero-label">最新体重</view>
+            <view class="hero-weight">
+              {{ latestWeight ? formatNumber(latestWeight.weight_kg) : '--' }}
+              <text class="hero-unit">kg</text>
+            </view>
+            <view class="hero-date">{{ latestWeight ? latestWeight.record_date : '暂无记录' }}</view>
+          </view>
+          <view v-if="latestWeight && weightChange !== null" :class="['change-pill', changePillClass]">
+            {{ changePillText }}
+          </view>
+        </view>
+
+        <view class="hero-meta">
+          <view class="meta-item">
+            <text class="meta-label">BMI</text>
+            <text class="meta-value">{{ bmi || '--' }}</text>
+          </view>
+          <view class="meta-divider" />
+          <view class="meta-item">
+            <text class="meta-label">目标体重</text>
+            <text class="meta-value">{{ targetWeightKg ? formatNumber(targetWeightKg) + ' kg' : '未设置' }}</text>
+          </view>
+        </view>
+      </liquid-glass-card>
+
+      <!-- 趋势图 -->
+      <liquid-glass-card variant="light" :highlight="true" class="chart-card">
+        <view class="chart-head">
+          <text class="chart-title">近 7 次趋势</text>
+          <view class="chart-toggle">
+            <liquid-glass-pill
+              text="柱状"
+              size="sm"
+              :variant="chartType === 'bar' ? 'primary' : 'default'"
+              :active="chartType === 'bar'"
+              interactive
+              @tap="chartType = 'bar'"
+            />
+            <liquid-glass-pill
+              text="折线"
+              size="sm"
+              :variant="chartType === 'line' ? 'primary' : 'default'"
+              :active="chartType === 'line'"
+              interactive
+              @tap="chartType = 'line'"
+            />
+          </view>
+        </view>
+
+        <view v-if="weightHistory.length < 2" class="chart-empty">
+          <line-icon name="scale" tint="mint" :size="64" />
+          <text>多记录几次，趋势会更清晰</text>
+        </view>
+        <view v-else class="chart-body">
+          <canvas
+            type="2d"
+            id="weight-trend-canvas"
+            canvas-id="weight-trend-canvas"
+            class="chart-canvas"
+          />
+        </view>
+      </liquid-glass-card>
+
+      <!-- 今日输入 -->
+      <liquid-glass-card variant="light" :highlight="true" class="input-card">
+        <view class="input-label">今日体重</view>
+        <view class="input-row">
+          <input
+            v-model="newWeight"
+            type="digit"
+            placeholder="0.0"
+            class="weight-input"
+            :focus="isWeightAction"
+          />
+          <text class="input-unit">kg</text>
+        </view>
+        <view v-if="projectedChangeText" class="projected-change">
+          {{ projectedChangeText }}
+        </view>
+        <view class="save-actions">
+          <liquid-glass-button text="保存体重" variant="primary" :disabled="saving" @tap="saveWeight" />
+        </view>
+      </liquid-glass-card>
+    </view>
+
+    <!-- 普通账号页模式：保留原有体重区 -->
+    <view v-else class="section">
       <view class="section-title">体重记录</view>
       <view :class="['weight-section', { highlight: highlightWeight }]">
         <liquid-glass-card variant="light" :highlight="true" custom-style="margin-bottom:0">
@@ -22,16 +114,16 @@
           </template>
           <view class="form-row">
             <text class="label">新体重 (kg)</text>
-            <input v-model.number="newWeight" type="digit" placeholder="例 65.5" class="input" />
+            <input v-model="newWeight" type="digit" placeholder="例 65.5" class="input" />
           </view>
           <view class="weight-actions">
-            <liquid-glass-button text="保存体重" variant="primary" @tap="saveWeight" />
+            <liquid-glass-button text="保存体重" variant="primary" :disabled="saving" @tap="saveWeight" />
           </view>
         </liquid-glass-card>
       </view>
     </view>
 
-    <view class="section">
+    <view v-if="!isWeightAction" class="section">
       <view class="section-title">账号与数据</view>
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item disabled">
@@ -52,7 +144,7 @@
       </liquid-glass-card>
     </view>
 
-    <view class="section danger-section">
+    <view v-if="!isWeightAction" class="section danger-section">
       <view class="section-title">危险操作</view>
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item" @tap="confirmDeleteData">
@@ -91,29 +183,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { onShow, onLoad } from '@dcloudio/uni-app';
 import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
 import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
+import LiquidGlassPill from '@/components/LiquidGlassPill.vue';
 import ModalConfirm from '@/components/ModalConfirm.vue';
+import LineIcon from '@/components/LineIcon.vue';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { weightApi, WeightRecord } from '@/api/weight';
 import { clearAllCache } from '@/utils/cache';
 import { today } from '@/utils/date';
+import { requireAuth } from '@/utils/auth-guard';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
-const newWeight = ref<number>(0);
+const newWeight = ref<string>('');
 const latestWeight = ref<WeightRecord | null>(null);
+const weightHistory = ref<WeightRecord[]>([]);
 const showDeleteData = ref(false);
 const showCancel = ref(false);
 const cacheSize = ref('0 KB');
 const loading = ref(false);
+const saving = ref(false);
 const highlightWeight = ref(false);
+const isWeightAction = ref(false);
+const chartType = ref<'bar' | 'line'>('bar');
 
 onLoad((options: any) => {
   if (options?.action === 'weight') {
+    isWeightAction.value = true;
+    uni.setNavigationBarTitle({ title: '记录体重' });
+  } else {
     setTimeout(() => {
       uni.pageScrollTo({ selector: '.weight-section', duration: 300 });
       highlightWeight.value = true;
@@ -126,7 +228,10 @@ onLoad((options: any) => {
 
 onMounted(async () => {
   if (!auth.ready) await auth.bootstrap();
-  if (!auth.isLogged) return;
+  if (!auth.isLogged) {
+    requireAuth({ redirect: '/pages/mine/account' });
+    return;
+  }
   if (!userStore.me) await userStore.fetchMe().catch(() => {
     uni.showToast({ title: '加载失败', icon: 'none' });
   });
@@ -146,14 +251,244 @@ async function loadWeight() {
   loading.value = true;
   try {
     const res = await weightApi.list(30);
-    const items = (res.items || []).slice().reverse();
+    // API 返回降序（最新在前）
+    const items = res.items || [];
     latestWeight.value = items[0] || null;
+    // 最近 7 条，反转为正序（旧→新）给图表
+    weightHistory.value = items.slice(0, 7).reverse();
+    // 数据更新后重绘图表
+    nextTick(() => drawChart());
   } catch (e) {
     uni.showToast({ title: '加载体重记录失败', icon: 'none' });
   } finally {
     loading.value = false;
   }
 }
+
+function formatNumber(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '--';
+  return Number(n).toFixed(1);
+}
+
+const bmi = computed(() => {
+  const h = userStore.me?.profile?.height_cm;
+  const w = latestWeight.value?.weight_kg;
+  if (!h || !w) return '';
+  const b = w / Math.pow(h / 100, 2);
+  return b.toFixed(1);
+});
+
+const targetWeightKg = computed(() => userStore.me?.profile?.target_weight_kg || null);
+
+const weightChange = computed(() => {
+  const list = weightHistory.value;
+  if (list.length < 2) return null;
+  const latest = list[list.length - 1]?.weight_kg;
+  const prev = list[list.length - 2]?.weight_kg;
+  if (latest == null || prev == null) return null;
+  return Number((latest - prev).toFixed(1));
+});
+
+const changePillText = computed(() => {
+  const c = weightChange.value;
+  if (c === null) return '';
+  if (c === 0) return '持平';
+  return `${c > 0 ? '▲' : '▼'} ${Math.abs(c)} kg`;
+});
+
+const changePillClass = computed(() => {
+  const c = weightChange.value;
+  if (c === null) return '';
+  if (c < 0) return 'down';
+  if (c > 0) return 'up';
+  return 'flat';
+});
+
+const projectedChange = computed(() => {
+  const input = parseFloat(newWeight.value);
+  const last = latestWeight.value?.weight_kg;
+  if (!Number.isFinite(input) || last == null) return null;
+  return Number((input - last).toFixed(1));
+});
+
+const projectedChangeText = computed(() => {
+  const c = projectedChange.value;
+  if (c === null) return '';
+  if (c === 0) return '预计与上次持平';
+  return `预计较上次 ${c > 0 ? '+' : ''}${c} kg`;
+});
+
+// 用 canvas 2D 原生 API 绘制趋势图（兼容微信小程序）
+const PRIMARY_COLOR = '#5BC89A';
+const WARM_COLOR = '#FF8A65';
+const TEXT_COLOR = '#8FA3A1';
+const GRID_COLOR = '#E6ECEA';
+
+function drawChart() {
+  const data = weightHistory.value;
+  if (data.length < 2) return;
+
+  const query = uni.createSelectorQuery();
+  query.select('#weight-trend-canvas')
+    .fields({ node: true, size: true })
+    .exec((res: any) => {
+      if (!res || !res[0] || !res[0].node) return;
+      const canvas = res[0].node;
+      const width = res[0].width;
+      const height = res[0].height;
+      const dpr = (uni.getWindowInfo().pixelRatio || 1) as number;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      // 清空
+      ctx.clearRect(0, 0, width, height);
+
+      const padTop = 28;
+      const padBottom = 28;
+      const padLeft = 22;
+      const padRight = 22;
+      const chartW = width - padLeft - padRight;
+      const chartH = height - padTop - padBottom;
+
+      const weights = data.map((d) => d.weight_kg);
+      const target = targetWeightKg.value;
+      const allVals = target != null ? [...weights, target] : [...weights];
+      const dataMin = Math.min(...allVals);
+      const dataMax = Math.max(...allVals);
+      const pad = (dataMax - dataMin) * 0.2 || 1;
+      const yMin = Math.max(0, dataMin - pad);
+      const yMax = dataMax + pad;
+
+      function yToPx(v: number): number {
+        if (yMax <= yMin) return padTop + chartH / 2;
+        return padTop + chartH - ((v - yMin) / (yMax - yMin)) * chartH;
+      }
+
+      const n = data.length;
+      function xToPx(i: number): number {
+        if (n <= 1) return padLeft + chartW / 2;
+        return padLeft + (i / (n - 1)) * chartW;
+      }
+
+      // 目标线
+      if (target != null) {
+        const ty = yToPx(target);
+        ctx.strokeStyle = WARM_COLOR;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, ty);
+        ctx.lineTo(width - padRight, ty);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = WARM_COLOR;
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('目标', width - padRight - 2, ty - 4);
+      }
+
+      if (chartType.value === 'bar') {
+        // 柱状图
+        const barW = Math.min(24, chartW / n * 0.6);
+        weights.forEach((w, i) => {
+          const cx = xToPx(i);
+          const by = yToPx(w);
+          // 渐变
+          const grad = ctx.createLinearGradient(0, by, 0, padTop + chartH);
+          grad.addColorStop(0, PRIMARY_COLOR);
+          grad.addColorStop(1, 'rgba(91, 200, 154, 0.4)');
+          ctx.fillStyle = grad;
+          // 圆角矩形
+          const r = 4;
+          const x = cx - barW / 2;
+          ctx.beginPath();
+          ctx.moveTo(x + r, by);
+          ctx.lineTo(x + barW - r, by);
+          ctx.arcTo(x + barW, by, x + barW, by + r, r);
+          ctx.lineTo(x + barW, padTop + chartH);
+          ctx.lineTo(x, padTop + chartH);
+          ctx.lineTo(x, by + r);
+          ctx.arcTo(x, by, x + r, by, r);
+          ctx.closePath();
+          ctx.fill();
+        });
+      } else {
+        // 折线图
+        // 填充区域
+        ctx.beginPath();
+        weights.forEach((w, i) => {
+          const px = xToPx(i);
+          const py = yToPx(w);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.lineTo(xToPx(n - 1), padTop + chartH);
+        ctx.lineTo(xToPx(0), padTop + chartH);
+        ctx.closePath();
+        const areaGrad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+        areaGrad.addColorStop(0, 'rgba(91, 200, 154, 0.3)');
+        areaGrad.addColorStop(1, 'rgba(91, 200, 154, 0)');
+        ctx.fillStyle = areaGrad;
+        ctx.fill();
+
+        // 线
+        ctx.strokeStyle = PRIMARY_COLOR;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        weights.forEach((w, i) => {
+          const px = xToPx(i);
+          const py = yToPx(w);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+
+        // 数据点
+        weights.forEach((w, i) => {
+          const px = xToPx(i);
+          const py = yToPx(w);
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = PRIMARY_COLOR;
+          ctx.beginPath();
+          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      // 每个数据点的数值标签
+      ctx.fillStyle = '#1F2A2A';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      weights.forEach((w, i) => {
+        const px = xToPx(i);
+        const py = yToPx(w);
+        ctx.fillText(formatNumber(w), px, py - 8);
+      });
+
+      // X 轴日期标签
+      ctx.fillStyle = TEXT_COLOR;
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      data.forEach((d, i) => {
+        const label = d.record_date.slice(5);
+        const px = xToPx(i);
+        ctx.fillText(label, px, height - 8);
+      });
+    });
+}
+
+// 切换图表类型时重绘
+watch(chartType, () => {
+  nextTick(() => drawChart());
+});
 
 function computeCache() {
   try {
@@ -166,25 +501,39 @@ function computeCache() {
 }
 
 async function saveWeight() {
-  if (!newWeight.value || newWeight.value <= 0) {
+  const weightNum = parseFloat(newWeight.value);
+  if (!Number.isFinite(weightNum) || weightNum <= 0) {
     uni.showToast({ title: '请输入有效体重', icon: 'none' });
     return;
   }
+  saving.value = true;
   uni.showLoading({ title: '保存中...' });
   try {
     const now = new Date();
     await weightApi.create({
       record_date: today(),
       record_time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-      weight_kg: newWeight.value,
+      weight_kg: weightNum,
     });
-    newWeight.value = 0;
+    newWeight.value = '';
     await loadWeight();
     uni.hideLoading();
     uni.showToast({ title: '已记录', icon: 'success' });
+    if (isWeightAction.value) {
+      setTimeout(() => {
+        const pages = getCurrentPages();
+        if (pages.length > 1) {
+          uni.navigateBack();
+        } else {
+          uni.reLaunch({ url: '/pages/home/index' });
+        }
+      }, 600);
+    }
   } catch (e: any) {
     uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -242,6 +591,7 @@ async function cancelAccount() {
 .account-page {
   background: $bg;
   padding: $gap-3;
+  min-height: 100vh;
 }
 .section {
   margin-bottom: $gap-3;
@@ -252,6 +602,165 @@ async function cancelAccount() {
   color: $text-1;
   margin-bottom: $gap-2;
   padding-left: $gap-1;
+}
+
+.weight-only-page {
+  display: flex;
+  flex-direction: column;
+  gap: $gap-3;
+}
+
+.hero-card {
+  padding: $gap-4 $gap-3;
+}
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $gap-4;
+}
+.hero-label {
+  font-size: $fs-sm;
+  color: $text-3;
+  margin-bottom: 6rpx;
+}
+.hero-weight {
+  font-size: 72rpx;
+  font-weight: 800;
+  color: $text-1;
+  line-height: 1.1;
+  letter-spacing: -2rpx;
+}
+.hero-unit {
+  font-size: $fs-lg;
+  font-weight: 500;
+  color: $text-3;
+  margin-left: 8rpx;
+}
+.hero-date {
+  font-size: $fs-sm;
+  color: $text-3;
+  margin-top: 8rpx;
+}
+.change-pill {
+  font-size: $fs-sm;
+  font-weight: 600;
+  padding: 8rpx 16rpx;
+  border-radius: $r-pill;
+  &.down {
+    color: $primary;
+    background: $primary-tint;
+  }
+  &.up {
+    color: $warn;
+    background: rgba(255, 200, 120, 0.2);
+  }
+  &.flat {
+    color: $text-3;
+    background: $bg-2;
+  }
+}
+.hero-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-top: $gap-3;
+  border-top: 1rpx solid $divider;
+}
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.meta-label {
+  font-size: $fs-xs;
+  color: $text-3;
+}
+.meta-value {
+  font-size: $fs-md;
+  font-weight: 600;
+  color: $text-1;
+}
+.meta-divider {
+  width: 1rpx;
+  height: 48rpx;
+  background: $divider;
+}
+
+.chart-card {
+  padding: $gap-3;
+}
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $gap-2;
+}
+.chart-title {
+  font-size: $fs-md;
+  font-weight: 600;
+  color: $text-1;
+}
+.chart-toggle {
+  display: flex;
+  gap: 8rpx;
+}
+.chart-body {
+  position: relative;
+  height: 300rpx;
+  width: 100%;
+}
+.chart-canvas {
+  width: 100%;
+  height: 300rpx;
+}
+.chart-empty {
+  height: 300rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $gap-2;
+  color: $text-3;
+  font-size: $fs-sm;
+}
+
+.input-card {
+  padding: $gap-4 $gap-3;
+  text-align: center;
+}
+.input-label {
+  font-size: $fs-sm;
+  color: $text-3;
+  margin-bottom: $gap-2;
+}
+.input-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12rpx;
+}
+.weight-input {
+  font-size: 72rpx;
+  font-weight: 700;
+  color: $text-1;
+  text-align: center;
+  width: 260rpx;
+  min-height: 90rpx;
+}
+.input-unit {
+  font-size: $fs-xl;
+  color: $text-3;
+  font-weight: 500;
+}
+.projected-change {
+  margin-top: $gap-2;
+  font-size: $fs-sm;
+  color: $text-2;
+}
+.save-actions {
+  margin-top: $gap-4;
 }
 
 .weight-section {

@@ -108,6 +108,7 @@ import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { FITNESS_GOALS } from '@/utils/constants';
 import { clearAll } from '@/utils/cache';
+import { requireAuth } from '@/utils/auth-guard';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -148,12 +149,36 @@ onShow(() => {
   if (auth.isLogged) load();
 });
 
-function goProfile() { uni.navigateTo({ url: '/pages/mine/profile' }); }
-function goGoals() { uni.navigateTo({ url: '/pages/mine/goals' }); }
-function goReminders() { uni.navigateTo({ url: '/pages/mine/reminders' }); }
-function goAccount() { uni.navigateTo({ url: '/pages/mine/account' }); }
-function goWeight() { uni.navigateTo({ url: '/pages/mine/account?action=weight' }); }
-function goTrainingHistory() { uni.navigateTo({ url: '/pages/training/history' }); }
+function goProfile() {
+  const url = '/pages/mine/profile';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
+function goGoals() {
+  const url = '/pages/mine/goals';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
+function goReminders() {
+  const url = '/pages/mine/reminders';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
+function goAccount() {
+  const url = '/pages/mine/account';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
+function goWeight() {
+  const url = '/pages/mine/account?action=weight';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
+function goTrainingHistory() {
+  const url = '/pages/training/history';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
 function goAgreement(t: 'agreement' | 'privacy') { uni.navigateTo({ url: `/pages/mine/agreement?type=${t}` }); }
 
 function logout() {

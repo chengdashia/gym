@@ -80,8 +80,10 @@ import { onLoad } from '@dcloudio/uni-app';
 import ModalConfirm from '@/components/ModalConfirm.vue';
 import { dietApi, DietRecord } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
+import { useAuthStore } from '@/store/auth';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 
 const mealTypes = MEAL_TYPES;
 const dietStore = useDietStore();
@@ -92,9 +94,27 @@ const amountG = ref(0);
 const amountS = ref(0);
 const showDelete = ref(false);
 const loading = ref(false);
+const auth = useAuthStore();
 
 onLoad((options: any) => {
-  id.value = Number(options?.id || 0);
+  const recordId = Number(options?.id || 0);
+  if (!auth.ready) {
+    auth.bootstrap().then(() => {
+      if (!auth.isLogged) {
+        const redirect = recordId
+          ? `/pages/diet/record-edit?id=${recordId}`
+          : '/pages/diet/record-edit';
+        requireAuth({ redirect });
+      }
+    });
+  } else if (!auth.isLogged) {
+    const redirect = recordId
+      ? `/pages/diet/record-edit?id=${recordId}`
+      : '/pages/diet/record-edit';
+    requireAuth({ redirect });
+  }
+
+  id.value = recordId;
   load();
 });
 

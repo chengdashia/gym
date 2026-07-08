@@ -55,12 +55,22 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, onMounted } from 'vue';
 import { foodApi } from '@/api/food';
+import { useAuthStore } from '@/store/auth';
 import { FOOD_CATEGORIES } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 
 const categories = FOOD_CATEGORIES;
+const auth = useAuthStore();
+
+onMounted(async () => {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) {
+    requireAuth({ redirect: '/pages/diet/custom-food' });
+  }
+});
 
 const form = reactive({
   name: '',

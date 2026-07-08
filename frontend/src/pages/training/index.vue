@@ -165,6 +165,7 @@ import { useTrainingStore } from '@/store/training';
 import { useAuthStore } from '@/store/auth';
 import { trainingApi } from '@/api/training';
 import { today } from '@/utils/date';
+import { requireAuth } from '@/utils/auth-guard';
 
 function syncTabBar() {
   const pages = getCurrentPages();
@@ -282,6 +283,7 @@ onShow(() => {
 });
 
 async function startSession() {
+  if (!requireAuth({ redirect: '/pages/training/index' })) return;
   const t = todayInfo.value;
   if (!t || !t.plan_id || !t.plan_day_id) {
     uni.showToast({ title: '暂无训练安排', icon: 'none' });
@@ -296,16 +298,21 @@ async function startSession() {
 }
 
 function continueSession() {
+  if (!requireAuth({ redirect: '/pages/training/index' })) return;
   if (todayInfo.value?.session_id) {
     uni.navigateTo({ url: `/pages/training/execute?id=${todayInfo.value.session_id}` });
   }
 }
 
 function goCreatePlan() {
-  uni.navigateTo({ url: '/pages/training/plan-edit' });
+  const url = '/pages/training/plan-edit';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
 }
 function goEditPlan(id: number) {
-  uni.navigateTo({ url: `/pages/training/plan-edit?id=${id}` });
+  const url = `/pages/training/plan-edit?id=${id}`;
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
 }
 </script>
 

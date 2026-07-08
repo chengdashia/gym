@@ -53,12 +53,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useAuthStore } from '@/store/auth';
 import { trainingApi, TrainingSession } from '@/api/training';
 import { humanizeDuration } from '@/utils/date';
+import { requireAuth } from '@/utils/auth-guard';
 
 const id = ref(0);
 const session = ref<TrainingSession | null>(null);
 const loading = ref(false);
+const auth = useAuthStore();
 
 const completedSets = computed(() => {
   if (!session.value?.exercises) return 0;
@@ -69,6 +72,16 @@ onMounted(async () => {
   const pages = getCurrentPages();
   const opt = (pages[pages.length - 1] as any)?.options || {};
   id.value = Number(opt.id || 0);
+
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) {
+    const redirect = id.value
+      ? `/pages/training/history-detail?id=${id.value}`
+      : '/pages/training/history-detail';
+    requireAuth({ redirect });
+    return;
+  }
+
   if (!id.value) return;
   loading.value = true;
   try {

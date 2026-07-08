@@ -45,6 +45,7 @@ import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -58,7 +59,10 @@ const goal = reactive({
 
 onMounted(async () => {
   if (!auth.ready) await auth.bootstrap();
-  if (!auth.isLogged) return;
+  if (!auth.isLogged) {
+    requireAuth({ redirect: '/pages/mine/goals' });
+    return;
+  }
   if (!userStore.goal?.calories_kcal) {
     await userStore.fetchGoal().catch(() => {
       uni.showToast({ title: '加载失败', icon: 'none' });

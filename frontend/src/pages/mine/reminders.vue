@@ -64,6 +64,7 @@ import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 import { ReminderItem } from '@/api/user';
 
 const userStore = useUserStore();
@@ -79,7 +80,10 @@ const items = ref<ReminderItem[]>([
 
 onMounted(async () => {
   if (!auth.ready) await auth.bootstrap();
-  if (!auth.isLogged) return;
+  if (!auth.isLogged) {
+    requireAuth({ redirect: '/pages/mine/reminders' });
+    return;
+  }
   await userStore.fetchReminders().catch(() => {
     uni.showToast({ title: '加载失败', icon: 'none' });
   });

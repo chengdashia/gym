@@ -80,19 +80,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { uploadApi } from '@/api/uploads';
 import { aiApi, RecognitionCandidate } from '@/api/ai';
 import { foodApi } from '@/api/food';
 import { dietApi } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
+import { useAuthStore } from '@/store/auth';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
+import { requireAuth } from '@/utils/auth-guard';
 
 const dietStore = useDietStore();
 const mealTypes = MEAL_TYPES;
+const auth = useAuthStore();
+
+onMounted(async () => {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) {
+    requireAuth({ redirect: '/pages/diet/photo-recognize' });
+  }
+});
 
 const imagePath = ref('');
 const uploadedUrl = ref('');

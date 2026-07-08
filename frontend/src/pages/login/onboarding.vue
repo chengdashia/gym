@@ -255,6 +255,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed, onMounted } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { useAuthStore } from '@/store/auth';
 import { useUserStore } from '@/store/user';
 import { authApi } from '@/api/auth';
@@ -295,6 +296,13 @@ const frequencies = TRAINING_FREQUENCIES;
 
 const auth = useAuthStore();
 const userStore = useUserStore();
+const redirectUrl = ref('/pages/home/index');
+
+onLoad((options: any) => {
+  if (options?.redirect) {
+    redirectUrl.value = decodeURIComponent(options.redirect);
+  }
+});
 
 const phoneReg = /^1[3-9]\d{9}$/;
 
@@ -388,7 +396,7 @@ async function finish() {
 }
 
 function goHome() {
-  uni.reLaunch({ url: '/pages/home/index' });
+  uni.reLaunch({ url: redirectUrl.value });
 }
 </script>
 

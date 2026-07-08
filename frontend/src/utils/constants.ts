@@ -4,8 +4,9 @@ export const API_BASE = 'http://127.0.0.1:8000/api/v1';
 export const APP_NAME = '健身饮食';
 
 export const STORAGE_KEYS = {
-  token: 'gym_token',
-  user: 'gym_user',
+  // 加 v3 后缀让 v1/v2 残留的 token/user 立即失效，等同于「清除掉一直存在的旧登录信息」
+  token: 'gym_token_v3',
+  user: 'gym_user_v3',
   cachePrefix: 'gym_cache_',
 };
 

@@ -64,7 +64,7 @@ onMounted(() => {
     .exec((res: any[]) => {
       const node = res && res[0] && res[0].node;
       if (!node) return;
-      const dpr = (wx.getSystemInfoSync().pixelRatio || 1) as number;
+      const dpr = (uni.getWindowInfo().pixelRatio || 1) as number;
       chartInstance = echarts.init(node, null, { devicePixelRatio: dpr });
       if (props.option) chartInstance.setOption(props.option, true);
     });

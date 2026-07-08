@@ -130,11 +130,13 @@ import Tag from '@/components/Tag.vue';
 import { foodApi, FoodItem } from '@/api/food';
 import { dietApi } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
+import { useAuthStore } from '@/store/auth';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { calcNutrition } from '@/utils/nutrition';
 import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { iconSrc } from '@/utils/icons';
+import { requireAuth } from '@/utils/auth-guard';
 
 const searchIconSrc = iconSrc('search', '#8FA3A1', 1.8);
 
@@ -151,10 +153,23 @@ const amount = ref<number>(100);
 const meal = ref<MealType>(getCurrentMeal());
 const time = ref(formatTime(new Date()));
 const date = ref(dietStore.selectedDate || today());
+const auth = useAuthStore();
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 onLoad((options: any) => {
+  if (!auth.ready) {
+    auth.bootstrap().then(() => {
+      if (!auth.isLogged) {
+        const redirect = `/pages/diet/add?date=${options?.date || date.value}&meal=${options?.meal || meal.value}`;
+        requireAuth({ redirect });
+      }
+    });
+  } else if (!auth.isLogged) {
+    const redirect = `/pages/diet/add?date=${options?.date || date.value}&meal=${options?.meal || meal.value}`;
+    requireAuth({ redirect });
+  }
+
   if (options?.date) date.value = options.date;
   const m = options?.meal;
   if (m && ['breakfast', 'lunch', 'dinner', 'snack'].includes(m)) {

@@ -9,12 +9,9 @@ onLaunch(async () => {
   appStore.init();
   const auth = useAuthStore();
   await auth.bootstrap();
-
-  if (auth.token && auth.user && !auth.user.agreement_confirmed) {
-    uni.reLaunch({ url: '/pages/login/onboarding' });
-    return;
-  }
-
+  // 不在 onLaunch 中调 uni.reLaunch —— 此时首页 webview 尚未 ready，
+  // 会触发「routeDone with a webviewId X is not found」错误。
+  // needOnboarding 检查改由首页 onMounted 中处理。
   if (!auth.token) {
     console.log('[App] no token, browsing as guest');
   }

@@ -143,6 +143,7 @@ import { useAuthStore } from '@/store/auth';
 import ProgressRing from '@/components/ProgressRing.vue';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { addDays, formatDate, weekdayCN } from '@/utils/date';
+import { requireAuth } from '@/utils/auth-guard';
 import type { DietRecord } from '@/api/diet';
 
 // 同步自定义 tabBar 高亮
@@ -236,11 +237,15 @@ function formatAmount(r: DietRecord) {
 }
 
 function addMeal(v: MealType) {
-  uni.navigateTo({ url: `/pages/diet/add?date=${selectedDate.value}&meal=${v}` });
+  const url = `/pages/diet/add?date=${selectedDate.value}&meal=${v}`;
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
 }
 
 function editRecord(r: DietRecord) {
-  uni.navigateTo({ url: `/pages/diet/record-edit?id=${r.id}` });
+  const url = `/pages/diet/record-edit?id=${r.id}`;
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
 }
 
 function go(action: 'add' | 'custom' | 'photo') {
@@ -249,6 +254,7 @@ function go(action: 'add' | 'custom' | 'photo') {
     action === 'add' ? `/pages/diet/add?date=${selectedDate.value}` :
     action === 'custom' ? '/pages/diet/custom-food' :
     '/pages/diet/photo-recognize';
+  if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
 </script>
