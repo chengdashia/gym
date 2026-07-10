@@ -1,4 +1,6 @@
 import { http } from '@/utils/request';
+import { API_BASE } from '@/utils/constants';
+import { getToken } from '@/utils/request';
 
 export interface UserProfile {
   gender?: string | null;
@@ -38,6 +40,19 @@ export interface ReminderItem {
 }
 
 export const userApi = {
+  exportData() {
+    return new Promise<string>((resolve, reject) => {
+      const token = getToken();
+      uni.downloadFile({
+        url: `${API_BASE}/users/export.csv`,
+        header: token ? { Authorization: `Bearer ${token}` } : {},
+        success: (res) => res.statusCode === 200
+          ? resolve(res.tempFilePath)
+          : reject({ statusCode: res.statusCode, message: '导出失败' }),
+        fail: reject,
+      });
+    });
+  },
   getMe() {
     return http.get<UserMe>('/users/me');
   },

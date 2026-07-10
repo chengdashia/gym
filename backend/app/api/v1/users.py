@@ -1,6 +1,7 @@
 from datetime import datetime, time
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
@@ -35,10 +36,24 @@ from app.schemas import (
 )
 from app.services.recommend import recommend
 from app.services.account_data import anonymize_account, clear_personal_data
+from app.services.data_export import build_user_export
 from app.services.uploads import delete_local_file
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/export.csv")
+def export_personal_data(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = build_user_export(db, user.id)
+    return Response(
+        content=payload,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="fitness-data.csv"'},
+    )
 
 
 def _upsert_today_weight(db: Session, user_id: int, weight_kg) -> WeightRecord:

@@ -122,10 +122,10 @@
           <text class="mi-label">手机号授权</text>
           <text class="mi-value">功能开发中</text>
         </view>
-        <view class="menu-item disabled">
+        <view class="menu-item" @tap="exportData">
           <line-icon name="export" tint="mint" :size="48" class="mi-icon" />
-          <text class="mi-label">数据导出</text>
-          <text class="mi-value">功能开发中</text>
+          <text class="mi-label">导出个人数据</text>
+          <text class="mi-arrow">›</text>
         </view>
         <view class="menu-item" @tap="clearCache">
           <line-icon name="broom" tint="warm" :size="48" class="mi-icon" />
@@ -169,7 +169,7 @@
     <ModalConfirm
       :visible="showCancel"
       title="注销账号"
-      message="将永久删除健身数据和账号身份信息，注销后当前登录立即失效且无法恢复。"
+      message="将永久删除健身数据和账号身份信息，注销后无法恢复；建议先导出个人数据。"
       confirm-text="确认注销"
       danger
       @confirm="cancelAccount"
@@ -191,6 +191,7 @@ import { useAuthStore } from '@/store/auth';
 import { useDietStore } from '@/store/diet';
 import { useTrainingStore } from '@/store/training';
 import { weightApi, WeightRecord } from '@/api/weight';
+import { userApi } from '@/api/user';
 import { clearAllCache } from '@/utils/cache';
 import { formatTime, today } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
@@ -587,6 +588,29 @@ function clearCache() {
 
 function confirmDeleteData() {
   showDeleteData.value = true;
+}
+
+async function exportData() {
+  uni.showLoading({ title: '导出中...' });
+  try {
+    const tempFilePath = await userApi.exportData();
+    if (typeof uni.saveFile !== 'function') {
+      uni.showToast({ title: '当前平台暂不支持保存文件', icon: 'none' });
+      return;
+    }
+    const saved = await new Promise<{ savedFilePath: string }>((resolve, reject) => {
+      uni.saveFile({
+        tempFilePath,
+        success: (result) => resolve({ savedFilePath: result.savedFilePath }),
+        fail: reject,
+      });
+    });
+    uni.showModal({ title: '导出成功', content: `文件已保存：${saved.savedFilePath}`, showCancel: false });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '导出失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
+  }
 }
 
 async function deleteData() {
