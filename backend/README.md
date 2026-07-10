@@ -8,7 +8,7 @@
 - SQLAlchemy 2.0 + PyMySQL + Alembic
 - Pydantic v2 / pydantic-settings
 - PyJWT (HS256, 30 天有效)
-- 本地存储上传的图片（`backend/uploads/`）+ `/static` 静态文件托管
+- 本地存储上传的图片；头像经 `/static` 公开，饮食与识别图片通过鉴权接口读取
 
 ## 目录结构
 
@@ -29,12 +29,13 @@ backend/
 └── requirements.txt
 ```
 
-## 数据库
+## 环境配置
 
-DSN（位于 `app/core/config.py`，默认指向 `mysql6.sqlpub.com:3311/fitlog`）：
+复制 `.env.example` 为 `.env` 并填写数据库和 JWT 密钥：
 
 ```
-mysql+pymysql://root_fitlog:44EnrkDixGUKhP5I@mysql6.sqlpub.com:3311/fitlog?charset=utf8mb4
+DB_URL=mysql+pymysql://USER:PASSWORD@HOST:3306/DATABASE?charset=utf8mb4
+JWT_SECRET=至少32位随机字符串
 ```
 
 ## 初始化与启动
@@ -67,16 +68,16 @@ curl http://127.0.0.1:8000/health
 |---|---|
 | 健康检查 | `GET /health` |
 | 微信登录（mock） | `POST /api/v1/auth/wechat-login` |
-| 用户 | `/api/v1/users/me`, `/agreement-confirm`, `/nutrition-goal`, `/reminders`, `/delete-data`, `/cancel-account` |
+| 用户 | `/api/v1/users/me`, `/agreement-confirm`, `/nutrition-goal`, `/export.csv`, `/delete-data`, `/cancel-account` |
 | 首页聚合 | `GET /api/v1/home/summary` |
 | 食物 | `GET /api/v1/foods/search`, `GET /api/v1/foods/{id}`, `POST /api/v1/foods/custom` |
-| 饮食 | `/api/v1/diet/records` (CRUD) |
-| 上传 | `POST /api/v1/uploads/image` |
+| 饮食 | `/api/v1/diet/records` (CRUD), `/recent-foods`, `/copy-meal` |
+| 上传 | `POST /api/v1/uploads/image`, `GET /api/v1/uploads/{id}/content` |
 | AI 识别（mock） | `POST /api/v1/ai/food-recognition` |
 | 动作 | `/api/v1/exercises/search`, `/custom` |
 | 训练 | `/api/v1/training/templates`, `/plans`, `/today`, `/sessions` |
 | 体重 | `/api/v1/weight/records` |
-| 统计 | `/api/v1/stats/{diet,training,weight}?range=7|30|90` |
+| 统计 | `/api/v1/stats/{diet,training,weight}?range=7|30|90`, `/weekly-summary` |
 
 完整接口清单见 `docs/健身饮食记录小程序_完整汇总文档.md`。
 
@@ -106,16 +107,15 @@ curl http://127.0.0.1:8000/health
 
 ## 测试
 
-内置两个冒烟脚本：
+运行自动化测试：
 
 ```bash
-conda run -n gym python _smoke.py    # 覆盖认证/用户/食物/饮食/首页/训练/统计/提醒
-conda run -n gym python _smoke2.py   # 覆盖上传/AI/自定义食物/训练 session/删除/更新
+cd backend
+pytest -q
 ```
 
 ## 后续计划
 
-- 前端 uni-app + Vue3 + Pinia 对接
 - 真实微信 jscode2session 接入
 - 对象存储（OSS / COS）替换本地静态文件
 - 实时 AI 识别 provider

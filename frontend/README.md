@@ -69,11 +69,11 @@ npm run build:h5
 - onboarding 三步：协议确认 → 基础资料 → 系统推荐营养目标。
 
 ### 五大 Tab
-1. **首页** (`pages/home/index`)：环形卡路里进度 + 三大营养条 + 今日训练卡 + 体重进度卡 + 4 个快捷入口。
-2. **饮食** (`pages/diet/index`)：横向日期切换 + 餐次折叠卡片 + FAB 添加（搜索/自定义/拍照）。
+1. **首页** (`pages/home/index`)：环形卡路里进度 + 三大营养条 + 下一步行动 + 今日训练卡 + 体重进度卡。
+2. **饮食** (`pages/diet/index`)：横向日期切换 + 最近吃过 + 历史餐次复制 + FAB 添加。
 3. **训练** (`pages/training/index`)：今日训练 hero 卡（休息/计划外/进行中/未开始）+ 计划列表 + 快捷入口。
-4. **数据** (`pages/stats/index`)：7/30/90 天切换，三张 ECharts 折线（饮食热量+三大营养、训练容量+次数、体重趋势+目标参考线）。
-5. **我的** (`pages/mine/index`)：头像/会员/健身目标 + 4 个 mini 入口 + 资料/目标/提醒/账号菜单。
+4. **数据** (`pages/stats/index`)：7/30/90 天趋势与规则型周总结。
+5. **我的** (`pages/mine/index`)：资料、目标、账号管理、CSV 导出、清空健身数据和注销。
 
 ### 训练执行
 - 训练执行页 (`pages/training/execute`)：每组填写实际次数/重量，勾选完成自动启动组间休息倒计时。
@@ -83,7 +83,7 @@ npm run build:h5
 
 ### 拍照识别
 - `pages/diet/photo-recognize`：调用相机或相册 → 上传到 `/api/v1/uploads/image` → 调用 `/api/v1/ai/food-recognition` 返回候选食物 → 用户确认 → 保存为饮食记录。
-- 候选选择后填写克数 / 餐次 / 是否保存图片。
+- 当前为模拟候选推荐；选择后必须填写实际克数和餐次。非头像图片使用鉴权访问并移除 EXIF。
 
 ### 数据可视化
 - `components/EChartsView.vue` 同时支持 H5（echarts.init）与小程序（echarts-for-weixin）。
@@ -109,16 +109,16 @@ npm run build:h5
 | 模块 | 路径 |
 |---|---|
 | auth | `/auth/wechat-login` |
-| users | `/users/me`, `/agreement-confirm`, `/nutrition-goal`, `/reminders`, `/delete-data`, `/cancel-account` |
+| users | `/users/me`, `/agreement-confirm`, `/nutrition-goal`, `/export.csv`, `/delete-data`, `/cancel-account` |
 | home | `/home/summary?date=YYYY-MM-DD` |
 | foods | `/foods/search`, `/foods/{id}`, `/foods/custom` |
-| diet | `/diet/records` (CRUD) |
+| diet | `/diet/records` (CRUD), `/diet/recent-foods`, `/diet/copy-meal` |
 | uploads | `/uploads/image` |
 | ai | `/ai/food-recognition` |
 | exercises | `/exercises/search`, `/exercises/custom` |
 | training | `/training/templates`, `/plans`, `/today`, `/sessions` |
 | weight | `/weight/records` (CRUD) |
-| stats | `/stats/{diet,training,weight}?range=7|30|90` |
+| stats | `/stats/{diet,training,weight}?range=7|30|90`, `/stats/weekly-summary` |
 
 ## 验收要点
 
@@ -134,5 +134,5 @@ npm run build:h5
 - 真实微信 jscode2session 替换 mock 登录
 - 接入 iconfont CDN（替换 TabBar PNG）
 - 真实 AI 识别 provider
-- 数据导出（CSV / Excel）
+- Excel 导出（当前已支持 CSV）
 - 高级统计与会员服务

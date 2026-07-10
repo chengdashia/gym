@@ -453,7 +453,7 @@ Expected: 全部 exit 0。
 Run: `git diff --check`  
 Expected: 无输出。
 
-Run: `rg -n "root_fitlog|44EnrkDixGUKhP5I|fitness-diet-miniapp-dev-secret-change-me" backend frontend docs`  
+Run: `rg -n "mysql\+pymysql://[^:]+:[^@]+@|jwt_secret: str = .+change-me" backend frontend -g '!*.md' -g '!.env.example'`
 Expected: 无输出。
 
 Run: `git status --short`  
