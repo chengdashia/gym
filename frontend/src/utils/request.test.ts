@@ -43,4 +43,11 @@ describe('request HTTP errors', () => {
     expect(normalizeUploadFormData({ usage_type: 'avatar', temporary: false, count: 1, empty: null }))
       .toEqual({ usage_type: 'avatar', temporary: 'false', count: '1' });
   });
+
+  it('removes undefined and null optional query parameters', async () => {
+    const { normalizeRequestData } = await import('./request');
+
+    expect(normalizeRequestData({ end_date: undefined, keyword: null, range: 7, text: '' }))
+      .toEqual({ range: 7, text: '' });
+  });
 });

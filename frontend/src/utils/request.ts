@@ -70,6 +70,13 @@ function buildHeaders(extra?: Record<string, string>) {
   return h;
 }
 
+export function normalizeRequestData(data: any): any {
+  if (!data || Array.isArray(data) || typeof data !== 'object') return data;
+  return Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined && value !== null),
+  );
+}
+
 export function request<T = any>(opts: RequestOptions): Promise<T> {
   const {
     url,
@@ -89,7 +96,7 @@ export function request<T = any>(opts: RequestOptions): Promise<T> {
     uni.request({
       url: url.startsWith('http') ? url : `${API_BASE}${url}`,
       method,
-      data,
+      data: method === 'GET' ? normalizeRequestData(data) : data,
       timeout: 10000,
       header: buildHeaders(header),
       success: (res: any) => {

@@ -16,14 +16,24 @@ from app.services.exercise_stats import aggregate_exercise_sets
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
+
+def _parse_optional_date(value: Optional[str]):
+    if not value:
+        return None
+    from datetime import date
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise BizException(40001, "end_date 格式错误，应为 YYYY-MM-DD") from exc
+
+
 @router.get("/weekly-summary")
 def weekly_summary(
     end_date: Optional[str] = Query(default=None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from datetime import date
-    end = date.fromisoformat(end_date) if end_date else None
+    end = _parse_optional_date(end_date)
     return ok(build_weekly_summary(db, user.id, end))
 
 
