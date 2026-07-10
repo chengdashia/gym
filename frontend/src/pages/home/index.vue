@@ -43,6 +43,10 @@
     </view>
 
     <view class="container">
+      <liquid-glass-card v-if="weeklyAction" :highlight="true" class="card-section">
+        <view class="section-head"><view class="left"><view class="bar" /><text class="title">下一步行动</text></view><text class="more" @tap="goStats">周总结 ›</text></view>
+        <view class="action-text">{{ weeklyAction }}</view>
+      </liquid-glass-card>
       <!-- 训练卡 -->
       <liquid-glass-card :highlight="true" hoverable @tap="goTraining" class="card-section">
         <view class="section-head">
@@ -148,6 +152,7 @@ import ProgressRing from '@/components/ProgressRing.vue';
 import MacroBar from '@/components/MacroBar.vue';
 import { today, weekdayCN, dateMD, formatDateTime } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
+import { statsApi } from '@/api/stats';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -161,6 +166,7 @@ const userStore = useUserStore();
 const trainingStore = useTrainingStore();
 
 const summary = ref<HomeSummary | null>(null);
+const weeklyAction = ref('');
 const nickname = computed(() => userStore.nickname);
 const avatar = computed(() => userStore.avatar);
 const initial = computed(() => nickname.value?.[0] || '健');
@@ -195,7 +201,12 @@ const dateText = computed(() => `${dateMD(today())} ${weekdayCN(today())}`);
 
 async function load() {
   try {
-    summary.value = await homeApi.summary(today());
+    const [home, weekly] = await Promise.all([
+      homeApi.summary(today()),
+      statsApi.weeklySummary().catch(() => null),
+    ]);
+    summary.value = home;
+    weeklyAction.value = weekly?.actions?.[0] || '';
   } catch (e) {
     console.error('[home] load failed', e);
   }

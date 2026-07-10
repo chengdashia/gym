@@ -10,10 +10,22 @@ from app.core.response import ok
 from app.models import NutritionGoal, TrainingSession, TrainingSessionExercise, TrainingSessionSet, User, UserProfile
 from app.schemas import DietStatOut, TrainingStatOut, WeightStatOut
 from app.services.stats_service import diet_series, training_series, weight_series
+from app.services.weekly_summary import build_weekly_summary
 from app.services.exercise_stats import aggregate_exercise_sets
 
 
 router = APIRouter(prefix="/stats", tags=["stats"])
+
+@router.get("/weekly-summary")
+def weekly_summary(
+    end_date: Optional[str] = Query(default=None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from datetime import date
+    end = date.fromisoformat(end_date) if end_date else None
+    return ok(build_weekly_summary(db, user.id, end))
+
 
 VALID_RANGES = {7, 30, 90}
 

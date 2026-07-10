@@ -17,6 +17,12 @@
     <view v-if="loading" class="loading">加载中...</view>
     <view v-else-if="loadFailed" class="load-error" @tap="load">数据加载失败，点击重试</view>
 
+    <liquid-glass-card v-if="weekly" :highlight="true" class="chart-card">
+      <view class="chart-head"><view class="chart-title-row"><line-icon name="calendar" tint="mint" :size="48" /><text class="chart-title">本周总结</text></view></view>
+      <view class="chart-sub">记录 {{ weekly.diet_days }} 天 · 训练 {{ weekly.training_sessions }} 次 · 连续记录 {{ weekly.streak_days }} 天</view>
+      <view v-for="action in weekly.actions" :key="action" class="weekly-action">{{ action }}</view>
+    </liquid-glass-card>
+
     <!-- 饮食 -->
     <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
@@ -105,7 +111,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat, StatsRange } from '@/api/stats';
+import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat, StatsRange, WeeklySummary } from '@/api/stats';
 import { useAuthStore } from '@/store/auth';
 import { chartTheme } from '@/utils/echarts';
 import EChartsView from '@/components/EChartsView.vue';
@@ -133,6 +139,7 @@ const dietData = ref<DietStatPoint[]>([]);
 const trainingData = ref<TrainingStatPoint[]>([]);
 const weightData = ref<WeightStatPoint[]>([]);
 const exerciseData = ref<ExerciseStat[]>([]);
+const weekly = ref<WeeklySummary | null>(null);
 
 const avgCalories = computed(() => {
   if (!dietData.value.length) return 0;
@@ -365,16 +372,18 @@ async function load() {
   loading.value = true;
   loadFailed.value = false;
   try {
-    const [d, t, w, e] = await Promise.all([
+    const [d, t, w, e, summary] = await Promise.all([
       statsApi.diet(range.value),
       statsApi.training(range.value),
       statsApi.weight(range.value),
       statsApi.exercises(range.value),
+      statsApi.weeklySummary(),
     ]);
     dietData.value = d.items || [];
     trainingData.value = t.items || [];
     weightData.value = w.items || [];
     exerciseData.value = e.items || [];
+    weekly.value = summary;
   } catch {
     uni.showToast({ title: '加载失败，请重试', icon: 'none' });
     loadFailed.value = true;

@@ -35,8 +35,21 @@ export interface ExerciseStat {
   total_volume: number;
   has_weight?: boolean;
 }
+export interface WeeklySummary {
+  diet_days: number;
+  average_calories: number;
+  protein_goal_days: number;
+  training_sessions: number;
+  total_volume: number;
+  weight_change: number | null;
+  streak_days: number;
+  actions: string[];
+}
 
 export const statsApi = {
+  weeklySummary(end_date?: string) {
+    return http.get<WeeklySummary>('/stats/weekly-summary', { end_date });
+  },
   diet(range: StatsRange = 7) {
     return http.get<{ items: DietStatPoint[] }>('/stats/diet', { range });
   },
