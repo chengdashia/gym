@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
@@ -11,7 +12,13 @@ from app.core.database import get_db
 from app.core.exceptions import BizException
 from app.core.response import ok
 from app.models import OperationLog, UploadedFile, User
-from app.services.uploads import cleanup_expired_uploads, delete_local_file, validate_image_bytes
+from app.services.uploads import (
+    cleanup_expired_uploads,
+    delete_local_file,
+    local_file_path,
+    normalize_image,
+    validate_image_bytes,
+)
 
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
@@ -46,9 +53,6 @@ async def upload_image(
     today = datetime.now().strftime("%Y%m%d")
     sub = Path(settings.upload_dir) / today
     sub.mkdir(parents=True, exist_ok=True)
-    new_name = f"{uuid.uuid4().hex}{ext}"
-    dst = sub / new_name
-
     contents = await file.read()
     size = len(contents)
     if size == 0:
@@ -57,15 +61,21 @@ async def upload_image(
         raise BizException(60001, f"文件过大（>{settings.upload_max_size_mb}MB）")
     try:
         validate_image_bytes(contents, ext)
+        contents, ext, mime_type = normalize_image(contents)
+        size = len(contents)
     except ValueError as exc:
         raise BizException(60001, str(exc)) from exc
+
+    new_name = f"{uuid.uuid4().hex}{ext}"
+    dst = sub / new_name
 
     cleanup_expired_uploads(db)
 
     with open(dst, "wb") as f:
         f.write(contents)
 
-    file_url = f"{settings.static_url_prefix.rstrip('/')}/{today}/{new_name}"
+    url_prefix = settings.static_url_prefix.rstrip("/") if usage_type == "avatar" else "/private"
+    file_url = f"{url_prefix}/{today}/{new_name}"
     uf = UploadedFile(
         user_id=user.id,
         file_type="image",
@@ -74,10 +84,10 @@ async def upload_image(
         storage_provider="local",
         original_name=file.filename,
         file_size=size,
-        mime_type=file.content_type,
+        mime_type=mime_type,
         is_temporary=1 if temporary else 0,
     )
-    uf.expired_at = datetime.utcnow() + timedelta(hours=24) if temporary else None
+    uf.expired_at = datetime.now() + timedelta(hours=24) if temporary else None
     try:
         db.add(uf)
         db.flush()
@@ -94,3 +104,21 @@ async def upload_image(
         raise
 
     return ok({"file_id": uf.id, "file_url": uf.file_url, "is_temporary": bool(uf.is_temporary)})
+
+
+@router.get("/{file_id}/content")
+def get_upload_content(
+    file_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    upload = db.query(UploadedFile).filter(
+        UploadedFile.id == file_id,
+        UploadedFile.user_id == user.id,
+    ).first()
+    if not upload:
+        raise BizException(40401, "图片不存在", status_code=404)
+    path = local_file_path(upload.file_url)
+    if path is None or not path.is_file():
+        raise BizException(40401, "图片不存在", status_code=404)
+    return FileResponse(path, media_type=upload.mime_type or "application/octet-stream")

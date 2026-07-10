@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -11,6 +11,20 @@ from app.models import UploadedFile
 
 
 ALLOWED_IMAGE_FORMATS = {"jpeg", "png", "webp", "gif"}
+
+
+def normalize_image(contents: bytes) -> tuple[bytes, str, str]:
+    try:
+        with Image.open(io.BytesIO(contents)) as source:
+            image = ImageOps.exif_transpose(source)
+            output = io.BytesIO()
+            if image.mode in {"RGBA", "LA"} or "transparency" in image.info:
+                image.convert("RGBA").save(output, format="PNG", optimize=True)
+                return output.getvalue(), ".png", "image/png"
+            image.convert("RGB").save(output, format="JPEG", quality=88, optimize=True)
+            return output.getvalue(), ".jpg", "image/jpeg"
+    except (UnidentifiedImageError, OSError, SyntaxError) as exc:
+        raise ValueError("无效的图片内容") from exc
 
 
 def validate_image_bytes(contents: bytes, extension: str) -> str:
@@ -28,13 +42,8 @@ def validate_image_bytes(contents: bytes, extension: str) -> str:
 
 
 def delete_local_file(file_url: str) -> bool:
-    prefix = settings.static_url_prefix.rstrip("/")
-    if not file_url.startswith(f"{prefix}/"):
-        return False
-
-    upload_root = Path(settings.upload_dir).resolve()
-    path = (upload_root / file_url[len(prefix):].lstrip("/")).resolve()
-    if upload_root not in path.parents:
+    path = local_file_path(file_url)
+    if path is None:
         return False
 
     try:
@@ -44,11 +53,21 @@ def delete_local_file(file_url: str) -> bool:
         return False
 
 
+def local_file_path(file_url: str) -> Path | None:
+    prefixes = (settings.static_url_prefix.rstrip("/"), "/private")
+    prefix = next((item for item in prefixes if file_url.startswith(f"{item}/")), None)
+    if prefix is None:
+        return None
+    upload_root = Path(settings.upload_dir).resolve()
+    path = (upload_root / file_url[len(prefix):].lstrip("/")).resolve()
+    return path if upload_root in path.parents else None
+
+
 def cleanup_expired_uploads(db: Session) -> None:
     expired = db.query(UploadedFile).filter(
         UploadedFile.is_temporary == 1,
         UploadedFile.expired_at.is_not(None),
-        UploadedFile.expired_at <= datetime.utcnow(),
+        UploadedFile.expired_at <= datetime.now(),
     ).all()
     if not expired:
         return

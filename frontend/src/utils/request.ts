@@ -185,3 +185,18 @@ export function uploadFile(filePath: string, formData: Record<string, any> = {})
     });
   });
 }
+
+export function downloadPrivateUpload(fileId: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const t = getToken();
+    uni.downloadFile({
+      url: `${API_BASE}/uploads/${fileId}/content`,
+      header: t ? { Authorization: `Bearer ${t}` } : {},
+      success: (res) => {
+        if (res.statusCode === 200) resolve(res.tempFilePath);
+        else reject({ statusCode: res.statusCode, message: '图片加载失败' });
+      },
+      fail: reject,
+    });
+  });
+}

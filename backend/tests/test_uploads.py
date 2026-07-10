@@ -10,6 +10,7 @@ from PIL import Image
 from app.services.uploads import (
     cleanup_expired_uploads,
     finalize_upload,
+    normalize_image,
     validate_image_bytes,
 )
 from app.api.v1.uploads import upload_policy
@@ -66,12 +67,25 @@ class UploadTest(unittest.TestCase):
 
         self.assertEqual(validate_image_bytes(contents.getvalue(), ".png"), "png")
 
+    def test_normalize_image_removes_exif_and_uses_real_extension(self):
+        contents = io.BytesIO()
+        image = Image.new("RGB", (2, 1), color="red")
+        exif = Image.Exif()
+        exif[270] = "private metadata"
+        image.save(contents, format="JPEG", exif=exif)
+
+        normalized, extension, mime_type = normalize_image(contents.getvalue())
+
+        with Image.open(io.BytesIO(normalized)) as decoded:
+            self.assertFalse(decoded.getexif())
+        self.assertEqual((extension, mime_type), (".jpg", "image/jpeg"))
+
     def test_expired_cleanup_commits_database_delete_before_disk_delete(self):
         events = []
         upload = SimpleNamespace(
             id=3,
             is_temporary=1,
-            expired_at=datetime.utcnow() - timedelta(seconds=1),
+            expired_at=datetime.now() - timedelta(seconds=1),
             file_url="/static/expired.png",
         )
         db = FakeSession([upload], events)
@@ -94,7 +108,7 @@ class UploadTest(unittest.TestCase):
             file_url="/static/saved.png",
             is_temporary=1,
             usage_type="food_recognition",
-            expired_at=datetime.utcnow(),
+            expired_at=datetime.now(),
         )
         db = FakeSession([upload])
 
