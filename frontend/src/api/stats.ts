@@ -1,6 +1,6 @@
 import { http } from '@/utils/request';
 
-export type StatsRange = 7 | 15 | 30;
+export type StatsRange = 7 | 30 | 90;
 
 export interface DietStatPoint {
   date: string;

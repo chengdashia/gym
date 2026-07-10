@@ -15,12 +15,12 @@ from app.services.exercise_stats import aggregate_exercise_sets
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
-VALID_RANGES = {7, 15, 30}
+VALID_RANGES = {7, 30, 90}
 
 
 def _normalize_range(value: int) -> int:
     if value not in VALID_RANGES:
-        raise BizException(40001, "range 仅支持 7/15/30")
+        raise BizException(40001, "range 仅支持 7/30/90")
     return value
 
 

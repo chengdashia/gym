@@ -123,8 +123,8 @@ const auth = useAuthStore();
 
 const ranges = [
   { value: 7, label: '7 天' },
-  { value: 15, label: '15 天' },
   { value: 30, label: '30 天' },
+  { value: 90, label: '90 天' },
 ];
 
 const range = ref<StatsRange>(7);

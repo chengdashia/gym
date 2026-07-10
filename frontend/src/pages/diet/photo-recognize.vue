@@ -20,7 +20,8 @@
     <view v-else class="candidates-block">
       <image :src="imagePath" mode="aspectFill" class="preview-img" />
       <liquid-glass-card :highlight="true" class="card">
-        <view class="card-title">识别结果</view>
+        <view class="card-title">模拟候选推荐</view>
+        <view class="simulation-note">当前结果不来自真实图片分析，请选择最接近的食物并填写实际克数。</view>
         <view v-if="candidates.length === 0" class="empty-tip">
           未能识别出食物，你可以手动搜索添加
         </view>

@@ -115,10 +115,7 @@
     </view>
 
     <view v-else class="section">
-      <view class="section-title">账号安全</view>
-      <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
-      </liquid-glass-card>
-      <view class="section-title grouped-title">数据与存储</view>
+      <view class="section-title">数据与存储</view>
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item disabled">
           <line-icon name="phone" tint="sky" :size="48" class="mi-icon" />

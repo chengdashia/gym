@@ -37,11 +37,6 @@
         <view class="gi-label">体重</view>
         <view class="gi-value">{{ profile?.current_weight_kg || '-' }} kg</view>
       </liquid-glass-card>
-      <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goReminders" class="grid-item">
-        <line-icon name="bell" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
-        <view class="gi-label">提醒</view>
-        <view class="gi-value">{{ enabledReminderCount }} 项开启</view>
-      </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goAccount" class="grid-item">
         <line-icon name="lock" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
         <view class="gi-label">账号</view>
@@ -59,11 +54,6 @@
       <view class="menu-item" @tap="goGoals">
         <line-icon name="target" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">目标设置</text>
-        <text class="mi-arrow">›</text>
-      </view>
-      <view class="menu-item" @tap="goReminders">
-        <line-icon name="bell" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
-        <text class="mi-label">提醒设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAccount">
@@ -133,14 +123,11 @@ const goalLabel = computed(() => {
   return FITNESS_GOALS.find((g) => g.value === v)?.label || '';
 });
 
-const enabledReminderCount = computed(() => userStore.reminders.filter((r) => r.enabled).length);
-
 async function load() {
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) return;
   if (!userStore.me) await userStore.fetchMe().catch(() => {});
   if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
-  await userStore.fetchReminders().catch(() => {});
 }
 
 onMounted(load);
@@ -156,11 +143,6 @@ function goProfile() {
 }
 function goGoals() {
   const url = '/pages/mine/goals';
-  if (!requireAuth({ redirect: url })) return;
-  uni.navigateTo({ url });
-}
-function goReminders() {
-  const url = '/pages/mine/reminders';
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
