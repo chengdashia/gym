@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Fitness Diet API"
     debug: bool = True
 
-    db_url: str = "sqlite:///./fitness.db"
+    db_url: str = "mysql+pymysql://root@127.0.0.1:3306/fitness_diet?charset=utf8mb4"
 
     jwt_secret: str = "dev-only-change-before-production"
     jwt_alg: str = "HS256"
