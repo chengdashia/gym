@@ -151,12 +151,12 @@ async function save() {
       amount_g: record.amount,
     });
     if (record.date === diet.selectedDate) await diet.fetch(record.date);
-    uni.hideLoading();
     uni.showToast({ title: '食物和记录已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 </script>

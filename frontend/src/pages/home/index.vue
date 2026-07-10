@@ -91,12 +91,6 @@
         </view>
       </liquid-glass-card>
 
-      <liquid-glass-card v-if="!diet.calories_goal" :highlight="true" class="card-section">
-        <view class="empty-title">还没有饮食目标</view>
-        <view class="empty-desc">设置目标后可查看每日热量和三大营养素进度</view>
-        <liquid-glass-button text="设置饮食目标" variant="primary" size="sm" :block="false" @tap="goNutritionGoal" />
-      </liquid-glass-card>
-
       <!-- 体重卡 -->
       <liquid-glass-card :highlight="true" class="card-section">
         <view class="section-head">
@@ -236,11 +230,6 @@ onShow(async () => {
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
-function goNutritionGoal() {
-  if (!requireAuth({ redirect: '/pages/home/index' })) return;
-  uni.navigateTo({ url: '/pages/mine/goals' });
-}
-
 async function startSession() {
   if (!requireAuth({ redirect: '/pages/home/index' })) return;
   const t = training.value;
@@ -360,7 +349,7 @@ function recordWeight() {
 }
 
 .avatar:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
 .avatar-img {

@@ -213,13 +213,13 @@ async function save() {
       image_file_id: uploadedFileId.value,
       save_image: saveImage.value,
     });
-    uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 </script>

@@ -103,48 +103,22 @@
         </view>
       </liquid-glass-card>
       <liquid-glass-card v-if="weightRecords.length" variant="light" class="history-card">
-        <view class="chart-title">最近记录</view>
-        <view v-for="item in weightRecords" :key="item.id" class="row">
+        <view class="history-head" @tap="recordsExpanded = !recordsExpanded">
+          <view class="chart-title">最近记录 <text class="record-count">{{ weightRecords.length }} 条</text></view>
+          <text class="expand-action">{{ recordsExpanded ? '收起' : '展开' }} {{ recordsExpanded ? '⌃' : '⌄' }}</text>
+        </view>
+        <view v-if="recordsExpanded" v-for="item in weightRecords" :key="item.id" class="row">
           <view><view>{{ item.weight_kg }} kg</view><view class="hero-date">{{ item.record_date }} {{ item.record_time }} {{ item.note || '' }}</view></view>
-          <view class="weight-actions"><text @tap="editWeight(item)">编辑</text><text class="danger-text" @tap="removeWeight(item)">删除</text></view>
+          <view class="weight-actions"><text class="edit-action" @tap.stop="editWeight(item)">编辑</text><text class="danger-text" @tap.stop="removeWeight(item)">删除</text></view>
         </view>
       </liquid-glass-card>
     </view>
 
-    <!-- 普通账号页模式：保留原有体重区 -->
     <view v-else class="section">
-      <view class="section-title">体重记录</view>
-      <view :class="['weight-section', { highlight: highlightWeight }]">
-        <liquid-glass-card variant="light" :highlight="true" custom-style="margin-bottom:0">
-          <template v-if="loading">
-            <view class="row">
-              <text class="label">最新体重</text>
-              <text class="value">加载中...</text>
-            </view>
-          </template>
-          <template v-else>
-            <view class="row">
-              <text class="label">最新体重</text>
-              <text class="value">{{ latestWeight ? latestWeight.weight_kg + ' kg' : '暂无' }}</text>
-            </view>
-            <view class="row">
-              <text class="label">记录时间</text>
-              <text class="value">{{ latestWeight ? latestWeight.record_date : '-' }}</text>
-            </view>
-          </template>
-          <view class="form-row">
-            <text class="label">新体重 (kg)</text>
-            <input v-model="newWeight" type="digit" placeholder="例 65.5" class="input" />
-          </view>
-          <view class="weight-actions">
-            <liquid-glass-button text="保存体重" variant="primary" :disabled="saving" @tap="saveWeight" />
-          </view>
-        </liquid-glass-card>
-      </view>
-    </view>
-
-    <view v-if="!isWeightAction" class="section">
-      <view class="section-title">账号与数据</view>
+      <view class="section-title">账号安全</view>
+      <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
+      </liquid-glass-card>
+      <view class="section-title grouped-title">数据与存储</view>
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item disabled">
           <line-icon name="phone" tint="sky" :size="48" class="mi-icon" />
@@ -161,6 +135,11 @@
           <text class="mi-label">清除缓存</text>
           <text class="mi-value">{{ cacheSize }}</text>
         </view>
+      </liquid-glass-card>
+      <view class="section-title grouped-title">隐私与协议</view>
+      <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
+        <view class="menu-item" @tap="goAgreement('agreement')"><line-icon name="document" tint="neutral" :size="48" class="mi-icon" /><text class="mi-label">用户协议</text><text class="mi-arrow">›</text></view>
+        <view class="menu-item" @tap="goAgreement('privacy')"><line-icon name="shield" tint="sky" :size="48" class="mi-icon" /><text class="mi-label">隐私政策</text><text class="mi-arrow">›</text></view>
       </liquid-glass-card>
     </view>
 
@@ -218,6 +197,7 @@ import { weightApi, WeightRecord } from '@/api/weight';
 import { clearAllCache } from '@/utils/cache';
 import { formatTime, today } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
+import { weightRecordToForm } from '@/utils/weight-record';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -239,19 +219,12 @@ const saving = ref(false);
 const highlightWeight = ref(false);
 const isWeightAction = ref(false);
 const chartType = ref<'bar' | 'line'>('bar');
+const recordsExpanded = ref(false);
 
 onLoad((options: any) => {
   if (options?.action === 'weight') {
     isWeightAction.value = true;
     uni.setNavigationBarTitle({ title: '记录体重' });
-  } else {
-    setTimeout(() => {
-      uni.pageScrollTo({ selector: '.weight-section', duration: 300 });
-      highlightWeight.value = true;
-      setTimeout(() => {
-        highlightWeight.value = false;
-      }, 600);
-    }, 400);
   }
 });
 
@@ -264,7 +237,7 @@ onMounted(async () => {
   if (!userStore.me) await userStore.fetchMe().catch(() => {
     uni.showToast({ title: '加载失败', icon: 'none' });
   });
-  await loadWeight();
+  if (isWeightAction.value) await loadWeight();
   computeCache();
 });
 
@@ -273,7 +246,7 @@ onShow(async () => {
   if (!userStore.me) await userStore.fetchMe().catch(() => {
     uni.showToast({ title: '加载失败', icon: 'none' });
   });
-  await loadWeight();
+  if (isWeightAction.value) await loadWeight();
 });
 
 async function loadWeight() {
@@ -549,7 +522,7 @@ async function saveWeight() {
     else await weightApi.create(payload);
     resetWeightForm();
     await loadWeight();
-    uni.hideLoading();
+    await userStore.fetchMe().catch(() => {});
     uni.showToast({ title: '已记录', icon: 'success' });
     if (isWeightAction.value) {
       setTimeout(() => {
@@ -562,9 +535,9 @@ async function saveWeight() {
       }, 600);
     }
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
+    uni.hideLoading();
     saving.value = false;
   }
 }
@@ -578,20 +551,27 @@ function resetWeightForm() {
 }
 
 function editWeight(item: WeightRecord) {
+  const form = weightRecordToForm(item);
   editingWeightId.value = item.id;
-  newWeight.value = String(item.weight_kg);
-  weightDate.value = item.record_date;
-  weightTime.value = item.record_time.slice(0, 5);
-  weightNote.value = item.note || '';
+  newWeight.value = form.weight;
+  weightDate.value = form.date;
+  weightTime.value = form.time;
+  weightNote.value = form.note;
+  uni.pageScrollTo({ selector: '.input-card', duration: 250 });
 }
 
 function removeWeight(item: WeightRecord) {
-  uni.showModal({ title: '删除体重记录', content: '确定删除这条记录？', success: async ({ confirm }) => {
+  uni.showModal({ title: '删除体重记录', content: `确定删除 ${item.record_date} 的 ${item.weight_kg} kg 记录？`, success: async ({ confirm }) => {
     if (!confirm) return;
     await weightApi.remove(item.id);
     if (editingWeightId.value === item.id) resetWeightForm();
     await loadWeight();
+    await userStore.fetchMe().catch(() => {});
   }});
+}
+
+function goAgreement(type: 'agreement' | 'privacy') {
+  uni.navigateTo({ url: `/pages/mine/agreement?type=${type}` });
 }
 
 function clearCache() {
@@ -623,11 +603,11 @@ async function deleteData() {
     newWeight.value = '';
     latestWeight.value = null;
     weightHistory.value = [];
-    uni.hideLoading();
     uni.showToast({ title: '已删除', icon: 'success' });
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 
@@ -644,12 +624,12 @@ async function cancelAccount() {
     dietStore.$reset();
     trainingStore.$reset();
     auth.logout();
-    uni.hideLoading();
     uni.showToast({ title: '已注销', icon: 'success' });
     setTimeout(() => uni.reLaunch({ url: '/pages/login/onboarding' }), 800);
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 </script>
@@ -876,6 +856,23 @@ async function cancelAccount() {
 .weight-actions {
   margin-top: $gap-2;
 }
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: $gap-2;
+}
+.record-count { margin-left: 8rpx; color: $text-3; font-size: $fs-xs; font-weight: 500; }
+.expand-action { color: $primary-deep; font-size: $fs-sm; font-weight: 600; }
+.edit-action, .danger-text {
+  padding: 10rpx 16rpx;
+  border-radius: $r-pill;
+  font-size: $fs-sm;
+  font-weight: 600;
+}
+.edit-action { color: $primary-deep; background: $primary-tint; }
+.danger-text { color: $danger; background: rgba(242, 101, 101, .08); }
+.grouped-title { margin-top: $gap-4; }
 
 .menu-item {
   display: flex;

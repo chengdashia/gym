@@ -6,9 +6,18 @@
           <text class="label">昵称</text>
           <input v-model="form.nickname" placeholder="请输入昵称" class="input" />
         </view>
-        <view class="row">
-          <text class="label">头像URL</text>
-          <input v-model="form.avatar_url" placeholder="可选" class="input" />
+        <view class="avatar-row">
+          <view class="avatar-preview" @tap="chooseAvatar">
+            <image v-if="form.avatar_url" :src="form.avatar_url" class="avatar-image" mode="aspectFill" />
+            <line-icon v-else name="user" tint="mint" :size="72" />
+          </view>
+          <view class="avatar-copy">
+            <text class="avatar-title">个人头像</text>
+            <text class="avatar-tip">支持 JPG、PNG、WebP，图片保存在本地服务</text>
+          </view>
+          <view :class="['avatar-action', { disabled: uploadingAvatar }]" @tap="chooseAvatar">
+            {{ uploadingAvatar ? '上传中' : (form.avatar_url ? '更换' : '选择') }}
+          </view>
         </view>
         <view class="row">
           <text class="label">性别</text>
@@ -85,17 +94,20 @@
 import { reactive, ref, onMounted } from 'vue';
 import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
 import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
+import LineIcon from '@/components/LineIcon.vue';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { FITNESS_GOALS, TRAINING_FREQUENCIES } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
+import { uploadApi } from '@/api/uploads';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
 const goals = FITNESS_GOALS;
 const frequencies = TRAINING_FREQUENCIES;
 const ready = ref(false);
+const uploadingAvatar = ref(false);
 
 const form = reactive({
   nickname: '',
@@ -161,6 +173,28 @@ function chipStyle(value: string, color?: string) {
   return form.profile.fitness_goal === value && color ? `background:${color};color:#fff` : undefined;
 }
 
+function chooseAvatar() {
+  if (uploadingAvatar.value) return;
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    success: async (result) => {
+      const filePath = result.tempFilePaths?.[0];
+      if (!filePath) return;
+      uploadingAvatar.value = true;
+      try {
+        const uploaded = await uploadApi.avatar(filePath);
+        form.avatar_url = uploaded.file_url;
+        uni.showToast({ title: '头像已上传', icon: 'success' });
+      } catch (e: any) {
+        uni.showToast({ title: e?.message || '头像上传失败', icon: 'none' });
+      } finally {
+        uploadingAvatar.value = false;
+      }
+    },
+  });
+}
+
 function validateProfile() {
   const { age, height_cm, current_weight_kg, target_weight_kg } = form.profile;
   if (!Number.isFinite(age) || !Number.isInteger(age) || age < 5 || age > 120) return false;
@@ -182,12 +216,12 @@ async function save() {
       avatar_url: form.avatar_url,
       profile: form.profile,
     });
-    uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/mine/index'), 600);
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 </script>
@@ -211,6 +245,37 @@ async function save() {
     gap: $gap-1;
   }
   &:last-child { border-bottom: none; }
+}
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: $gap-2;
+  padding: $gap-2 0 $gap-3;
+  border-bottom: 1rpx solid $divider;
+}
+.avatar-preview {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: $primary-tint;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.avatar-image { width: 100%; height: 100%; }
+.avatar-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.avatar-title { color: $text-1; font-size: $fs-md; font-weight: 600; }
+.avatar-tip { color: $text-3; font-size: $fs-xs; line-height: 1.5; }
+.avatar-action {
+  color: $primary-deep;
+  font-size: $fs-sm;
+  font-weight: 600;
+  padding: 12rpx 20rpx;
+  border-radius: $r-pill;
+  background: $primary-tint;
+  &.disabled { opacity: .55; }
 }
 .row-line {
   display: flex;

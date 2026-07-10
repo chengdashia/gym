@@ -141,7 +141,44 @@ input, textarea {
   overflow: hidden;
 }
 
-// 全局页面入场
+// 页面仅淡入。不要在 page 上保留 transform，否则小程序中的 fixed 元素会随页面滚动。
 page, .page-enter {
-  animation: lg-fade-up 0.4s $ease-spring both;
+  animation: page-fade-in 0.3s $ease-glass both;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+// 全站可点击元素统一使用与底栏一致的按压回弹。
+.tap-spring,
+.menu-item,
+.meal-head,
+.meal-add,
+.date-cell,
+.sheet-grid-item,
+.fab,
+.avatar-wrap,
+.edit-btn,
+.grid-item,
+.plan-card-wrap,
+.quick-action {
+  transition: transform 0.3s $ease-spring, opacity 0.2s $ease-glass;
+  will-change: transform;
+}
+
+.tap-spring:active,
+.menu-item:active,
+.meal-head:active,
+.meal-add:active,
+.date-cell:active,
+.sheet-grid-item:active,
+.fab:active,
+.avatar-wrap:active,
+.edit-btn:active,
+.grid-item:active,
+.plan-card-wrap:active,
+.quick-action:active {
+  transform: scale(0.92);
 }

@@ -40,6 +40,31 @@ from app.services.uploads import delete_local_file
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def _upsert_today_weight(db: Session, user_id: int, weight_kg) -> WeightRecord:
+    now = datetime.now()
+    start = datetime.combine(now.date(), time.min)
+    end = datetime.combine(now.date(), time.max)
+    record = db.query(WeightRecord).filter(
+        WeightRecord.user_id == user_id,
+        WeightRecord.deleted_at.is_(None),
+        WeightRecord.record_date >= start,
+        WeightRecord.record_date <= end,
+    ).order_by(WeightRecord.record_time.desc(), WeightRecord.id.desc()).first()
+    if record:
+        record.weight_kg = weight_kg
+        record.record_time = now.time().replace(microsecond=0)
+    else:
+        record = WeightRecord(
+            user_id=user_id,
+            record_date=datetime.combine(now.date(), time.min),
+            record_time=now.time().replace(microsecond=0),
+            weight_kg=weight_kg,
+            note="基础资料同步",
+        )
+        db.add(record)
+    return record
+
+
 def _to_user_me(user: User, profile: UserProfile | None) -> dict:
     profile_out = UserProfileOut.model_validate(profile).model_dump() if profile else None
     return {
@@ -56,9 +81,21 @@ def _to_user_me(user: User, profile: UserProfile | None) -> dict:
     }
 
 
+def _apply_latest_weight(db: Session, user_id: int, profile: UserProfile | None) -> None:
+    if not profile:
+        return
+    latest = db.query(WeightRecord).filter(
+        WeightRecord.user_id == user_id,
+        WeightRecord.deleted_at.is_(None),
+    ).order_by(WeightRecord.record_date.desc(), WeightRecord.record_time.desc(), WeightRecord.id.desc()).first()
+    if latest:
+        profile.current_weight_kg = latest.weight_kg
+
+
 @router.get("/me")
 def get_me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    _apply_latest_weight(db, user.id, profile)
     return ok(_to_user_me(user, profile))
 
 
@@ -87,6 +124,7 @@ def update_me(
             profile.height_cm = p.height_cm
         if p.current_weight_kg is not None:
             profile.current_weight_kg = p.current_weight_kg
+            _upsert_today_weight(db, user.id, p.current_weight_kg)
         if p.target_weight_kg is not None:
             profile.target_weight_kg = p.target_weight_kg
         if p.fitness_goal is not None:
@@ -98,6 +136,7 @@ def update_me(
     db.commit()
     db.refresh(user)
     profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    _apply_latest_weight(db, user.id, profile)
     return ok(_to_user_me(user, profile))
 
 

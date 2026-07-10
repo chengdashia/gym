@@ -17,7 +17,15 @@ from app.services.uploads import cleanup_expired_uploads, delete_local_file, val
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-ALLOWED_USAGE = {"food_recognition", "diet_record"}
+ALLOWED_USAGE = {"food_recognition", "diet_record", "avatar"}
+
+
+def upload_policy(usage_type: str, temporary: bool) -> tuple[str, bool]:
+    if usage_type not in ALLOWED_USAGE:
+        raise BizException(40001, "不支持的图片用途")
+    if usage_type == "avatar" and temporary:
+        raise BizException(40001, "头像必须永久保存")
+    return usage_type, temporary
 
 
 @router.post("/image")
@@ -30,8 +38,7 @@ async def upload_image(
 ):
     if not file.filename:
         raise BizException(40001, "未上传文件")
-    if usage_type not in ALLOWED_USAGE:
-        raise BizException(40001, "不支持的图片用途")
+    usage_type, temporary = upload_policy(usage_type, temporary)
     ext = Path(file.filename).suffix.lower() or ".jpg"
     if ext not in ALLOWED_EXT:
         raise BizException(40001, f"不支持的文件类型: {ext}")

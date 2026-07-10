@@ -135,12 +135,12 @@ async function save() {
   uni.showLoading({ title: '保存中...' });
   try {
     await userStore.updateReminders(items.value);
-    uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/mine/index'), 600);
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 </script>

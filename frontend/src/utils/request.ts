@@ -145,6 +145,14 @@ export const http = {
     request<T>({ url, method: 'DELETE', data, ...opts }),
 };
 
+export function normalizeUploadFormData(formData: Record<string, any>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(formData)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => [key, String(value)]),
+  );
+}
+
 export function uploadFile(filePath: string, formData: Record<string, any> = {}): Promise<{ file_id: number; file_url: string; is_temporary: boolean }> {
   return new Promise((resolve, reject) => {
     const t = getToken();
@@ -152,15 +160,19 @@ export function uploadFile(filePath: string, formData: Record<string, any> = {})
       url: `${API_BASE}/uploads/image`,
       filePath,
       name: 'file',
-      formData,
+      formData: normalizeUploadFormData(formData),
       header: t ? { Authorization: `Bearer ${t}` } : {},
       success: (res) => {
         try {
           const body = JSON.parse(res.data);
           if (body.code === 0) resolve(body.data);
           else {
-            uni.showToast({ title: body.message || '上传失败', icon: 'none' });
-            reject(body);
+            const detail = Array.isArray(body.detail)
+              ? body.detail.map((item: any) => item?.msg).filter(Boolean).join('；')
+              : '';
+            const error = { ...body, message: body.message || detail || `上传失败（${res.statusCode}）` };
+            uni.showToast({ title: error.message, icon: 'none' });
+            reject(error);
           }
         } catch (e) {
           reject(e);

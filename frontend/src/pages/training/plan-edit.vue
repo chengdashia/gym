@@ -636,6 +636,11 @@ async function removePlan() {
 }
 .input {
   flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 $gap-2;
   font-size: $fs-md;
   color: $text-1;
   text-align: right;
@@ -707,7 +712,10 @@ async function removePlan() {
   color: $text-1;
   font-weight: 600;
   background: $card;
-  padding: 12rpx $gap-2;
+  box-sizing: border-box;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 $gap-2;
   border-radius: $r-12;
   min-width: 0;
 }
@@ -785,6 +793,7 @@ async function removePlan() {
   display: flex;
   flex-direction: column;
   gap: 4rpx;
+  min-width: 0;
 }
 .ex-edit-label {
   font-size: $fs-xs;
@@ -793,7 +802,12 @@ async function removePlan() {
 .ex-edit-input {
   background: $card;
   border-radius: $r-12;
-  padding: 12rpx $gap-2;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 $gap-2;
   font-size: $fs-md;
   color: $text-1;
 }
@@ -821,7 +835,11 @@ async function removePlan() {
   flex: 1;
   background: $card;
   border-radius: $r-12;
-  padding: 12rpx $gap-2;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 $gap-2;
   font-size: $fs-md;
   color: $text-1;
 }

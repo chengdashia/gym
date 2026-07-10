@@ -35,12 +35,6 @@
     "permission": {
       "scope.userLocation": {
         "desc": "用于展示附近的健身房"
-      },
-      "scope.album": {
-        "desc": "用于选择食物图片进行拍照识别"
-      },
-      "scope.camera": {
-        "desc": "用于拍摄食物图片进行识别"
       }
     },
     "requiredPrivateInfos": []

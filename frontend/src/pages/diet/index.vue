@@ -1,20 +1,23 @@
 <template>
   <view class="diet-page">
     <view class="header">
+      <view class="date-heading">
+        <text class="date-heading-main">{{ selectedDateHeading }}</text>
+        <text class="date-heading-tip">点击下方日期查看当天饮食</text>
+      </view>
       <!-- 日期切换：玻璃药丸横向滚动 -->
       <view class="date-bar">
         <scroll-view scroll-x class="date-scroll" :show-scrollbar="false">
           <view class="date-row">
-            <liquid-glass-pill
+            <view
               v-for="d in weekDates"
               :key="d.date"
-              :text="`${d.weekday} ${d.day}`"
-              :variant="d.date === selectedDate ? 'primary' : 'default'"
-              size="md"
-              interactive
-              :active="d.date === selectedDate"
+              :class="['date-cell', { selected: d.date === selectedDate, today: d.isToday }]"
               @tap="selectDate(d.date)"
-            />
+            >
+              <text class="date-weekday">{{ d.isToday ? '今天' : d.weekday }}</text>
+              <text class="date-day">{{ d.label }}</text>
+            </view>
           </view>
         </scroll-view>
       </view>
@@ -145,6 +148,7 @@ import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { addDays, formatDate, weekdayCN } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
 import type { DietRecord } from '@/api/diet';
+import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -166,6 +170,8 @@ const goalKcal = computed(() => userStore.goal.calories_kcal);
 const goalCarbs = computed(() => userStore.goal.carbs_g);
 const goalProtein = computed(() => userStore.goal.protein_g);
 const goalFat = computed(() => userStore.goal.fat_g);
+const todayString = formatDate(new Date());
+const selectedDateHeading = computed(() => dietDateHeading(selectedDate.value, todayString));
 
 const showAddSheet = ref(false);
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
@@ -178,13 +184,15 @@ const addOptions = [
 
 const weekDates = computed(() => {
   const t = new Date();
+  const displayedMonth = t.getMonth() + 1;
   const list = [];
   for (let i = -7; i <= 7; i++) {
     const d = addDays(t, i);
     list.push({
       date: formatDate(d),
       weekday: weekdayCN(formatDate(d))[1],
-      day: d.getDate(),
+      label: compactDateLabel(formatDate(d), displayedMonth),
+      isToday: formatDate(d) === todayString,
     });
   }
   return list;
@@ -310,6 +318,29 @@ function go(action: 'add' | 'custom' | 'photo') {
   gap: 12rpx;
   padding: 4rpx 0;
 }
+.date-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: $gap-2;
+}
+.date-heading-main { font-size: 40rpx; font-weight: 800; color: $text-1; }
+.date-heading-tip { font-size: $fs-xs; color: $text-3; }
+.date-cell {
+  min-width: 76rpx;
+  padding: 10rpx 8rpx;
+  border-radius: $r-12;
+  background: rgba(255, 255, 255, .7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  color: $text-2;
+  &.today { box-shadow: inset 0 0 0 2rpx rgba(91, 200, 154, .35); }
+  &.selected { background: $gradient-primary; color: #fff; box-shadow: 0 6rpx 16rpx rgba(95, 175, 145, .3); }
+}
+.date-weekday { font-size: 20rpx; }
+.date-day { font-size: $fs-md; font-weight: 700; }
 
 // ----- Summary Panel -----
 .summary-panel {
@@ -511,7 +542,7 @@ function go(action: 'add' | 'custom' | 'photo') {
 
   &:active {
     background: rgba(234, 248, 241, 0.85);
-    transform: scale(0.98);
+    transform: scale(0.92);
   }
 }
 
@@ -638,7 +669,7 @@ function go(action: 'add' | 'custom' | 'photo') {
   transition: transform 0.2s $ease-spring, background 0.3s $ease-glass;
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.92);
     background: rgba(255, 255, 255, 0.85);
   }
 }

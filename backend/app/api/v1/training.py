@@ -43,6 +43,7 @@ from app.schemas import (
     TrainingTodayOut,
 )
 from app.services.schedule import resolve_today_day, advance_sequence_plan
+from app.services.exercise_stats import effective_set_values
 from app.utils.date import date_str
 
 
@@ -400,6 +401,7 @@ def today(
 
 # ================== Sessions ==================
 def _session_to_dict(s: TrainingSession) -> dict:
+    total_volume = sum(effective_set_values(st)[2] for exercise in s.exercises for st in exercise.sets)
     return {
         "id": s.id,
         "plan_id": s.plan_id,
@@ -410,7 +412,7 @@ def _session_to_dict(s: TrainingSession) -> dict:
         "started_at": s.started_at,
         "ended_at": s.ended_at,
         "duration_seconds": s.duration_seconds,
-        "total_volume": s.total_volume,
+        "total_volume": total_volume,
         "note": s.note,
         "exercises": [_session_exercise_to_dict(e) for e in sorted(s.exercises, key=lambda x: x.sort_order or 0)],
     }
@@ -432,11 +434,11 @@ def _session_exercise_to_dict(e: TrainingSessionExercise) -> dict:
                 "set_index": st.set_index,
                 "target_reps": st.target_reps,
                 "target_weight_kg": st.target_weight_kg,
-                "actual_reps": st.actual_reps,
-                "actual_weight_kg": st.actual_weight_kg,
+                "actual_reps": effective_set_values(st)[0] if st.completed else st.actual_reps,
+                "actual_weight_kg": effective_set_values(st)[1] if st.completed else st.actual_weight_kg,
                 "completed": bool(st.completed),
                 "completed_at": st.completed_at,
-                "volume": st.volume,
+                "volume": effective_set_values(st)[2],
                 "note": st.note,
             } for st in sorted(e.sets, key=lambda x: x.set_index)
         ],
@@ -582,12 +584,13 @@ def update_session(
             if set_in.completed is not None:
                 row.completed = 1 if set_in.completed else 0
                 row.completed_at = datetime.utcnow() if set_in.completed else None
-                try:
-                    weight = float(row.actual_weight_kg or 0)
-                except Exception:
-                    weight = 0.0
-                reps = int(row.actual_reps or 0)
-                row.volume = weight * reps if set_in.completed else 0
+                reps, weight, volume = effective_set_values(row)
+                if set_in.completed:
+                    if row.actual_reps is None:
+                        row.actual_reps = reps
+                    if row.actual_weight_kg is None:
+                        row.actual_weight_kg = weight
+                row.volume = volume
         db.flush()
         se.completed_sets = sum(1 for row in se.sets if row.completed)
 
@@ -596,7 +599,7 @@ def update_session(
     for se in s.exercises:
         for st in se.sets:
             try:
-                total += float(st.volume or 0)
+                total += effective_set_values(st)[2]
             except Exception:
                 pass
     s.total_volume = total
@@ -625,7 +628,7 @@ def finish_session(session_id: int, user: User = Depends(get_current_user), db: 
     for se in s.exercises:
         for st in se.sets:
             try:
-                total += float(st.volume or 0)
+                total += effective_set_values(st)[2]
             except Exception:
                 pass
     s.total_volume = total

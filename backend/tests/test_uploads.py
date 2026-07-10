@@ -3,6 +3,7 @@ import io
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+import pytest
 
 from PIL import Image
 
@@ -11,6 +12,8 @@ from app.services.uploads import (
     finalize_upload,
     validate_image_bytes,
 )
+from app.api.v1.uploads import upload_policy
+from app.core.exceptions import BizException
 
 
 class FakeQuery:
@@ -46,6 +49,13 @@ class FakeSession:
 
 
 class UploadTest(unittest.TestCase):
+    def test_avatar_upload_is_allowed_and_permanent(self):
+        self.assertEqual(upload_policy("avatar", False), ("avatar", False))
+
+    def test_avatar_upload_rejects_temporary_storage(self):
+        with pytest.raises(BizException):
+            upload_policy("avatar", True)
+
     def test_rejects_fake_png(self):
         with self.assertRaises(ValueError):
             validate_image_bytes(b"not an image", ".png")

@@ -64,6 +64,7 @@ export interface SessionSet {
   actual_reps?: number | null;
   actual_weight_kg?: number | null;
   completed: boolean;
+  volume?: number;
   note?: string;
 }
 
@@ -105,6 +106,8 @@ export interface TodayTraining {
   exercise_count: number;
   schedule_type: string | null;
   today_completed?: boolean;
+  today_day?: PlanDay | null;
+  incomplete_session?: TrainingSession | null;
 }
 
 export const trainingApi = {
@@ -138,7 +141,13 @@ export const trainingApi = {
   getSession(id: number) {
     return http.get<TrainingSession>(`/training/sessions/${id}`);
   },
-  updateSession(id: number, payload: { status: string; exercises: SessionExercise[] }) {
+  updateSession(id: number, payload: {
+    status: string;
+    exercises: Array<{
+      session_exercise_id?: number;
+      sets: Array<Pick<SessionSet, 'set_id' | 'set_index' | 'actual_reps' | 'actual_weight_kg' | 'completed'>>;
+    }>;
+  }) {
     return http.put<TrainingSession>(`/training/sessions/${id}`, payload);
   },
   finishSession(id: number) {

@@ -37,4 +37,10 @@ describe('request HTTP errors', () => {
     await vi.advanceTimersByTimeAsync(600);
     expect(reLaunch).toHaveBeenCalledWith({ url: '/pages/login/onboarding' });
   });
+
+  it('serializes multipart values as strings for mini-program uploads', async () => {
+    const { normalizeUploadFormData } = await import('./request');
+    expect(normalizeUploadFormData({ usage_type: 'avatar', temporary: false, count: 1, empty: null }))
+      .toEqual({ usage_type: 'avatar', temporary: 'false', count: '1' });
+  });
 });

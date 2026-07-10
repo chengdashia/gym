@@ -6,6 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.models import DietRecord, TrainingSession, UserProfile, WeightRecord
 from app.utils.date import range_dates
+from app.services.exercise_stats import effective_set_values
+
+
+def effective_session_volume(session) -> float:
+    exercises = getattr(session, "exercises", None) or []
+    return sum(effective_set_values(set_row)[2] for exercise in exercises for set_row in (exercise.sets or []))
 
 
 def diet_series(db: Session, user_id: int, days: int, end: date | None = None,
@@ -61,7 +67,8 @@ def training_series(db: Session, user_id: int, days: int, end: date | None = Non
         if d in bucket:
             bucket[d]["session_count"] += 1
             bucket[d]["duration_seconds"] += int(r.duration_seconds or 0)
-            bucket[d]["total_volume"] += float(r.total_volume or 0)
+            recalculated = effective_session_volume(r)
+            bucket[d]["total_volume"] += recalculated if recalculated > 0 else float(r.total_volume or 0)
 
     out = []
     for d in sorted(bucket.keys()):

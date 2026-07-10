@@ -10,16 +10,17 @@ from app.core.response import ok
 from app.models import NutritionGoal, TrainingSession, TrainingSessionExercise, TrainingSessionSet, User, UserProfile
 from app.schemas import DietStatOut, TrainingStatOut, WeightStatOut
 from app.services.stats_service import diet_series, training_series, weight_series
+from app.services.exercise_stats import aggregate_exercise_sets
 
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
-VALID_RANGES = {7, 30, 90}
+VALID_RANGES = {7, 15, 30}
 
 
 def _normalize_range(value: int) -> int:
     if value not in VALID_RANGES:
-        raise BizException(40001, "range 仅支持 7/30/90")
+        raise BizException(40001, "range 仅支持 7/15/30")
     return value
 
 
@@ -86,18 +87,5 @@ def exercise_stats(
         TrainingSession.session_date >= start,
         TrainingSessionSet.completed == 1,
     ).all()
-    grouped: dict[str, dict] = {}
-    for exercise, set_row in rows:
-        item = grouped.setdefault(exercise.exercise_name_snapshot, {
-            "exercise_name": exercise.exercise_name_snapshot,
-            "body_part": exercise.body_part_snapshot,
-            "completed_sets": 0, "total_reps": 0, "max_weight_kg": 0.0, "total_volume": 0.0,
-        })
-        item["completed_sets"] += 1
-        item["total_reps"] += int(set_row.actual_reps or 0)
-        item["max_weight_kg"] = max(item["max_weight_kg"], float(set_row.actual_weight_kg or 0))
-        item["total_volume"] += float(set_row.volume or 0)
-    items = sorted(grouped.values(), key=lambda item: item["total_volume"], reverse=True)
-    for item in items:
-        item["total_volume"] = round(item["total_volume"], 2)
+    items = aggregate_exercise_sets(rows)
     return ok({"range": days, "items": items})

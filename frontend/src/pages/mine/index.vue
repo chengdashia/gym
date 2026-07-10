@@ -28,22 +28,22 @@
     <!-- 4 格入口 -->
     <view class="grid">
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goGoals" class="grid-item">
-        <line-icon name="target" tint="mint" :size="72" class="gi-icon" />
+        <line-icon name="target" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
         <view class="gi-label">目标</view>
         <view class="gi-value">{{ goal.calories_kcal }} kcal</view>
       </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goWeight" class="grid-item">
-        <line-icon name="scale" tint="warm" :size="72" class="gi-icon" />
+        <line-icon name="scale" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
         <view class="gi-label">体重</view>
         <view class="gi-value">{{ profile?.current_weight_kg || '-' }} kg</view>
       </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goReminders" class="grid-item">
-        <line-icon name="bell" tint="sky" :size="72" class="gi-icon" />
+        <line-icon name="bell" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
         <view class="gi-label">提醒</view>
         <view class="gi-value">{{ enabledReminderCount }} 项开启</view>
       </liquid-glass-card>
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goAccount" class="grid-item">
-        <line-icon name="lock" tint="violet" :size="72" class="gi-icon" />
+        <line-icon name="lock" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
         <view class="gi-label">账号</view>
         <view class="gi-value">数据管理</view>
       </liquid-glass-card>
@@ -52,27 +52,27 @@
     <!-- 菜单 1 -->
     <liquid-glass-card :highlight="true" class="menu-card">
       <view class="menu-item" @tap="goProfile">
-        <line-icon name="user" tint="mint" :size="56" class="mi-icon" />
+        <line-icon name="user" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">基础资料</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goGoals">
-        <line-icon name="target" tint="mint" :size="56" class="mi-icon" />
+        <line-icon name="target" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">目标设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goReminders">
-        <line-icon name="bell" tint="sky" :size="56" class="mi-icon" />
+        <line-icon name="bell" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">提醒设置</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAccount">
-        <line-icon name="lock" tint="violet" :size="56" class="mi-icon" />
+        <line-icon name="lock" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">账号与数据</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goTrainingHistory">
-        <line-icon name="history" tint="warm" :size="56" class="mi-icon" />
+        <line-icon name="history" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">训练历史</text>
         <text class="mi-arrow">›</text>
       </view>
@@ -81,17 +81,17 @@
     <!-- 菜单 2 -->
     <liquid-glass-card :highlight="true" class="menu-card">
       <view class="menu-item" @tap="goAgreement('agreement')">
-        <line-icon name="document" tint="neutral" :size="56" class="mi-icon" />
+        <line-icon name="document" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">用户协议</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goAgreement('privacy')">
-        <line-icon name="shield" tint="sky" :size="56" class="mi-icon" />
+        <line-icon name="shield" color="#8FA3A1" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label">隐私政策</text>
         <text class="mi-arrow">›</text>
       </view>
       <view class="menu-item" @tap="logout">
-        <line-icon name="logout" tint="rose" :size="56" class="mi-icon" />
+        <line-icon name="logout" color="#D96B7D" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label danger">退出登录</text>
         <text class="mi-arrow">›</text>
       </view>
@@ -237,7 +237,7 @@ function logout() {
 }
 
 .avatar:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 .avatar-img {
@@ -286,7 +286,7 @@ function logout() {
 
   &:active {
     background: rgba(255, 255, 255, 0.9);
-    transform: scale(0.96);
+    transform: scale(0.92);
   }
 }
 

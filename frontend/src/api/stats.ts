@@ -1,5 +1,7 @@
 import { http } from '@/utils/request';
 
+export type StatsRange = 7 | 15 | 30;
+
 export interface DietStatPoint {
   date: string;
   calories_kcal: number;
@@ -31,19 +33,20 @@ export interface ExerciseStat {
   total_reps: number;
   max_weight_kg: number;
   total_volume: number;
+  has_weight?: boolean;
 }
 
 export const statsApi = {
-  diet(range: 7 | 30 | 90 = 7) {
+  diet(range: StatsRange = 7) {
     return http.get<{ items: DietStatPoint[] }>('/stats/diet', { range });
   },
-  training(range: 7 | 30 | 90 = 30) {
+  training(range: StatsRange = 7) {
     return http.get<{ items: TrainingStatPoint[] }>('/stats/training', { range });
   },
-  weight(range: 7 | 30 | 90 = 30) {
+  weight(range: StatsRange = 7) {
     return http.get<{ items: WeightStatPoint[] }>('/stats/weight', { range });
   },
-  exercises(range: 7 | 30 | 90 = 30) {
+  exercises(range: StatsRange = 7) {
     return http.get<{ items: ExerciseStat[] }>('/stats/exercises', { range });
   },
 };

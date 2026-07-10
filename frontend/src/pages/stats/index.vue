@@ -10,11 +10,12 @@
         size="md"
         interactive
         :active="range === r.value"
-        @tap="setRange(r.value as 7 | 30 | 90)"
+        @tap="setRange(r.value as StatsRange)"
       />
     </view>
 
     <view v-if="loading" class="loading">加载中...</view>
+    <view v-else-if="loadFailed" class="load-error" @tap="load">数据加载失败，点击重试</view>
 
     <!-- 饮食 -->
     <liquid-glass-card :highlight="true" class="chart-card">
@@ -50,7 +51,7 @@
       <view v-if="exerciseData.length">
         <view v-for="item in exerciseData" :key="item.exercise_name" class="exercise-stat-row">
           <view><view>{{ item.exercise_name }}</view><view class="chart-sub">{{ item.body_part || '未分类' }} · {{ item.completed_sets }} 组</view></view>
-          <view class="chart-sub">最高 {{ item.max_weight_kg }} kg<br />容量 {{ Math.round(item.total_volume) }} kg</view>
+          <view class="chart-sub">最高 {{ item.has_weight === false ? '自重' : item.max_weight_kg + ' kg' }}<br />容量 {{ item.has_weight === false ? '按次数记录' : Math.round(item.total_volume) + ' kg' }}</view>
         </view>
       </view>
       <view v-else class="chart-empty">暂无动作数据</view>
@@ -65,9 +66,19 @@
         </view>
         <view class="chart-sub">{{ totalSessions }} 次训练 · 容量 {{ Math.round(totalVolume) }} kg</view>
       </view>
-      <view class="chart-box">
-        <EChartsView v-if="trainingOption" :option="trainingOption" canvas-id="training-chart" />
-        <view v-else class="chart-empty">暂无训练数据</view>
+      <view v-if="trainingVolumeOption" class="training-charts">
+        <view class="training-chart-block">
+          <view class="training-chart-label"><text class="volume-dot" />每日训练容量 <text class="training-unit">kg</text></view>
+          <EChartsView :option="trainingVolumeOption" :height="270" canvas-id="training-volume-chart" />
+        </view>
+        <view class="training-chart-divider" />
+        <view class="training-chart-block">
+          <view class="training-chart-label"><text class="count-dot" />每日训练次数 <text class="training-unit">次</text></view>
+          <EChartsView :option="trainingCountOption" :height="270" canvas-id="training-count-chart" />
+        </view>
+      </view>
+      <view v-else class="training-empty">
+        <view class="chart-empty">暂无训练数据</view>
       </view>
     </liquid-glass-card>
 
@@ -78,8 +89,9 @@
           <line-icon name="scale" tint="sky" :size="48" class="chart-emoji" />
           <text class="chart-title">体重趋势</text>
         </view>
-        <view v-if="weightChange !== null" class="chart-sub" :class="{ down: weightChange < 0, up: weightChange > 0 }">
-          {{ weightChange > 0 ? '+' : '' }}{{ weightChange.toFixed(1) }} kg
+        <view v-if="latestWeight !== null" class="weight-summary">
+          <view class="latest-weight">{{ latestWeight.toFixed(1) }} kg</view>
+          <view v-if="weightChange !== null" class="weight-change" :class="{ down: weightChange < 0, up: weightChange > 0 }">较首日 {{ weightChange > 0 ? '+' : '' }}{{ weightChange.toFixed(1) }} kg</view>
         </view>
       </view>
       <view class="chart-box">
@@ -93,10 +105,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat } from '@/api/stats';
+import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat, StatsRange } from '@/api/stats';
 import { useAuthStore } from '@/store/auth';
 import { chartTheme } from '@/utils/echarts';
 import EChartsView from '@/components/EChartsView.vue';
+import { hasTrainingData, validWeightPoints } from '@/utils/stats';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -110,11 +123,11 @@ const auth = useAuthStore();
 
 const ranges = [
   { value: 7, label: '7 天' },
+  { value: 15, label: '15 天' },
   { value: 30, label: '30 天' },
-  { value: 90, label: '90 天' },
 ];
 
-const range = ref<7 | 30 | 90>(30);
+const range = ref<StatsRange>(7);
 
 const dietData = ref<DietStatPoint[]>([]);
 const trainingData = ref<TrainingStatPoint[]>([]);
@@ -144,9 +157,13 @@ const weightChange = computed<number | null>(() => {
   if (valid.length < 2) return null;
   return (valid[valid.length - 1].weight_kg as number) - (valid[0].weight_kg as number);
 });
+const latestWeight = computed<number | null>(() => {
+  const valid = validWeightPoints(weightData.value);
+  return valid.length ? Number(valid[valid.length - 1].weight_kg) : null;
+});
 
 const dietOption = computed(() => {
-  if (!dietData.value.length) return null;
+  if (!dietData.value.some((item) => item.calories_kcal > 0 || item.carbs_g > 0 || item.protein_g > 0 || item.fat_g > 0)) return null;
   const dates = dietData.value.map((d) => d.date.slice(5));
   const cals = dietData.value.map((d) => d.calories_kcal);
   const carbs = dietData.value.map((d) => d.carbs_g);
@@ -239,23 +256,16 @@ const dietOption = computed(() => {
   };
 });
 
-const trainingOption = computed(() => {
-  if (!trainingData.value.length) return null;
+const trainingVolumeOption = computed(() => {
+  if (!hasTrainingData(trainingData.value)) return null;
   const dates = trainingData.value.map((d) => d.date.slice(5));
   const volume = trainingData.value.map((d) => d.total_volume);
-  const count = trainingData.value.map((d) => d.session_count);
 
   return {
-    color: [chartTheme.primary, chartTheme.warm],
+    color: [chartTheme.primary],
     grid: { left: 40, right: 16, top: 16, bottom: 28 },
     tooltip: { trigger: 'axis' },
-    legend: {
-      icon: 'circle',
-      bottom: 0,
-      itemWidth: 8,
-      itemHeight: 8,
-      textStyle: { color: chartTheme.text2, fontSize: 11 },
-    },
+    legend: { show: false },
     xAxis: {
       type: 'category',
       data: dates,
@@ -263,23 +273,7 @@ const trainingOption = computed(() => {
       axisLabel: { color: chartTheme.text3, fontSize: 10 },
       axisTick: { show: false },
     },
-    yAxis: [
-      {
-        type: 'value',
-        name: '容量',
-        axisLabel: { color: chartTheme.text3, fontSize: 10 },
-        splitLine: { lineStyle: { color: chartTheme.grid, type: 'dashed' } },
-        axisLine: { show: false },
-      },
-      {
-        type: 'value',
-        name: '次数',
-        position: 'right',
-        axisLabel: { color: chartTheme.text3, fontSize: 10 },
-        splitLine: { show: false },
-        axisLine: { show: false },
-      },
-    ],
+    yAxis: { type: 'value', name: '容量', axisLabel: { color: chartTheme.text3, fontSize: 10 }, splitLine: { lineStyle: { color: chartTheme.grid, type: 'dashed' } }, axisLine: { show: false } },
     series: [
       {
         name: '训练容量',
@@ -288,24 +282,29 @@ const trainingOption = computed(() => {
         barWidth: '50%',
         itemStyle: { color: chartTheme.primary, borderRadius: [6, 6, 0, 0] },
       },
-      {
-        name: '训练次数',
-        type: 'line',
-        yAxisIndex: 1,
-        smooth: true,
-        data: count,
-        symbol: 'circle',
-        symbolSize: 6,
-      },
     ],
   };
 });
 
+const trainingCountOption = computed(() => {
+  if (!hasTrainingData(trainingData.value)) return null;
+  const dates = trainingData.value.map((d) => d.date.slice(5));
+  return {
+    color: [chartTheme.warm],
+    grid: { left: 40, right: 16, top: 16, bottom: 28 },
+    tooltip: { trigger: 'axis' },
+    legend: { show: false },
+    xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: chartTheme.divider } }, axisLabel: { color: chartTheme.text3, fontSize: 10 }, axisTick: { show: false } },
+    yAxis: { type: 'value', name: '次数', axisLabel: { color: chartTheme.text3, fontSize: 10 }, splitLine: { lineStyle: { color: chartTheme.grid, type: 'dashed' } }, axisLine: { show: false } },
+    series: [{ name: '训练次数', type: 'line', smooth: true, data: trainingData.value.map((d) => d.session_count), symbol: 'circle', symbolSize: 6, itemStyle: { color: chartTheme.warm } }],
+  };
+});
+
 const weightOption = computed(() => {
-  const valid = weightData.value.filter((d) => d.weight_kg != null);
+  const valid = validWeightPoints(weightData.value);
   if (!valid.length) return null;
-  const dates = weightData.value.map((d) => d.date.slice(5));
-  const weights = weightData.value.map((d) => d.weight_kg);
+  const dates = valid.map((d) => d.date.slice(5));
+  const weights = valid.map((d) => d.weight_kg);
   const target = valid[0]?.target_weight_kg;
 
   return {
@@ -351,18 +350,20 @@ const weightOption = computed(() => {
           data: [{ yAxis: target, name: '目标' }],
           label: { color: chartTheme.warm, fontSize: 10 },
         } : undefined,
-        connectNulls: true,
+        connectNulls: false,
       },
     ],
   };
 });
 
 const loading = ref(false);
+const loadFailed = ref(false);
 
 async function load() {
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) return;
   loading.value = true;
+  loadFailed.value = false;
   try {
     const [d, t, w, e] = await Promise.all([
       statsApi.diet(range.value),
@@ -376,16 +377,13 @@ async function load() {
     exerciseData.value = e.items || [];
   } catch {
     uni.showToast({ title: '加载失败，请重试', icon: 'none' });
-    dietData.value = [];
-    trainingData.value = [];
-    weightData.value = [];
-    exerciseData.value = [];
+    loadFailed.value = true;
   } finally {
     loading.value = false;
   }
 }
 
-function setRange(r: 7 | 30 | 90) {
+function setRange(r: StatsRange) {
   range.value = r;
   load();
 }
@@ -419,6 +417,15 @@ onShow(() => {
   text-align: center;
   padding: $gap-4 0;
   color: $text-3;
+  font-size: $fs-sm;
+}
+.load-error {
+  text-align: center;
+  margin-bottom: $gap-3;
+  padding: $gap-2;
+  color: $danger;
+  background: rgba(242, 101, 101, .08);
+  border-radius: $r-12;
   font-size: $fs-sm;
 }
 
@@ -469,11 +476,25 @@ onShow(() => {
   &.up { color: $warn; background: rgba(255, 238, 217, 0.7); }
   &.down { color: $primary; background: rgba(234, 248, 241, 0.7); }
 }
+.weight-summary { text-align: right; }
+.latest-weight { color: $primary-deep; font-size: $fs-md; font-weight: 750; }
+.weight-change { margin-top: 2rpx; color: $text-3; font-size: $fs-xs; }
+.weight-change.up { color: $warn; }
+.weight-change.down { color: $primary; }
 
 .chart-box {
   height: 400rpx;
   width: 100%;
 }
+.training-charts { width: 100%; }
+.training-chart-block { width: 100%; }
+.training-chart-label { display: flex; align-items: center; gap: 8rpx; color: $text-2; font-size: $fs-sm; font-weight: 650; }
+.training-chart-label .volume-dot, .training-chart-label .count-dot { width: 12rpx; height: 12rpx; border-radius: 50%; }
+.training-chart-label .volume-dot { background: $primary; }
+.training-chart-label .count-dot { background: $warn; }
+.training-unit { margin-left: auto; color: $text-3; font-size: $fs-xs; font-weight: 500; }
+.training-chart-divider { height: 1rpx; margin: 10rpx 0 20rpx; background: $divider; }
+.training-empty { height: 400rpx; }
 
 .chart-empty {
   height: 100%;

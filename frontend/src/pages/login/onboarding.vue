@@ -356,7 +356,6 @@ async function submitAuth() {
       );
     }
     if (data.user.agreement_confirmed) {
-      uni.hideLoading();
       goHome();
       return;
     }
@@ -392,11 +391,11 @@ async function finish() {
   uni.showLoading({ title: '保存中...' });
   try {
     await userStore.updateGoal({ ...goal });
-    uni.hideLoading();
     goHome();
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 
@@ -610,7 +609,7 @@ function goAgreement(type: 'agreement' | 'privacy') {
     }
 
     &:active:not(.disabled) {
-      transform: scale(0.98);
+      transform: scale(0.92);
     }
 
     &::after {

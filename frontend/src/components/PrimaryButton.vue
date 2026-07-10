@@ -38,7 +38,7 @@ function onTap() {
   transition: opacity 0.2s ease;
   &.block { width: 100%; }
   &.disabled { opacity: 0.5; }
-  &:active { opacity: 0.85; }
+  &:active { transform: scale(0.92); opacity: 0.9; }
 }
 .primary-btn-text {
   color: #fff;

@@ -5,7 +5,7 @@
       <view class="meta">{{ session.session_date }} · {{ humanizeDuration(session.duration_seconds) }}</view>
       <view class="stats">
         <view class="stat-cell">
-          <view class="stat-num">{{ Math.round(session.total_volume) }}</view>
+          <view class="stat-num">{{ Math.round(displayVolume) }}</view>
           <view class="stat-unit">kg 总容量</view>
         </view>
         <view class="stat-cell">
@@ -41,7 +41,7 @@
             :class="['set-data', { done: s.completed }]"
           >
             <text class="set-idx">{{ si + 1 }}</text>
-            <text class="set-actual">{{ s.actual_reps || '-' }} × {{ s.actual_weight_kg || '-' }} kg</text>
+            <text class="set-actual">{{ formatSet(s) }}</text>
             <text :class="['set-status', { done: s.completed }]">{{ s.completed ? '✓' : '—' }}</text>
           </view>
         </view>
@@ -57,6 +57,8 @@ import { useAuthStore } from '@/store/auth';
 import { trainingApi, TrainingSession } from '@/api/training';
 import { humanizeDuration } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
+import { effectiveSetValues, sessionVolume } from '@/utils/training-progress';
+import type { SessionSet } from '@/api/training';
 
 const id = ref(0);
 const session = ref<TrainingSession | null>(null);
@@ -67,6 +69,12 @@ const completedSets = computed(() => {
   if (!session.value?.exercises) return 0;
   return session.value.exercises.reduce((s, e) => s + e.sets.filter((x) => x.completed).length, 0);
 });
+const displayVolume = computed(() => sessionVolume(session.value?.exercises || []));
+function formatSet(set: SessionSet) {
+  if (!set.completed) return '未完成';
+  const value = effectiveSetValues(set);
+  return value.weight > 0 ? `${value.reps} × ${value.weight} kg` : `${value.reps} 次 · 自重`;
+}
 
 onMounted(async () => {
   const pages = getCurrentPages();

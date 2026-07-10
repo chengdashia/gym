@@ -1,296 +1,172 @@
 <template>
   <view class="training-page">
-    <view class="hero-section">
-      <liquid-glass-panel :variant="heroVariant" :highlight="true" :ambient="true" class="hero-panel">
-        <view class="hero-top">
+    <view class="training-hero">
+      <view class="hero-copy">
+        <text class="eyebrow">{{ dateLabel }}</text>
+        <text class="hero-title">{{ title }}</text>
+        <text class="hero-sub">{{ subtitle }}</text>
+      </view>
+      <line-icon name="dumbbell" color="#3FA67C" :stroke-width="1.8" :size="72" />
+    </view>
+
+    <view class="quick-row">
+      <view class="quick-action" @tap="goHistory"><line-icon name="history" color="#8FA3A1" :size="38" /><text>训练历史</text></view>
+      <view class="quick-action" @tap="managePlans"><line-icon name="settings" color="#8FA3A1" :size="38" /><text>管理计划</text></view>
+    </view>
+
+    <view v-if="loading" class="state-copy">正在准备今天的训练...</view>
+
+    <template v-else-if="todayInfo?.has_plan">
+      <liquid-glass-card class="today-card" :highlight="true" custom-style="margin-bottom:0">
+        <view class="today-head">
           <view>
-            <liquid-glass-pill
-              :text="heroStatusText"
-              :variant="heroStatusVariant"
-              size="xs"
-            />
-            <view class="hero-title">{{ heroTitle }}</view>
-            <view v-if="heroSubtitle" class="hero-sub">{{ heroSubtitle }}</view>
+            <view class="today-name">{{ todayInfo.title || '今日训练' }}</view>
+            <view class="today-meta">{{ todayExercises.length }} 个动作 · {{ totalSets }} 组</view>
           </view>
-          <line-icon :name="heroIcon" :tint="heroIconTint" :size="88" class="hero-icon" />
+          <liquid-glass-pill :text="statusText" :variant="statusVariant" size="xs" />
         </view>
 
-        <view v-if="todayInfo && todayInfo.exercise_count > 0 && !todayInfo.is_rest_day" class="hero-stats">
-          <view class="stat-item">
-            <text class="stat-num">{{ todayInfo.exercise_count }}</text>
-            <text class="stat-label">动作</text>
+        <view v-if="todayInfo.is_rest_day" class="rest-state">
+          <line-icon name="moon" color="#8FA3A1" :size="68" />
+          <text>今天是休息日，恢复也是训练的一部分</text>
+        </view>
+
+        <view v-else class="exercise-list">
+          <view v-for="(exercise, index) in todayExercises" :key="`${exercise.exercise_name_snapshot}-${index}`" :class="['exercise-row', progressFor(index)]">
+            <view class="exercise-index">{{ progressIcon(index) }}</view>
+            <view class="exercise-main">
+              <view class="exercise-name">{{ exercise.exercise_name_snapshot }}</view>
+              <view class="exercise-part">{{ exercise.body_part_snapshot || '未分类' }}</view>
+            </view>
+            <view class="exercise-target">
+              <view>{{ exercise.target_sets }} 组 × {{ exercise.target_reps }} 次</view>
+              <view class="exercise-detail">{{ progressLabel(index) }} · {{ targetDetail(exercise) }}</view>
+            </view>
           </view>
         </view>
 
-        <view class="hero-actions">
+        <view v-if="!todayInfo.is_rest_day" class="primary-action">
           <liquid-glass-button
-            v-if="todayInfo && todayInfo.session_id"
-            text="继续训练"
-            variant="primary"
-            size="md"
-            :block="false"
-            @tap="continueSession"
-          />
-          <liquid-glass-button
-            v-else-if="todayInfo && todayInfo.today_completed && todayInfo.plan_id"
-            text="再练一次"
-            variant="soft"
-            size="md"
-            :block="false"
-            @tap="startSession"
-          />
-          <liquid-glass-button
-            v-else-if="todayInfo && !todayInfo.is_rest_day && todayInfo.plan_id"
-            text="开始今日训练"
-            variant="primary"
-            size="md"
-            :block="false"
-            @tap="startSession"
-          />
-          <liquid-glass-button
-            v-else-if="todayInfo && todayInfo.is_rest_day"
-            text="好好休息"
-            variant="soft"
-            size="md"
-            :block="false"
-            :disabled="true"
-          />
-          <liquid-glass-button
-            v-else
-            text="创建训练计划"
-            variant="primary"
-            size="md"
-            :block="false"
-            @tap="goCreatePlan"
+            :text="todayInfo.session_id ? '继续训练' : (todayInfo.today_completed ? '再练一次' : '开始今日训练')"
+            :variant="todayInfo.today_completed ? 'soft' : 'primary'"
+            size="lg"
+            @tap="todayInfo.session_id ? continueSession() : startSession()"
           />
         </view>
-      </liquid-glass-panel>
-    </view>
+      </liquid-glass-card>
+    </template>
 
-    <view class="container">
-      <view class="section-header">
-        <view class="sh-left">
-          <view class="sh-bar" />
-          <text class="sh-title">我的训练计划</text>
-        </view>
+    <template v-else>
+      <view class="empty-intro">
+        <view class="empty-title">先选一个适合你的训练模板</view>
+        <view class="empty-sub">选择后会自动生成计划，下一步即可开始训练</view>
       </view>
-
-      <view v-if="loading" class="loading-card">
-        <text class="loading-text">加载中...</text>
-      </view>
-
-      <view v-else-if="plans.length === 0" class="empty-state">
-        <liquid-glass-card :highlight="true" class="empty-card">
-          <line-icon name="list" tint="mint" :size="80" class="empty-emoji" />
-          <view class="empty-title">还没有训练计划</view>
-          <view class="empty-desc">从推荐模板开始，快速创建适合你的训练计划</view>
-          <view class="empty-actions">
-            <liquid-glass-button text="+ 新建计划" variant="primary" size="md" :block="false" @tap="goCreatePlan" />
-          </view>
-        </liquid-glass-card>
-      </view>
-
-      <view v-else class="plan-list">
-        <view
-          v-for="p in plans"
-          :key="p.id"
-          :class="['plan-card-wrap', { active: p.is_active }]"
-          @tap="goEditPlan(p.id)"
-        >
-          <liquid-glass-card
-            :variant="p.is_active ? 'tint' : 'light'"
-            :highlight="p.is_active"
-            hoverable
-            radius="24rpx"
-            class="plan-card"
-          >
-            <view class="plan-card-top">
-              <view class="plan-info">
-                <view class="plan-name-row">
-                  <text class="plan-name">{{ p.name }}</text>
-                  <liquid-glass-pill
-                    v-if="p.is_active"
-                    text="当前"
-                    variant="primary"
-                    size="xs"
-                  />
-                </view>
-                <view class="plan-meta">
-                  <text>{{ p.days?.length || 0 }} 个训练日</text>
-                  <text class="dot">·</text>
-                  <text>{{ scheduleTypeLabel(p.schedule_type) }}</text>
-                </view>
-              </view>
-            </view>
-
-            <view v-if="p.days && p.days.length > 0" class="plan-days-preview">
-              <view
-                v-for="(d, di) in p.days.slice(0, 5)"
-                :key="di"
-                :class="['day-chip', { rest: d.is_rest_day }]"
-              >
-                {{ dayChipLabel(d) }}
-              </view>
-              <view v-if="p.days.length > 5" class="day-chip more">+{{ p.days.length - 5 }}</view>
-            </view>
-
-            <view v-if="!p.is_active" class="plan-activate-hint">
-              <text>点击激活此计划并开始训练</text>
-            </view>
-          </liquid-glass-card>
-        </view>
-
+      <view class="template-list">
         <liquid-glass-card
-          variant="frosted"
+          v-for="tpl in templates.slice(0, 3)"
+          :key="tpl.id"
           hoverable
-          radius="24rpx"
-          class="add-plan-card"
-          @tap="goCreatePlan"
+          class="template-card"
+          @tap="useTemplate(tpl)"
         >
-          <view class="add-plan-content">
-            <text class="add-icon">+</text>
-            <text class="add-text">创建新计划</text>
+          <view class="template-main">
+            <view class="template-name">{{ tpl.name }}</view>
+            <view class="template-desc">{{ tpl.description || `${tpl.days.length} 个训练日` }}</view>
+            <view class="template-tags"><text>{{ tpl.difficulty || '通用' }}</text><text>{{ tpl.days.length }} 日计划</text></view>
           </view>
+          <view class="template-use">使用 ›</view>
         </liquid-glass-card>
       </view>
-
-    </view>
+      <view class="custom-plan tap-spring" @tap="goCreatePlan">自定义训练计划</view>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useTrainingStore } from '@/store/training';
 import { useAuthStore } from '@/store/auth';
-import { trainingApi } from '@/api/training';
-import { today } from '@/utils/date';
+import { trainingApi, type PlanExercise, type TrainingTemplate } from '@/api/training';
+import { dateMD, today, weekdayCN } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
+import { exerciseProgress } from '@/utils/training-progress';
+
+const trainingStore = useTrainingStore();
+const auth = useAuthStore();
+const loading = ref(false);
+const templates = ref<TrainingTemplate[]>([]);
+
+const todayInfo = computed(() => trainingStore.today);
+const activePlan = computed(() => trainingStore.activePlan);
+const todayExercises = computed(() => todayInfo.value?.today_day?.exercises || []);
+const totalSets = computed(() => todayExercises.value.reduce((sum, item) => sum + Number(item.target_sets || 0), 0));
+const dateLabel = `${dateMD(today())} ${weekdayCN(today())}`;
+const title = computed(() => {
+  if (!todayInfo.value?.has_plan) return '今天练什么？';
+  if (todayInfo.value.is_rest_day) return '今天好好恢复';
+  if (todayInfo.value.session_id) return '继续完成今天的训练';
+  if (todayInfo.value.today_completed) return '今天已经完成';
+  return todayInfo.value.title || '今日训练';
+});
+const subtitle = computed(() => {
+  if (!todayInfo.value?.has_plan) return '选择模板，马上建立你的训练节奏';
+  if (todayInfo.value.is_rest_day) return '休息、拉伸，准备下一次训练';
+  return `${todayExercises.value.length} 个动作已经为你准备好`;
+});
+const statusText = computed(() => todayInfo.value?.session_id ? '进行中' : todayInfo.value?.today_completed ? '已完成' : todayInfo.value?.is_rest_day ? '休息日' : '待开始');
+const statusVariant = computed<'primary' | 'soft' | 'default'>(() => todayInfo.value?.session_id ? 'primary' : 'soft');
 
 function syncTabBar() {
   const pages = getCurrentPages();
-  const page = pages[pages.length - 1];
-  const tabBar = (page as any)?.getTabBar?.();
+  const tabBar = (pages[pages.length - 1] as any)?.getTabBar?.();
   if (tabBar) tabBar.setData({ activeIdx: 2 });
 }
 
-const trainingStore = useTrainingStore();
-
-const loading = ref(false);
-
-const plans = computed(() => trainingStore.plans);
-const todayInfo = computed(() => trainingStore.today);
-
-const heroTitle = computed(() => {
-  const t = todayInfo.value;
-  if (loading.value) return '加载中...';
-  if (!t || !t.has_plan) return '开始你的训练';
-  if (t.is_rest_day) return '今日是休息日';
-  if (t.today_completed) return '今日已完成训练';
-  return t.title || '今日训练';
-});
-
-const heroSubtitle = computed(() => {
-  const t = todayInfo.value;
-  if (!t || !t.has_plan) return '创建计划，开启每一次进步';
-  if (t.is_rest_day) return '好好休息，肌肉在休息中生长';
-  if (t.today_completed) return '辛苦了！点击下方可再练一次进入下一循环';
-  if (t.session_status === 'in_progress') return '训练进行中，加油！';
-  if (t.exercise_count > 0) return `准备好挑战 ${t.exercise_count} 个动作了吗？`;
-  return '今天是训练日';
-});
-
-const heroIcon = computed(() => {
-  const t = todayInfo.value;
-  if (!t || !t.has_plan) return 'dumbbell';
-  if (t.is_rest_day) return 'moon';
-  if (t.today_completed) return 'check';
-  if (t.session_status === 'in_progress') return 'fire';
-  return 'dumbbell';
-});
-
-const heroIconTint = computed<'mint' | 'warm' | 'sky' | 'neutral'>(() => {
-  const t = todayInfo.value;
-  if (!t || !t.has_plan) return 'neutral';
-  if (t.is_rest_day) return 'sky';
-  if (t.today_completed) return 'mint';
-  if (t.session_status === 'in_progress') return 'warm';
-  return 'mint';
-});
-
-const heroVariant = computed<'mint' | 'warm' | 'light' | 'dark'>(() => {
-  const t = todayInfo.value;
-  if (!t || !t.has_plan) return 'light';
-  if (t.is_rest_day) return 'light';
-  if (t.today_completed) return 'mint';
-  if (t.session_status === 'in_progress') return 'warm';
-  return 'mint';
-});
-
-const heroStatusText = computed(() => {
-  const t = todayInfo.value;
-  if (loading.value) return '加载中';
-  if (!t || !t.has_plan) return '未设置计划';
-  if (t.is_rest_day) return '休息日';
-  if (t.today_completed) return '已完成';
-  if (t.session_status === 'in_progress') return '进行中';
-  return '今日训练';
-});
-
-const heroStatusVariant = computed<'soft' | 'primary' | 'default'>(() => {
-  const t = todayInfo.value;
-  if (!t || !t.has_plan) return 'default';
-  if (t.session_status === 'in_progress') return 'primary';
-  return 'soft';
-});
-
-function scheduleTypeLabel(type: string | null): string {
-  if (type === 'weekly') return '按周排期';
-  if (type === 'sequence') return '顺序循环';
-  return '';
-}
-
-// 训练日缩略标签：取括号前的部分，避免出现「推（」「拉（」这类残缺显示
-function dayChipLabel(d: { is_rest_day?: boolean; day_name?: string; day_index?: number }): string {
-  if (d.is_rest_day) return '休';
-  const name = d.day_name || '';
-  const base = name.split(/[（(]/)[0].trim();
-  if (base) return base.slice(0, 2);
-  if (name) return name.slice(0, 2);
-  return `D${d.day_index ?? ''}`;
-}
-
 async function load() {
-  const auth = useAuthStore();
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) return;
   loading.value = true;
   try {
-    await Promise.all([
-      trainingStore.fetchPlans().catch(() => {}),
-      trainingStore.fetchToday(today()).catch(() => {}),
-    ]);
+    await Promise.all([trainingStore.fetchPlans(), trainingStore.fetchToday(today())]);
+    if (!trainingStore.today?.has_plan) {
+      const result = await trainingApi.getTemplates();
+      templates.value = result.items || [];
+    }
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '训练内容加载失败', icon: 'none' });
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(load);
-onShow(() => {
-  syncTabBar();
-  const auth = useAuthStore();
-  if (auth.isLogged) load();
-});
+function targetDetail(exercise: PlanExercise) {
+  const weight = Number(exercise.target_weight_kg || 0);
+  return `${weight > 0 ? `${weight} kg` : '自重'} · 休息 ${exercise.rest_seconds}s`;
+}
+
+function sessionExercise(index: number) {
+  return todayInfo.value?.incomplete_session?.exercises?.[index];
+}
+function progressFor(index: number) { return exerciseProgress(sessionExercise(index)); }
+function progressIcon(index: number) {
+  const progress = progressFor(index);
+  return progress === 'completed' ? '✓' : progress === 'in_progress' ? '◐' : index + 1;
+}
+function progressLabel(index: number) {
+  const exercise = sessionExercise(index);
+  const progress = exerciseProgress(exercise);
+  if (progress === 'completed') return '已完成';
+  if (progress === 'in_progress') return `${exercise?.completed_sets || 0}/${exercise?.planned_sets || 0} 组完成`;
+  return '未开始';
+}
 
 async function startSession() {
   if (!requireAuth({ redirect: '/pages/training/index' })) return;
-  const t = todayInfo.value;
-  if (!t || !t.plan_id || !t.plan_day_id) {
-    uni.showToast({ title: '暂无训练安排', icon: 'none' });
-    return;
-  }
+  const info = todayInfo.value;
+  if (!info?.plan_id || !info.plan_day_id) return;
   try {
-    const session = await trainingStore.startSession(t.plan_id, t.plan_day_id, today());
+    const session = await trainingStore.startSession(info.plan_id, info.plan_day_id, today());
     uni.navigateTo({ url: `/pages/training/execute?id=${session.id}` });
   } catch (e: any) {
     uni.showToast({ title: e?.message || '开始训练失败', icon: 'none' });
@@ -298,306 +174,86 @@ async function startSession() {
 }
 
 function continueSession() {
+  if (todayInfo.value?.session_id) uni.navigateTo({ url: `/pages/training/execute?id=${todayInfo.value.session_id}` });
+}
+
+async function useTemplate(tpl: TrainingTemplate) {
   if (!requireAuth({ redirect: '/pages/training/index' })) return;
-  if (todayInfo.value?.session_id) {
-    uni.navigateTo({ url: `/pages/training/execute?id=${todayInfo.value.session_id}` });
+  uni.showLoading({ title: '正在创建计划' });
+  try {
+    const plan = await trainingApi.createPlan({
+      name: tpl.name,
+      schedule_type: 'sequence',
+      source_template_id: tpl.id,
+      days: tpl.days.map((day, dayIndex) => ({
+        day_index: day.day_index,
+        day_name: day.day_name,
+        is_rest_day: day.is_rest_day,
+        weekday: day.weekday,
+        sort_order: dayIndex,
+        exercises: day.exercises.map((exercise, index) => ({ ...exercise, sort_order: index })),
+      })),
+    });
+    await trainingApi.setActive(plan.id);
+    await load();
+    uni.showToast({ title: '计划已启用', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '创建失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 
-function goCreatePlan() {
-  const url = '/pages/training/plan-edit';
-  if (!requireAuth({ redirect: url })) return;
-  uni.navigateTo({ url });
+function goHistory() { uni.navigateTo({ url: '/pages/training/history' }); }
+function goCreatePlan() { uni.navigateTo({ url: '/pages/training/plan-edit' }); }
+function managePlans() {
+  const items = activePlan.value ? ['编辑当前计划', '创建新计划'] : ['创建训练计划'];
+  uni.showActionSheet({ itemList: items, success: ({ tapIndex }) => {
+    if (activePlan.value && tapIndex === 0) uni.navigateTo({ url: `/pages/training/plan-edit?id=${activePlan.value.id}` });
+    else goCreatePlan();
+  }});
 }
-function goEditPlan(id: number) {
-  const url = `/pages/training/plan-edit?id=${id}`;
-  if (!requireAuth({ redirect: url })) return;
-  uni.navigateTo({ url });
-}
+
+onMounted(load);
+onShow(() => { syncTabBar(); if (auth.isLogged) load(); });
 </script>
 
 <style lang="scss" scoped>
-.training-page {
-  padding-bottom: calc(#{$tabbar-height} + #{$gap-4} + #{$gap-2});
-  animation: lg-fade-up 0.4s $ease-spring both;
-}
-
-.hero-section {
-  position: relative;
-  padding: $gap-3 $gap-3 $gap-2;
-  background: linear-gradient(160deg, rgba(91, 200, 154, 0.25) 0%, rgba(107, 168, 214, 0.12) 100%);
-  border-radius: 0 0 40rpx 40rpx;
-  margin-bottom: $gap-3;
-  overflow: hidden;
-}
-
-.hero-section::before {
-  content: '';
-  position: absolute;
-  top: -80rpx;
-  right: -40rpx;
-  width: 280rpx;
-  height: 280rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.hero-panel {
-  padding: $gap-4 $gap-3;
-  position: relative;
-  z-index: 1;
-}
-
-.hero-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  position: relative;
-  z-index: 1;
-}
-
-.hero-title {
-  margin-top: $gap-2;
-  font-size: 52rpx;
-  font-weight: 800;
-  color: $text-1;
-  letter-spacing: 0.5rpx;
-  line-height: 1.2;
-}
-
-.hero-sub {
-  margin-top: 8rpx;
-  font-size: $fs-sm;
-  color: $text-2;
-  opacity: 0.9;
-}
-
-.hero-icon {
-  flex-shrink: 0;
-}
-
-.hero-stats {
-  display: flex;
-  gap: $gap-4;
-  margin-top: $gap-3;
-  padding: $gap-2 $gap-3;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: $r-16;
-  position: relative;
-  z-index: 1;
-}
-
-.stat-item {
-  display: flex;
-  align-items: baseline;
-  gap: 6rpx;
-}
-
-.stat-num {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $primary-deep;
-}
-
-.stat-label {
-  font-size: $fs-sm;
-  color: $text-2;
-}
-
-.hero-actions {
-  margin-top: $gap-3;
-  position: relative;
-  z-index: 1;
-}
-
-.container {
-  padding: 0 $gap-3;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: $gap-2;
-  padding: 0 $gap-1;
-}
-
-.sh-left {
-  display: flex;
-  align-items: center;
-  gap: $gap-1;
-}
-
-.sh-bar {
-  width: 6rpx;
-  height: 28rpx;
-  background: $gradient-primary;
-  border-radius: $r-pill;
-  box-shadow: 0 2rpx 6rpx rgba(95, 175, 145, 0.3);
-}
-
-.sh-title {
-  font-size: $fs-lg;
-  font-weight: 700;
-  color: $text-1;
-  letter-spacing: 0.3rpx;
-}
-
-.loading-card {
-  padding: $gap-5;
-  text-align: center;
-}
-
-.loading-text {
-  color: $text-3;
-  font-size: $fs-sm;
-}
-
-.empty-state {
-  margin-bottom: $gap-2;
-}
-
-.empty-card {
-  padding: $gap-5 $gap-3;
-  text-align: center;
-}
-
-.empty-emoji {
-  margin: 0 auto $gap-2;
-}
-
-.empty-title {
-  font-size: $fs-xl;
-  font-weight: 700;
-  color: $text-1;
-}
-
-.empty-desc {
-  margin-top: $gap-1;
-  font-size: $fs-sm;
-  color: $text-3;
-  margin-bottom: $gap-3;
-}
-
-.empty-actions {
-  display: flex;
-  justify-content: center;
-}
-
-.plan-list {
-  display: flex;
-  flex-direction: column;
-  gap: $gap-2;
-}
-
-.plan-card-wrap {
-  position: relative;
-  transition: transform 0.2s $ease-spring;
-  &:active {
-    transform: scale(0.98);
-  }
-}
-
-.plan-card {
-  padding: $gap-3;
-  margin-bottom: 0;
-}
-
-.plan-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.plan-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.plan-name-row {
-  display: flex;
-  align-items: center;
-  gap: $gap-1;
-}
-
-.plan-name {
-  font-size: $fs-lg;
-  font-weight: 700;
-  color: $text-1;
-  letter-spacing: 0.3rpx;
-}
-
-.plan-meta {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-top: 6rpx;
-  font-size: $fs-sm;
-  color: $text-3;
-}
-
-.dot {
-  opacity: 0.5;
-}
-
-.plan-days-preview {
-  display: flex;
-  gap: 8rpx;
-  margin-top: $gap-2;
-  flex-wrap: wrap;
-}
-
-.day-chip {
-  padding: 6rpx 14rpx;
-  background: rgba(234, 248, 241, 0.7);
-  color: $primary-deep;
-  font-size: $fs-xs;
-  font-weight: 600;
-  border-radius: $r-pill;
-  &.rest {
-    background: rgba(0,0,0,0.04);
-    color: $text-3;
-  }
-  &.more {
-    background: rgba(0,0,0,0.04);
-    color: $text-3;
-  }
-}
-
-.plan-activate-hint {
-  margin-top: $gap-2;
-  font-size: $fs-xs;
-  color: $text-3;
-  text-align: center;
-  padding: 8rpx 0;
-}
-
-.add-plan-card {
-  padding: $gap-3;
-  margin-bottom: 0;
-  border: 2rpx dashed rgba(91, 200, 154, 0.3);
-  background: rgba(255,255,255,0.3);
-}
-
-.add-plan-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: $gap-1;
-  padding: $gap-2 0;
-}
-
-.add-icon {
-  font-size: 40rpx;
-  font-weight: 300;
-  color: $primary;
-}
-
-.add-text {
-  font-size: $fs-md;
-  color: $primary;
-  font-weight: 600;
-}
-
+.training-page { padding: $gap-3; padding-bottom: calc(#{$tabbar-height} + #{$gap-5}); }
+.training-hero { display: flex; align-items: center; justify-content: space-between; padding: $gap-3 4rpx $gap-4; }
+.hero-copy { display: flex; flex-direction: column; }
+.eyebrow { color: $text-3; font-size: $fs-sm; }
+.hero-title { margin-top: 8rpx; color: $text-1; font-size: 48rpx; line-height: 1.2; font-weight: 800; }
+.hero-sub { margin-top: 8rpx; color: $text-2; font-size: $fs-sm; }
+.quick-row { display: flex; gap: $gap-2; margin-bottom: $gap-3; }
+.quick-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8rpx; height: 72rpx; border-radius: $r-pill; background: rgba(255,255,255,.72); color: $text-2; font-size: $fs-sm; box-shadow: $shadow-glass-sm; }
+.state-copy { text-align: center; padding: $gap-5; color: $text-3; }
+.today-card { padding: $gap-3; }
+.today-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: $gap-2; }
+.today-name { color: $text-1; font-size: $fs-xl; font-weight: 750; }
+.today-meta { margin-top: 4rpx; color: $text-3; font-size: $fs-sm; }
+.exercise-row { display: flex; align-items: center; gap: $gap-2; padding: 22rpx 0; border-top: 1rpx solid $divider; }
+.exercise-row.in_progress { margin: 4rpx -12rpx; padding: 20rpx 12rpx; border-radius: $r-12; background: rgba(91,200,154,.12); }
+.exercise-row.completed { margin: 4rpx -12rpx; padding: 20rpx 12rpx; border-radius: $r-12; background: rgba(91,200,154,.2); }
+.exercise-row.completed .exercise-name, .exercise-row.completed .exercise-detail { color: $primary-deep; }
+.exercise-index { width: 44rpx; height: 44rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: $primary-tint; color: $primary-deep; font-weight: 700; }
+.exercise-row.completed .exercise-index { background: $primary; color: #fff; }
+.exercise-row.in_progress .exercise-index { background: rgba(91, 200, 154, .22); color: $primary-deep; }
+.exercise-main { flex: 1; min-width: 0; }
+.exercise-name { color: $text-1; font-size: $fs-md; font-weight: 650; }
+.exercise-part, .exercise-detail { color: $text-3; font-size: $fs-xs; }
+.exercise-target { text-align: right; color: $text-1; font-size: $fs-sm; }
+.primary-action { margin-top: $gap-3; }
+.rest-state { display: flex; flex-direction: column; align-items: center; gap: $gap-2; padding: $gap-5 0; color: $text-2; }
+.empty-intro { margin: $gap-2 0 $gap-3; }
+.empty-title { font-size: $fs-xl; color: $text-1; font-weight: 750; }
+.empty-sub { margin-top: 6rpx; color: $text-3; font-size: $fs-sm; }
+.template-card { display: flex; align-items: center; margin-bottom: $gap-2; }
+.template-main { flex: 1; min-width: 0; }
+.template-name { color: $text-1; font-size: $fs-lg; font-weight: 700; }
+.template-desc { margin-top: 4rpx; color: $text-3; font-size: $fs-sm; }
+.template-tags { display: flex; gap: 8rpx; margin-top: 12rpx; }
+.template-tags text { padding: 4rpx 12rpx; border-radius: $r-pill; color: $primary-deep; background: $primary-tint; font-size: $fs-xs; }
+.template-use { color: $primary-deep; font-size: $fs-sm; font-weight: 650; }
+.custom-plan { text-align: center; padding: $gap-3; color: $primary-deep; font-weight: 650; }
 </style>

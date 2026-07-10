@@ -150,13 +150,13 @@ async function save() {
       amount_g: record.value.unit_type === 'g' ? amountG.value : null,
       serving_count: record.value.unit_type === 'serving' ? amountS.value : null,
     });
-    uni.hideLoading();
     uni.showToast({ title: '已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 
@@ -170,13 +170,13 @@ async function remove() {
   uni.showLoading({ title: '删除中...' });
   try {
     await dietApi.remove(record.value.id);
-    uni.hideLoading();
     uni.showToast({ title: '已删除', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
   } catch (e: any) {
-    uni.hideLoading();
     uni.showToast({ title: e?.message || '删除失败', icon: 'none' });
+  } finally {
+    uni.hideLoading();
   }
 }
 </script>
