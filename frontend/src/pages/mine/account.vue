@@ -148,7 +148,7 @@
       <liquid-glass-card variant="light" :highlight="true" padding="0" custom-style="margin-bottom:0">
         <view class="menu-item" @tap="confirmDeleteData">
           <line-icon name="trash" tint="rose" :size="48" class="mi-icon" />
-          <text class="mi-label danger">删除个人数据</text>
+          <text class="mi-label danger">清空健身数据</text>
           <text class="mi-arrow">›</text>
         </view>
         <view class="menu-item" @tap="confirmCancel">
@@ -161,9 +161,9 @@
 
     <ModalConfirm
       :visible="showDeleteData"
-      title="删除个人数据"
-      message="将删除你的饮食、训练、体重、自定义食物等所有个人数据，此操作不可恢复。系统数据不受影响。"
-      confirm-text="确认删除"
+      title="清空健身数据"
+      message="将永久删除饮食、训练、体重、身体资料、自定义内容及上传图片；登录账号、昵称和头像会保留。"
+      confirm-text="确认清空"
       danger
       @confirm="deleteData"
       @cancel="showDeleteData = false"
@@ -172,7 +172,7 @@
     <ModalConfirm
       :visible="showCancel"
       title="注销账号"
-      message="注销后账号将不可恢复，请提前导出重要数据。"
+      message="将永久删除健身数据和账号身份信息，注销后当前登录立即失效且无法恢复。"
       confirm-text="确认注销"
       danger
       @confirm="cancelAccount"
@@ -603,7 +603,7 @@ async function deleteData() {
     newWeight.value = '';
     latestWeight.value = null;
     weightHistory.value = [];
-    uni.showToast({ title: '已删除', icon: 'success' });
+    uni.showToast({ title: '已清空', icon: 'success' });
   } catch (e: any) {
     uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
   } finally {

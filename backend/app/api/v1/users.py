@@ -34,6 +34,7 @@ from app.schemas import (
     UserProfileOut,
 )
 from app.services.recommend import recommend
+from app.services.account_data import anonymize_account, clear_personal_data
 from app.services.uploads import delete_local_file
 
 
@@ -303,22 +304,8 @@ def delete_data(
     db: Session = Depends(get_db),
 ):
     uid = user.id
-    db.query(DietRecord).filter(DietRecord.user_id == uid).update({DietRecord.deleted_at: datetime.utcnow()})
-    db.query(WeightRecord).filter(WeightRecord.user_id == uid).update({WeightRecord.deleted_at: datetime.utcnow()})
-    db.query(UserCustomFood).filter(UserCustomFood.user_id == uid).update({UserCustomFood.deleted_at: datetime.utcnow()})
-    db.query(UserCustomExercise).filter(UserCustomExercise.user_id == uid).update({UserCustomExercise.deleted_at: datetime.utcnow()})
-    db.query(TrainingPlan).filter(TrainingPlan.user_id == uid).update({TrainingPlan.deleted_at: datetime.utcnow()})
-    db.query(TrainingSession).filter(TrainingSession.user_id == uid).update({TrainingSession.deleted_at: datetime.utcnow()})
-    uploaded_paths = [row.file_url for row in db.query(UploadedFile).filter(UploadedFile.user_id == uid).all()]
-    db.query(UploadedFile).filter(UploadedFile.user_id == uid).delete()
-    db.query(FoodRecognitionLog).filter(FoodRecognitionLog.user_id == uid).delete()
-    db.query(NutritionGoal).filter(NutritionGoal.user_id == uid).delete()
-    db.query(UserReminder).filter(UserReminder.user_id == uid).delete()
-    profile = db.query(UserProfile).filter(UserProfile.user_id == uid).first()
-    if profile:
-        profile.current_weight_kg = None
-        profile.target_weight_kg = None
-    db.add(OperationLog(user_id=user.id, action="users.delete_data"))
+    uploaded_paths = clear_personal_data(db, user)
+    db.add(OperationLog(user_id=uid, action="users.clear_fitness_data"))
     db.commit()
     for path in uploaded_paths:
         delete_local_file(path)
@@ -330,12 +317,11 @@ def cancel_account(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user.status = "cancelled"
-    user.nickname = None
-    user.avatar_url = None
-    user.phone = None
-    user.openid = None
-    user.password_hash = None
-    db.add(OperationLog(user_id=user.id, action="users.cancel_account"))
+    uid = user.id
+    uploaded_paths = clear_personal_data(db, user)
+    anonymize_account(user)
+    db.add(OperationLog(user_id=uid, action="users.cancel_account"))
     db.commit()
+    for path in uploaded_paths:
+        delete_local_file(path)
     return ok({"cancelled": True})
