@@ -76,6 +76,7 @@ export interface SessionExercise {
   planned_sets: number;
   completed_sets: number;
   rest_seconds: number;
+  prefilled_from_history?: boolean;
   sets: SessionSet[];
 }
 

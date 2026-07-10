@@ -44,6 +44,7 @@ from app.schemas import (
 )
 from app.services.schedule import resolve_today_day, advance_sequence_plan
 from app.services.exercise_stats import effective_set_values
+from app.services.training_history import last_completed_sets
 from app.utils.date import date_str
 
 
@@ -428,6 +429,10 @@ def _session_exercise_to_dict(e: TrainingSessionExercise) -> dict:
         "completed_sets": e.completed_sets,
         "rest_seconds": e.rest_seconds,
         "note": e.note,
+        "prefilled_from_history": any(
+            not st.completed and (st.actual_reps is not None or st.actual_weight_kg is not None)
+            for st in e.sets
+        ),
         "sets": [
             {
                 "id": st.id,
@@ -478,6 +483,7 @@ def create_session(body: SessionCreateIn, user: User = Depends(get_current_user)
     db.flush()
 
     for pe in sorted(day.exercises, key=lambda x: x.sort_order or 0):
+        history = last_completed_sets(db, user.id, pe.exercise_name_snapshot)
         se = TrainingSessionExercise(
             session_id=s.id,
             exercise_name_snapshot=pe.exercise_name_snapshot,
@@ -491,11 +497,14 @@ def create_session(body: SessionCreateIn, user: User = Depends(get_current_user)
         db.add(se)
         db.flush()
         for i in range(1, pe.target_sets + 1):
+            previous_reps, previous_weight = history.get(i, (None, None))
             st = TrainingSessionSet(
                 session_exercise_id=se.id,
                 set_index=i,
-                target_reps=pe.target_reps,
-                target_weight_kg=pe.target_weight_kg,
+                target_reps=previous_reps if previous_reps is not None else pe.target_reps,
+                target_weight_kg=previous_weight if previous_weight is not None else pe.target_weight_kg,
+                actual_reps=previous_reps,
+                actual_weight_kg=previous_weight,
                 completed=0,
                 volume=0,
             )

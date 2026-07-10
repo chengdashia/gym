@@ -9,6 +9,7 @@
       <view class="exit-action tap-spring" @tap="saveProgress">保存并退出</view>
     </view>
     <view class="progress-track"><view class="progress-fill" :style="{ width: progressPct + '%' }" /></view>
+    <view v-if="hasHistoryPrefill" class="history-prefill-tip">已带入上次训练数据，可直接调整</view>
 
     <liquid-glass-card v-if="currentEx && currentSet" class="focus-card" custom-style="margin-bottom:0">
       <view class="focus-kicker">动作 {{ currentExIdx + 1 }}/{{ session.exercises?.length || 0 }} · 第 {{ currentSetIdx + 1 }}/{{ currentEx.sets.length }} 组</view>
@@ -115,6 +116,7 @@ const totalSets = computed(() => (session.value?.exercises || []).reduce((sum, e
 const progressPct = computed(() => totalSets.value ? Math.round(completedSets.value / totalSets.value * 100) : 0);
 const allDone = computed(() => totalSets.value > 0 && completedSets.value === totalSets.value);
 const liveVolume = computed(() => sessionVolume(session.value?.exercises || []));
+const hasHistoryPrefill = computed(() => (session.value?.exercises || []).some((exercise) => exercise.prefilled_from_history));
 const isBodyweight = computed(() => Number(currentSet.value?.target_weight_kg || 0) <= 0);
 const repValues = Array.from({ length: 100 }, (_, index) => index + 1);
 const weightValues = Array.from({ length: 401 }, (_, index) => index * .5);
