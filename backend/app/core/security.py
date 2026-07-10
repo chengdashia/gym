@@ -1,3 +1,4 @@
+import hmac
 from datetime import datetime, timedelta, timezone
 from hashlib import pbkdf2_hmac
 from secrets import token_hex
@@ -33,4 +34,4 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
     salt, stored_hash = hashed.split("$", 1)
     hash_value = pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000).hex()
-    return hash_value == stored_hash
+    return hmac.compare_digest(hash_value, stored_hash)

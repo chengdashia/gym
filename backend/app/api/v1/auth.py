@@ -32,6 +32,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # 内存验证码缓存：{captcha_id: {"answer": str, "expires": timestamp}}
 _CAPTCHA_STORE: dict[str, dict] = {}
 _CAPTCHA_TTL_SECONDS = 300
+_CAPTCHA_MAX_ATTEMPTS = 5
+_CAPTCHA_MAX_ITEMS = 1000
+
+
+def _cleanup_captchas(now: float | None = None) -> None:
+    current = time.time() if now is None else now
+    for captcha_id, item in list(_CAPTCHA_STORE.items()):
+        if item["expires"] < current:
+            _CAPTCHA_STORE.pop(captcha_id, None)
+    while len(_CAPTCHA_STORE) >= _CAPTCHA_MAX_ITEMS:
+        _CAPTCHA_STORE.pop(next(iter(_CAPTCHA_STORE)))
 
 
 def _make_captcha_png(code: str) -> str:
@@ -69,15 +80,17 @@ def _make_captcha_png(code: str) -> str:
 def _verify_captcha(captcha_id: str, captcha_code: str) -> bool:
     if not captcha_id or not captcha_code:
         return False
+    _cleanup_captchas()
     item = _CAPTCHA_STORE.get(captcha_id)
     if not item:
-        return False
-    if item["expires"] < time.time():
-        _CAPTCHA_STORE.pop(captcha_id, None)
         return False
     ok = item["answer"].lower() == captcha_code.strip().lower()
     if ok:
         _CAPTCHA_STORE.pop(captcha_id, None)
+    else:
+        item["attempts"] = item.get("attempts", 0) + 1
+        if item["attempts"] >= _CAPTCHA_MAX_ATTEMPTS:
+            _CAPTCHA_STORE.pop(captcha_id, None)
     return ok
 
 
@@ -102,9 +115,14 @@ def _issue_token(user: User) -> str:
 @router.get("/captcha")
 def get_captcha():
     """获取图形验证码，返回 PNG Base64 图片。"""
+    _cleanup_captchas()
     code = "".join(random.choices("0123456789", k=4))
     captcha_id = token_urlsafe(16)
-    _CAPTCHA_STORE[captcha_id] = {"answer": code, "expires": time.time() + _CAPTCHA_TTL_SECONDS}
+    _CAPTCHA_STORE[captcha_id] = {
+        "answer": code,
+        "expires": time.time() + _CAPTCHA_TTL_SECONDS,
+        "attempts": 0,
+    }
     png_data_url = _make_captcha_png(code)
     return ok({"captcha_id": captcha_id, "svg": png_data_url})
 

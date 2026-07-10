@@ -7,11 +7,9 @@ class Settings(BaseSettings):
     app_name: str = "Fitness Diet API"
     debug: bool = True
 
-    db_url: str = (
-        "mysql+pymysql://root_fitlog:44EnrkDixGUKhP5I@mysql6.sqlpub.com:3311/fitlog?charset=utf8mb4"
-    )
+    db_url: str = "sqlite:///./fitness.db"
 
-    jwt_secret: str = "fitness-diet-miniapp-dev-secret-change-me"
+    jwt_secret: str = "dev-only-change-before-production"
     jwt_alg: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 30
 
@@ -26,5 +24,10 @@ class Settings(BaseSettings):
 
     upload_max_size_mb: int = 10
 
+    def validate_for_runtime(self) -> None:
+        if not self.debug and (not self.db_url or len(self.jwt_secret) < 32):
+            raise ValueError("生产环境必须配置 DB_URL 和至少 32 位 JWT_SECRET")
+
 
 settings = Settings()
+settings.validate_for_runtime()
