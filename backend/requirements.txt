@@ -9,3 +9,4 @@ PyJWT==2.10.1
 python-multipart==0.0.20
 cryptography>=42.0.0
 pillow==11.2.1
+httpx==0.28.1
