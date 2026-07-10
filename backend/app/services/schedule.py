@@ -41,14 +41,26 @@ def resolve_today_day(
         # 未匹配到指定星期 -> 该日休息
         return None
     # sequence
-    idx = (plan.current_day_index or 1) - 1
-    if idx < 0 or idx >= len(days):
-        idx = 0
-    chosen = days[idx]
-    if chosen.is_rest_day:
-        # 找到下一个非休息日；不修改 current_day_index
-        return chosen
-    return chosen
+    current = plan.current_day_index or days[0].day_index
+    start = next((i for i, row in enumerate(days) if row.day_index == current), 0)
+    for offset in range(len(days)):
+        chosen = days[(start + offset) % len(days)]
+        if not chosen.is_rest_day:
+            return chosen
+    return None
+
+
+def next_sequence_day_index(days: list[TrainingPlanDay], current_day_index: int | None) -> int | None:
+    """Return the next non-rest day's actual day_index, wrapping once."""
+    ordered = sorted(days, key=lambda x: x.sort_order or x.day_index or 0)
+    if not ordered:
+        return None
+    start = next((i for i, row in enumerate(ordered) if row.day_index == current_day_index), -1)
+    for offset in range(1, len(ordered) + 1):
+        candidate = ordered[(start + offset) % len(ordered)]
+        if not candidate.is_rest_day:
+            return candidate.day_index
+    return current_day_index
 
 
 def advance_sequence_plan(db: Session, plan: TrainingPlan, today: date | None = None) -> None:
@@ -60,5 +72,6 @@ def advance_sequence_plan(db: Session, plan: TrainingPlan, today: date | None = 
     days = sorted(plan.days, key=lambda x: x.sort_order or x.day_index or 0)
     if not days:
         return
-    new_index = ((plan.current_day_index or 1) % len(days)) + 1
-    plan.current_day_index = new_index
+    new_index = next_sequence_day_index(days, plan.current_day_index)
+    if new_index is not None:
+        plan.current_day_index = new_index

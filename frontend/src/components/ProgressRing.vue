@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type CSSProperties } from 'vue';
 
 const props = withDefaults(defineProps<{
   value: number;
@@ -36,7 +36,7 @@ const pct = computed(() => {
 
 const displayPct = computed(() => Math.min(100, pct.value * 100));
 
-const bgStyle = computed(() => ({
+const bgStyle = computed<CSSProperties>(() => ({
   width: `${props.size}rpx`,
   height: `${props.size}rpx`,
   borderRadius: '50%',

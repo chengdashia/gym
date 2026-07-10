@@ -17,7 +17,7 @@
       </view>
     </view>
 
-    <view v-else-if="!picked" class="candidates-block">
+    <view v-else class="candidates-block">
       <image :src="imagePath" mode="aspectFill" class="preview-img" />
       <liquid-glass-card :highlight="true" class="card">
         <view class="card-title">识别结果</view>
@@ -44,6 +44,18 @@
             <text class="form-label">克数</text>
             <input v-model.number="amount" type="digit" class="form-input" placeholder="克数" />
             <text class="form-unit">g</text>
+          </view>
+          <view class="form-row">
+            <text class="form-label">日期</text>
+            <picker mode="date" :value="recordDate" @change="(e: any) => recordDate = e.detail.value">
+              <view class="form-input">{{ recordDate }}</view>
+            </picker>
+          </view>
+          <view class="form-row">
+            <text class="form-label">时间</text>
+            <picker mode="time" :value="recordTime" @change="(e: any) => recordTime = e.detail.value">
+              <view class="form-input">{{ recordTime }}</view>
+            </picker>
           </view>
           <view class="form-row">
             <text class="form-label">餐次</text>
@@ -106,11 +118,14 @@ onMounted(async () => {
 
 const imagePath = ref('');
 const uploadedUrl = ref('');
+const uploadedFileId = ref<number | null>(null);
 const recognizing = ref(false);
 const candidates = ref<RecognitionCandidate[]>([]);
 const selectedCandidate = ref<RecognitionCandidate | null>(null);
 const amount = ref(100);
 const meal = ref<MealType>('lunch');
+const recordDate = ref(dietStore.selectedDate || today());
+const recordTime = ref(formatTime(new Date()));
 const saveImage = ref(true);
 
 function getCurrentMeal(): MealType {
@@ -144,6 +159,7 @@ async function handleImage(path: string) {
   recognizing.value = true;
   try {
     const up = await uploadApi.image(path, 'food_recognition', true);
+    uploadedFileId.value = up.file_id;
     uploadedUrl.value = up.file_url;
     const ai = await aiApi.recognizeFood({ file_id: up.file_id, image_url: up.file_url });
     candidates.value = ai.candidates || [];
@@ -158,6 +174,7 @@ async function handleImage(path: string) {
 function reset() {
   imagePath.value = '';
   uploadedUrl.value = '';
+  uploadedFileId.value = null;
   candidates.value = [];
   selectedCandidate.value = null;
   amount.value = 100;
@@ -169,6 +186,10 @@ function goSearch() {
 
 async function save() {
   if (!selectedCandidate.value) return;
+  if (!Number.isFinite(amount.value) || amount.value <= 0) {
+    uni.showToast({ title: '请输入有效克数', icon: 'none' });
+    return;
+  }
   const c = selectedCandidate.value;
   uni.showLoading({ title: '保存中...' });
   try {
@@ -179,8 +200,8 @@ async function save() {
       food = null;
     }
     await dietApi.create({
-      record_date: dietStore.selectedDate || today(),
-      record_time: formatTime(new Date()),
+      record_date: recordDate.value,
+      record_time: recordTime.value,
       meal_type: meal.value,
       food_source: c.source,
       food_id: c.source === 'system' ? c.food_id : null,
@@ -189,6 +210,7 @@ async function save() {
       unit_type: 'g',
       amount_g: amount.value,
       image_url: saveImage.value ? uploadedUrl.value : null,
+      image_file_id: uploadedFileId.value,
       save_image: saveImage.value,
     });
     uni.hideLoading();

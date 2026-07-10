@@ -172,7 +172,8 @@
               <view class="add-icon">+</view>
             </view>
             <view v-if="exSearchList.length === 0 && exSearched" class="empty-tip">
-              没有找到动作，试试其它关键词
+              <view>没有找到动作</view>
+              <liquid-glass-button variant="soft" size="sm" :block="false" text="创建自定义动作" @tap="createCustomExercise" />
             </view>
           </scroll-view>
           <view v-if="exEditing.exIdx === -1" class="ex-edit-form compact">
@@ -241,6 +242,7 @@ import { SCHEDULE_TYPES } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
 import { useAuthStore } from '@/store/auth';
 import { requireAuth } from '@/utils/auth-guard';
+import { validateTrainingPlan } from '@/utils/training-plan';
 
 const id = ref(0);
 const saving = ref(false);
@@ -435,6 +437,31 @@ function selectExerciseFromSearch(ex: any) {
   exEditing.sort_order = plan.days[exEditing.dayIdx].exercises.length;
 }
 
+function createCustomExercise() {
+  const name = exSearchKw.value.trim();
+  if (!name) {
+    safeToast('请先输入动作名称');
+    return;
+  }
+  uni.showModal({
+    title: '创建自定义动作',
+    content: '请输入训练部位',
+    editable: true,
+    placeholderText: '例如：胸部',
+    success: async (result) => {
+      if (!result.confirm) return;
+      const bodyPart = (result.content || '').trim();
+      if (!bodyPart) return safeToast('请输入训练部位');
+      try {
+        const created = await exerciseApi.createCustom({ name, body_part: bodyPart });
+        selectExerciseFromSearch({ ...created, source: 'custom' });
+      } catch (e: any) {
+        safeToast(e?.message || '创建动作失败');
+      }
+    },
+  });
+}
+
 function cancelEx() {
   showExEditor.value = false;
 }
@@ -476,12 +503,9 @@ function confirmEditEx() {
 
 async function save() {
   if (saving.value) return;
-  if (!plan.name.trim()) {
-    safeToast('请填写计划名称', 'none');
-    return;
-  }
-  if (plan.days.length === 0) {
-    safeToast('请至少添加一个训练日', 'none');
+  const validationError = validateTrainingPlan(plan);
+  if (validationError) {
+    safeToast(validationError, 'none');
     return;
   }
   saving.value = true;

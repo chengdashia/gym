@@ -8,12 +8,23 @@ from app.api.v1.deps import get_current_user
 from app.core.database import get_db
 from app.core.exceptions import BizException
 from app.core.response import ok
-from app.models import OperationLog, User, WeightRecord
+from app.models import OperationLog, User, UserProfile, WeightRecord
 from app.schemas import WeightListOut, WeightRecordIn, WeightRecordOut, WeightRecordUpdateIn
 from app.utils.date import range_dates
 
 
 router = APIRouter(prefix="/weight", tags=["weight"])
+
+
+def _sync_current_weight(db: Session, user_id: int) -> None:
+    latest = db.query(WeightRecord).filter(
+        WeightRecord.user_id == user_id, WeightRecord.deleted_at.is_(None)
+    ).order_by(WeightRecord.record_date.desc(), WeightRecord.record_time.desc(), WeightRecord.id.desc()).first()
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.add(profile)
+    profile.current_weight_kg = latest.weight_kg if latest else None
 
 
 def _to_dict(r: WeightRecord) -> dict:
@@ -62,6 +73,7 @@ def create_record(body: WeightRecordIn, user: User = Depends(get_current_user), 
     )
     db.add(r)
     db.flush()
+    _sync_current_weight(db, user.id)
     db.add(OperationLog(user_id=user.id, action="weight.create", target_type="weight", target_id=r.id))
     db.commit()
     db.refresh(r)
@@ -87,6 +99,7 @@ def update_record(
     if body.note is not None:
         r.note = body.note
     db.add(OperationLog(user_id=user.id, action="weight.update", target_type="weight", target_id=r.id))
+    _sync_current_weight(db, user.id)
     db.commit()
     db.refresh(r)
     return ok(_to_dict(r))
@@ -100,6 +113,8 @@ def delete_record(record_id: int, user: User = Depends(get_current_user), db: Se
     if not r:
         raise BizException(40401, "体重记录不存在")
     r.deleted_at = datetime.utcnow()
+    db.flush()
+    _sync_current_weight(db, user.id)
     db.add(OperationLog(user_id=user.id, action="weight.delete", target_type="weight", target_id=r.id))
     db.commit()
     return ok({"deleted": record_id})

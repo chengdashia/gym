@@ -136,6 +136,11 @@ async function load() {
 
 async function save() {
   if (!record.value) return;
+  const amount = record.value.unit_type === 'g' ? amountG.value : amountS.value;
+  if (!Number.isFinite(amount) || amount <= 0) {
+    uni.showToast({ title: '请输入有效数量', icon: 'none' });
+    return;
+  }
   uni.showLoading({ title: '保存中...' });
   try {
     await dietApi.update(record.value.id, {

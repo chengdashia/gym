@@ -24,3 +24,8 @@ def range_dates(days: int, end: date | None = None):
 
 def date_str(d: date) -> str:
     return d.strftime("%Y-%m-%d")
+
+
+def day_bounds(d: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(d, datetime.min.time())
+    return start, start + timedelta(days=1)

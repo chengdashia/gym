@@ -4,7 +4,9 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.services.validation import validate_diet_quantity, validate_plan_days
 
 
 class ORMBase(BaseModel):
@@ -126,6 +128,17 @@ class ReminderItem(BaseModel):
     reminder_time: Optional[str] = Field(default=None, description="HH:MM")
     weekdays: Optional[str] = Field(default=None, description="逗号分隔 1-7")
 
+    @model_validator(mode="after")
+    def validate_weekdays(self):
+        if self.weekdays is None:
+            return self
+        days = self.weekdays.split(",")
+        if any(day not in {"1", "2", "3", "4", "5", "6", "7"} for day in days):
+            raise ValueError("weekdays must be comma-separated values from 1 to 7")
+        if len(days) != len(set(days)):
+            raise ValueError("weekdays must not contain duplicates")
+        return self
+
 
 class RemindersUpdateIn(BaseModel):
     items: list[ReminderItem]
@@ -177,8 +190,14 @@ class DietRecordIn(BaseModel):
     amount_g: Optional[Decimal] = Field(default=None, ge=0)
     serving_count: Optional[Decimal] = Field(default=None, ge=0)
     image_url: Optional[str] = None
+    image_file_id: Optional[int] = Field(default=None, ge=1)
     save_image: bool = False
     note: Optional[str] = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_quantity(self):
+        validate_diet_quantity(self.unit_type, self.amount_g, self.serving_count)
+        return self
 
 
 class DietRecordUpdateIn(BaseModel):
@@ -191,6 +210,16 @@ class DietRecordUpdateIn(BaseModel):
     image_url: Optional[str] = None
     save_image: Optional[bool] = None
     note: Optional[str] = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_quantity(self):
+        if "unit_type" not in self.model_fields_set:
+            return self
+        quantity_field = "amount_g" if self.unit_type == "g" else "serving_count"
+        if quantity_field not in self.model_fields_set:
+            return self
+        validate_diet_quantity(self.unit_type, self.amount_g, self.serving_count)
+        return self
 
 
 class DietRecordOut(ORMBase):
@@ -337,6 +366,11 @@ class PlanIn(BaseModel):
     source_template_id: Optional[int] = None
     days: list[PlanDayIn]
 
+    @model_validator(mode="after")
+    def validate_days(self):
+        validate_plan_days(self.schedule_type, self.days)
+        return self
+
 
 class PlanExerciseOut(BaseModel):
     id: int
@@ -407,7 +441,7 @@ class SessionSetIn(BaseModel):
     set_index: int
     actual_reps: Optional[int] = Field(default=None, ge=0)
     actual_weight_kg: Optional[Decimal] = None
-    completed: bool = False
+    completed: Optional[bool] = None
 
 
 class SessionExerciseUpdateIn(BaseModel):

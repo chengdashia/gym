@@ -75,7 +75,12 @@
               <view :class="['checkbox', { checked: agreed }]">
                 <text v-if="agreed">✓</text>
               </view>
-              <text class="agree-text">我已阅读并同意《用户协议》和《隐私政策》</text>
+              <text class="agree-text">
+                我已阅读并同意
+                <text class="agreement-link" @tap.stop="goAgreement('agreement')">《用户协议》</text>
+                和
+                <text class="agreement-link" @tap.stop="goAgreement('privacy')">《隐私政策》</text>
+              </text>
             </view>
           </template>
         </view>
@@ -398,6 +403,10 @@ async function finish() {
 function goHome() {
   uni.reLaunch({ url: redirectUrl.value });
 }
+
+function goAgreement(type: 'agreement' | 'privacy') {
+  uni.navigateTo({ url: `/pages/mine/agreement?type=${type}` });
+}
 </script>
 
 <style lang="scss" scoped>
@@ -576,6 +585,10 @@ function goHome() {
     color: $text-2;
     flex: 1;
     line-height: 1.5;
+  }
+
+  .agreement-link {
+    color: $primary-deep;
   }
 
   .auth-submit {

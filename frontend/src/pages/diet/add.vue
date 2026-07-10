@@ -102,6 +102,13 @@
         </view>
 
         <view class="form-row">
+          <text class="form-label">日期</text>
+          <picker mode="date" :value="date" @change="(e: any) => date = e.detail.value" class="time-picker">
+            <view class="time-text">{{ date }}</view>
+          </picker>
+        </view>
+
+        <view class="form-row">
           <text class="form-label">时间</text>
           <picker mode="time" :value="time" @change="(e: any) => time = e.detail.value" class="time-picker">
             <view class="time-text">{{ time }}</view>

@@ -82,11 +82,31 @@
           />
           <text class="input-unit">kg</text>
         </view>
+        <view class="form-row">
+          <text class="label">日期</text>
+          <picker mode="date" :value="weightDate" @change="weightDate = $event.detail.value"><text>{{ weightDate }}</text></picker>
+        </view>
+        <view class="form-row">
+          <text class="label">时间</text>
+          <picker mode="time" :value="weightTime" @change="weightTime = $event.detail.value"><text>{{ weightTime }}</text></picker>
+        </view>
+        <view class="form-row">
+          <text class="label">备注</text>
+          <input v-model="weightNote" placeholder="可选" class="input" />
+        </view>
         <view v-if="projectedChangeText" class="projected-change">
           {{ projectedChangeText }}
         </view>
         <view class="save-actions">
-          <liquid-glass-button text="保存体重" variant="primary" :disabled="saving" @tap="saveWeight" />
+          <liquid-glass-button :text="editingWeightId ? '保存修改' : '保存体重'" variant="primary" :disabled="saving" @tap="saveWeight" />
+          <liquid-glass-button v-if="editingWeightId" text="取消编辑" variant="ghost" @tap="resetWeightForm" />
+        </view>
+      </liquid-glass-card>
+      <liquid-glass-card v-if="weightRecords.length" variant="light" class="history-card">
+        <view class="chart-title">最近记录</view>
+        <view v-for="item in weightRecords" :key="item.id" class="row">
+          <view><view>{{ item.weight_kg }} kg</view><view class="hero-date">{{ item.record_date }} {{ item.record_time }} {{ item.note || '' }}</view></view>
+          <view class="weight-actions"><text @tap="editWeight(item)">编辑</text><text class="danger-text" @tap="removeWeight(item)">删除</text></view>
         </view>
       </liquid-glass-card>
     </view>
@@ -192,16 +212,25 @@ import ModalConfirm from '@/components/ModalConfirm.vue';
 import LineIcon from '@/components/LineIcon.vue';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
+import { useDietStore } from '@/store/diet';
+import { useTrainingStore } from '@/store/training';
 import { weightApi, WeightRecord } from '@/api/weight';
 import { clearAllCache } from '@/utils/cache';
-import { today } from '@/utils/date';
+import { formatTime, today } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
+const dietStore = useDietStore();
+const trainingStore = useTrainingStore();
 const newWeight = ref<string>('');
+const weightDate = ref(today());
+const weightTime = ref(formatTime(new Date()));
+const weightNote = ref('');
+const editingWeightId = ref<number | null>(null);
 const latestWeight = ref<WeightRecord | null>(null);
 const weightHistory = ref<WeightRecord[]>([]);
+const weightRecords = ref<WeightRecord[]>([]);
 const showDeleteData = ref(false);
 const showCancel = ref(false);
 const cacheSize = ref('0 KB');
@@ -253,6 +282,7 @@ async function loadWeight() {
     const res = await weightApi.list(30);
     // API 返回降序（最新在前）
     const items = res.items || [];
+    weightRecords.value = items;
     latestWeight.value = items[0] || null;
     // 最近 7 条，反转为正序（旧→新）给图表
     weightHistory.value = items.slice(0, 7).reverse();
@@ -330,7 +360,7 @@ function drawChart() {
 
   const query = uni.createSelectorQuery();
   query.select('#weight-trend-canvas')
-    .fields({ node: true, size: true })
+    .fields({ node: true, size: true }, () => {})
     .exec((res: any) => {
       if (!res || !res[0] || !res[0].node) return;
       const canvas = res[0].node;
@@ -509,13 +539,15 @@ async function saveWeight() {
   saving.value = true;
   uni.showLoading({ title: '保存中...' });
   try {
-    const now = new Date();
-    await weightApi.create({
-      record_date: today(),
-      record_time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+    const payload = {
+      record_date: weightDate.value,
+      record_time: weightTime.value,
       weight_kg: weightNum,
-    });
-    newWeight.value = '';
+      note: weightNote.value.trim(),
+    };
+    if (editingWeightId.value) await weightApi.update(editingWeightId.value, payload);
+    else await weightApi.create(payload);
+    resetWeightForm();
     await loadWeight();
     uni.hideLoading();
     uni.showToast({ title: '已记录', icon: 'success' });
@@ -535,6 +567,31 @@ async function saveWeight() {
   } finally {
     saving.value = false;
   }
+}
+
+function resetWeightForm() {
+  editingWeightId.value = null;
+  newWeight.value = '';
+  weightDate.value = today();
+  weightTime.value = formatTime(new Date());
+  weightNote.value = '';
+}
+
+function editWeight(item: WeightRecord) {
+  editingWeightId.value = item.id;
+  newWeight.value = String(item.weight_kg);
+  weightDate.value = item.record_date;
+  weightTime.value = item.record_time.slice(0, 5);
+  weightNote.value = item.note || '';
+}
+
+function removeWeight(item: WeightRecord) {
+  uni.showModal({ title: '删除体重记录', content: '确定删除这条记录？', success: async ({ confirm }) => {
+    if (!confirm) return;
+    await weightApi.remove(item.id);
+    if (editingWeightId.value === item.id) resetWeightForm();
+    await loadWeight();
+  }});
 }
 
 function clearCache() {
@@ -560,6 +617,12 @@ async function deleteData() {
   uni.showLoading({ title: '处理中...' });
   try {
     await userStore.deleteData();
+    userStore.reset();
+    dietStore.$reset();
+    trainingStore.$reset();
+    newWeight.value = '';
+    latestWeight.value = null;
+    weightHistory.value = [];
     uni.hideLoading();
     uni.showToast({ title: '已删除', icon: 'success' });
   } catch (e: any) {
@@ -577,6 +640,10 @@ async function cancelAccount() {
   uni.showLoading({ title: '处理中...' });
   try {
     await userStore.cancelAccount();
+    userStore.reset();
+    dietStore.$reset();
+    trainingStore.$reset();
+    auth.logout();
     uni.hideLoading();
     uni.showToast({ title: '已注销', icon: 'success' });
     setTimeout(() => uni.reLaunch({ url: '/pages/login/onboarding' }), 800);

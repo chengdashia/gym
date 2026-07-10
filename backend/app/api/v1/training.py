@@ -117,7 +117,9 @@ def _ensure_exercise(db: Session, user_id: int, source: str, exercise_id: Option
             UserCustomExercise.deleted_at.is_(None),
         ).first()
     else:
-        e = db.query(Exercise).filter(Exercise.id == exercise_id, Exercise.is_system == 1).first()
+        e = db.query(Exercise).filter(
+            Exercise.id == exercise_id, Exercise.is_system == 1, Exercise.status == "active"
+        ).first()
     if not e:
         raise BizException(40401, "动作不存在")
     return e
@@ -454,28 +456,14 @@ def create_session(body: SessionCreateIn, user: User = Depends(get_current_user)
     if not day:
         raise BizException(40401, "训练日不存在")
 
-    # sequence 计划：若该训练日当天已有已完成 session，则推进指针到下一个训练日，
-    # 让“今日训练”进入下一个循环
-    if plan.schedule_type == "sequence" and plan.is_active:
-        today_date = body.session_date
-        start_dt = datetime.combine(today_date, datetime.min.time())
-        end_dt = datetime.combine(today_date, datetime.max.time())
-        done_today = db.query(TrainingSession).filter(
-            TrainingSession.plan_id == plan.id,
-            TrainingSession.plan_day_id == day.id,
-            TrainingSession.deleted_at.is_(None),
-            TrainingSession.status == "completed",
-            TrainingSession.session_date >= start_dt,
-            TrainingSession.session_date <= end_dt,
-        ).first()
-        if done_today:
-            advance_sequence_plan(db, plan)
-            db.flush()
-            # 重新解析今日训练日
-            from app.services.schedule import resolve_today_day
-            new_day = resolve_today_day(db, plan, today_date)
-            if new_day and new_day.id != day.id:
-                day = new_day
+    existing = db.query(TrainingSession).filter(
+        TrainingSession.user_id == user.id,
+        TrainingSession.plan_id == plan.id,
+        TrainingSession.deleted_at.is_(None),
+        TrainingSession.status.in_(("in_progress", "paused")),
+    ).order_by(TrainingSession.started_at.desc()).first()
+    if existing:
+        return ok(_session_to_dict(existing))
 
     s = TrainingSession(
         user_id=user.id, plan_id=plan.id, plan_day_id=day.id,
@@ -591,17 +579,17 @@ def update_session(
                 row.actual_reps = set_in.actual_reps
             if set_in.actual_weight_kg is not None:
                 row.actual_weight_kg = set_in.actual_weight_kg
-            if set_in.completed:
-                row.completed = 1
-                row.completed_at = datetime.utcnow()
+            if set_in.completed is not None:
+                row.completed = 1 if set_in.completed else 0
+                row.completed_at = datetime.utcnow() if set_in.completed else None
                 try:
                     weight = float(row.actual_weight_kg or 0)
                 except Exception:
                     weight = 0.0
                 reps = int(row.actual_reps or 0)
-                row.volume = weight * reps
-                completed += 1
-        se.completed_sets = completed
+                row.volume = weight * reps if set_in.completed else 0
+        db.flush()
+        se.completed_sets = sum(1 for row in se.sets if row.completed)
 
     # Recompute session volume
     total = 0
@@ -641,8 +629,9 @@ def finish_session(session_id: int, user: User = Depends(get_current_user), db: 
             except Exception:
                 pass
     s.total_volume = total
-    # 完成训练时不立刻推进 sequence plan 的 current_day_index，
-    # 避免训练页面 hero 立刻切到下一天；指针在下次创建 session 时按需推进。
+    plan = db.query(TrainingPlan).filter(TrainingPlan.id == s.plan_id).first()
+    if plan and plan.schedule_type == "sequence" and plan.is_active:
+        advance_sequence_plan(db, plan)
     db.add(OperationLog(user_id=user.id, action="training.session.finish", target_type="session", target_id=s.id))
     db.commit()
     db.refresh(s)

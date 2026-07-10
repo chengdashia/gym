@@ -323,8 +323,8 @@ function toggleSet(si: number) {
     timer.visible = true;
     timerInstance.start(ex.rest_seconds);
     // 保存进度
-    schedulePersist();
   }
+  schedulePersist();
 }
 
 function nextExercise() {
@@ -471,7 +471,14 @@ async function finishSession() {
 }
 
 function confirmQuit() {
-  showQuit.value = true;
+  uni.showActionSheet({
+    itemList: ['保存进度并退出', '将本次标记为完成', '放弃本次训练'],
+    success: ({ tapIndex }) => {
+      if (tapIndex === 0) saveProgress();
+      if (tapIndex === 1) finishSession();
+      if (tapIndex === 2) showAbandon.value = true;
+    },
+  });
 }
 
 function closeExitModal() {

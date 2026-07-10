@@ -45,6 +45,17 @@
       </view>
     </liquid-glass-card>
 
+    <liquid-glass-card :highlight="true" class="chart-card">
+      <view class="chart-head"><view class="chart-title-row"><line-icon name="dumbbell" tint="violet" :size="48" /><text class="chart-title">动作表现</text></view></view>
+      <view v-if="exerciseData.length">
+        <view v-for="item in exerciseData" :key="item.exercise_name" class="exercise-stat-row">
+          <view><view>{{ item.exercise_name }}</view><view class="chart-sub">{{ item.body_part || '未分类' }} · {{ item.completed_sets }} 组</view></view>
+          <view class="chart-sub">最高 {{ item.max_weight_kg }} kg<br />容量 {{ Math.round(item.total_volume) }} kg</view>
+        </view>
+      </view>
+      <view v-else class="chart-empty">暂无动作数据</view>
+    </liquid-glass-card>
+
     <!-- 训练 -->
     <liquid-glass-card :highlight="true" class="chart-card">
       <view class="chart-head">
@@ -82,7 +93,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint } from '@/api/stats';
+import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat } from '@/api/stats';
 import { useAuthStore } from '@/store/auth';
 import { chartTheme } from '@/utils/echarts';
 import EChartsView from '@/components/EChartsView.vue';
@@ -108,6 +119,7 @@ const range = ref<7 | 30 | 90>(30);
 const dietData = ref<DietStatPoint[]>([]);
 const trainingData = ref<TrainingStatPoint[]>([]);
 const weightData = ref<WeightStatPoint[]>([]);
+const exerciseData = ref<ExerciseStat[]>([]);
 
 const avgCalories = computed(() => {
   if (!dietData.value.length) return 0;
@@ -352,19 +364,22 @@ async function load() {
   if (!auth.isLogged) return;
   loading.value = true;
   try {
-    const [d, t, w] = await Promise.all([
+    const [d, t, w, e] = await Promise.all([
       statsApi.diet(range.value),
       statsApi.training(range.value),
       statsApi.weight(range.value),
+      statsApi.exercises(range.value),
     ]);
     dietData.value = d.items || [];
     trainingData.value = t.items || [];
     weightData.value = w.items || [];
+    exerciseData.value = e.items || [];
   } catch {
     uni.showToast({ title: '加载失败，请重试', icon: 'none' });
     dietData.value = [];
     trainingData.value = [];
     weightData.value = [];
+    exerciseData.value = [];
   } finally {
     loading.value = false;
   }
@@ -410,6 +425,14 @@ onShow(() => {
 .chart-card {
   padding: $gap-3;
   margin-bottom: $gap-3;
+}
+.exercise-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $gap-2 0;
+  border-bottom: 1rpx solid $divider;
+  &:last-child { border-bottom: 0; }
 }
 
 .chart-head {

@@ -34,6 +34,7 @@ from app.schemas import (
     UserProfileOut,
 )
 from app.services.recommend import recommend
+from app.services.uploads import delete_local_file
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -269,10 +270,19 @@ def delete_data(
     db.query(UserCustomExercise).filter(UserCustomExercise.user_id == uid).update({UserCustomExercise.deleted_at: datetime.utcnow()})
     db.query(TrainingPlan).filter(TrainingPlan.user_id == uid).update({TrainingPlan.deleted_at: datetime.utcnow()})
     db.query(TrainingSession).filter(TrainingSession.user_id == uid).update({TrainingSession.deleted_at: datetime.utcnow()})
+    uploaded_paths = [row.file_url for row in db.query(UploadedFile).filter(UploadedFile.user_id == uid).all()]
     db.query(UploadedFile).filter(UploadedFile.user_id == uid).delete()
     db.query(FoodRecognitionLog).filter(FoodRecognitionLog.user_id == uid).delete()
+    db.query(NutritionGoal).filter(NutritionGoal.user_id == uid).delete()
+    db.query(UserReminder).filter(UserReminder.user_id == uid).delete()
+    profile = db.query(UserProfile).filter(UserProfile.user_id == uid).first()
+    if profile:
+        profile.current_weight_kg = None
+        profile.target_weight_kg = None
     db.add(OperationLog(user_id=user.id, action="users.delete_data"))
     db.commit()
+    for path in uploaded_paths:
+        delete_local_file(path)
     return ok({"deleted": True})
 
 
@@ -285,6 +295,8 @@ def cancel_account(
     user.nickname = None
     user.avatar_url = None
     user.phone = None
+    user.openid = None
+    user.password_hash = None
     db.add(OperationLog(user_id=user.id, action="users.cancel_account"))
     db.commit()
     return ok({"cancelled": True})

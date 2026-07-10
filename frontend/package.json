@@ -4,7 +4,7 @@
   "private": true,
   "description": "健身与饮食记录小程序 - uni-app 前端",
   "scripts": {
-    "test": "vitest run --config vitest.config.ts",
+    "test": "vitest run --config vitest.config.mts",
     "typecheck": "vue-tsc --noEmit",
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin && node scripts/postbuild-mp-weixin.mjs",

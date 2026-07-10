@@ -16,6 +16,11 @@ export const useUserStore = defineStore('user', {
   },
 
   actions: {
+    reset() {
+      this.me = null;
+      this.goal = { calories_kcal: 0, carbs_g: 0, protein_g: 0, fat_g: 0 };
+      this.reminders = [];
+    },
     async fetchMe() {
       this.loading = true;
       try {

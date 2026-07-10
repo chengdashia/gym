@@ -223,12 +223,13 @@ function mealSubText(v: MealType) {
 }
 
 function mealIcon(v: MealType): { icon: string; tint: 'mint' | 'warm' | 'sky' | 'violet' } {
-  return {
+  const icons = {
     breakfast: { icon: 'sunrise', tint: 'warm' },
     lunch: { icon: 'bento', tint: 'mint' },
     dinner: { icon: 'moon', tint: 'sky' },
     snack: { icon: 'cookie', tint: 'violet' },
-  }[v];
+  } as const;
+  return icons[v];
 }
 
 function formatAmount(r: DietRecord) {

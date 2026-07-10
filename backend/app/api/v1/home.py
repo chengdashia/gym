@@ -109,6 +109,30 @@ def home_summary(
                 "is_rest_day": False,
             }
 
+    # 未完成训练始终优先于排期结果，即使原计划已停用或当天是休息日。
+    if incomplete:
+        training = {
+            "status": "in_progress",
+            "plan_id": incomplete.plan_id,
+            "plan_day_id": incomplete.plan_day_id,
+            "session_id": incomplete.id,
+            "title": incomplete.session_name,
+            "exercise_count": len(incomplete.exercises or []),
+            "is_rest_day": False,
+        }
+    elif active_plan and training["status"] == "not_started":
+        completed = db.query(TrainingSession).filter(
+            TrainingSession.user_id == user.id,
+            TrainingSession.plan_id == active_plan.id,
+            TrainingSession.deleted_at.is_(None),
+            TrainingSession.status == "completed",
+            TrainingSession.session_date >= start,
+            TrainingSession.session_date <= end,
+        ).first()
+        if completed:
+            training["status"] = "completed"
+            training["session_id"] = completed.id
+
     # weight
     w = db.query(WeightRecord).filter(
         WeightRecord.user_id == user.id, WeightRecord.deleted_at.is_(None),

@@ -102,11 +102,12 @@ function typeDesc(t: string) {
   return { diet: '按时记录每餐', training: '不要错过训练日', weight: '记得记录体重' }[t] || '';
 }
 function reminderIcon(t: string): { icon: string; tint: 'mint' | 'warm' | 'sky' | 'violet' | 'rose' | 'neutral' } {
-  return {
+  const icons = {
     diet: { icon: 'bento', tint: 'mint' },
     training: { icon: 'dumbbell', tint: 'warm' },
     weight: { icon: 'scale', tint: 'sky' },
-  }[t] || { icon: 'bell', tint: 'neutral' };
+  } as const;
+  return icons[t as keyof typeof icons] || { icon: 'bell', tint: 'neutral' };
 }
 
 function toggle(type: string, val: boolean) {

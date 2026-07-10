@@ -96,7 +96,12 @@ export function request<T = any>(opts: RequestOptions): Promise<T> {
         if (showLoading) uni.hideLoading();
         if (res.statusCode === 401) {
           onUnauthorized();
-          reject(res.data || { code: 40101, message: '未登录或 token 失效' });
+          reject({
+            code: 40101,
+            message: '未登录或 token 失效',
+            ...(res.data && typeof res.data === 'object' ? res.data : {}),
+            statusCode: 401,
+          });
           return;
         }
         const body = res.data as BizResponse<T>;

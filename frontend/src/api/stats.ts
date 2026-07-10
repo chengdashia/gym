@@ -24,6 +24,14 @@ export interface WeightStatPoint {
   diff_kg: number | null;
   change_from_start: number | null;
 }
+export interface ExerciseStat {
+  exercise_name: string;
+  body_part: string | null;
+  completed_sets: number;
+  total_reps: number;
+  max_weight_kg: number;
+  total_volume: number;
+}
 
 export const statsApi = {
   diet(range: 7 | 30 | 90 = 7) {
@@ -34,5 +42,8 @@ export const statsApi = {
   },
   weight(range: 7 | 30 | 90 = 30) {
     return http.get<{ items: WeightStatPoint[] }>('/stats/weight', { range });
+  },
+  exercises(range: 7 | 30 | 90 = 30) {
+    return http.get<{ items: ExerciseStat[] }>('/stats/exercises', { range });
   },
 };

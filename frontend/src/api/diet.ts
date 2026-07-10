@@ -48,6 +48,7 @@ export interface CreateDietPayload {
   amount_g?: number | null;
   serving_count?: number | null;
   image_url?: string | null;
+  image_file_id?: number | null;
   save_image?: boolean;
   note?: string;
 }

@@ -12,6 +12,9 @@ from app.core.response import ok
 from app.models import DietRecord, Food, OperationLog, User, UserCustomFood
 from app.schemas import DietDayOut, DietRecordIn, DietRecordOut, DietRecordUpdateIn, DietSummary
 from app.services.nutrition import calc_nutrition_per_100g, calc_nutrition_per_serving, sum_nutrition
+from app.services.validation import merge_and_validate_diet_quantity
+from app.services.uploads import delete_local_file, finalize_upload
+from app.utils.date import day_bounds
 
 
 router = APIRouter(prefix="/diet", tags=["diet"])
@@ -82,11 +85,12 @@ def list_records(
 ):
     from datetime import datetime
     d = datetime.strptime(date, "%Y-%m-%d").date()
+    start, end = day_bounds(d)
     rows = db.query(DietRecord).filter(
         DietRecord.user_id == user.id,
         DietRecord.deleted_at.is_(None),
-        DietRecord.record_date >= datetime(d.year, d.month, d.day),
-        DietRecord.record_date < datetime(d.year, d.month, d.day, 23, 59, 59),
+        DietRecord.record_date >= start,
+        DietRecord.record_date < end,
     ).order_by(DietRecord.record_time.asc()).all()
 
     meals = {m: [] for m in MEAL_TYPES}
@@ -131,6 +135,17 @@ def create_record(
 ):
     f = _ensure_food(db, user.id, body.food_source, body.food_id, body.custom_food_id)
     nutrition = _nutrition_snapshot(f, body.food_source, body.unit_type, body.amount_g, body.serving_count)
+    delete_url = None
+    image_url = None
+    if body.image_file_id is not None:
+        try:
+            image_url, delete_url = finalize_upload(
+                db, user.id, body.image_file_id, keep=body.save_image
+            )
+        except ValueError as exc:
+            raise BizException(40401, str(exc)) from exc
+    elif body.save_image or body.image_url:
+        raise BizException(40001, "image_file_id 必填")
 
     r = DietRecord(
         user_id=user.id,
@@ -144,7 +159,7 @@ def create_record(
         unit_type=body.unit_type,
         amount_g=nutrition.get("amount_g") if body.unit_type == "serving" else body.amount_g,
         serving_count=body.serving_count if body.unit_type == "serving" else None,
-        image_url=body.image_url,
+        image_url=image_url,
         save_image=1 if body.save_image else 0,
         calories_kcal=nutrition["calories_kcal"],
         carbs_g=nutrition["carbs_g"],
@@ -156,6 +171,8 @@ def create_record(
     db.flush()
     db.add(OperationLog(user_id=user.id, action="diet.create", target_type="diet_record", target_id=r.id))
     db.commit()
+    if delete_url:
+        delete_local_file(delete_url)
     db.refresh(r)
     return ok(_record_to_dict(r))
 
@@ -180,9 +197,12 @@ def update_record(
     if need_recalc:
         # fetch the food used
         f = _ensure_food(db, user.id, r.food_source, r.food_id, r.custom_food_id)
-        unit_type = body.unit_type or r.unit_type
-        amount_g = body.amount_g if body.amount_g is not None else r.amount_g
-        serving_count = body.serving_count if body.serving_count is not None else r.serving_count
+        unit_type, amount_g, serving_count = merge_and_validate_diet_quantity(
+            body,
+            r.unit_type,
+            r.amount_g,
+            r.serving_count,
+        )
         n = _nutrition_snapshot(f, r.food_source, unit_type, amount_g, serving_count)
         r.calories_kcal = n["calories_kcal"]
         r.carbs_g = n["carbs_g"]

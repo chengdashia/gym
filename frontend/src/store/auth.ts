@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { setToken, clearAuth } from '@/utils/request';
+import { getToken, setToken, clearAuth } from '@/utils/request';
 import { authApi, AuthResult } from '@/api/auth';
 import { STORAGE_KEYS } from '@/utils/constants';
 
@@ -34,23 +34,39 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async _doBootstrap() {
-      // 主动清理旧版本残留的登录信息（v1 / v2 / v3 都清掉）
-      try {
-        uni.removeStorageSync('gym_token');
-        uni.removeStorageSync('gym_user');
-        uni.removeStorageSync('gym_token_v2');
-        uni.removeStorageSync('gym_user_v2');
-      } catch {}
+      const savedToken = getToken();
+      if (savedToken) this.token = savedToken;
 
-      // 修复：冷启动时不自动恢复上次登录态，默认以游客身份进入小程序。
-      // 登录状态仅在本次使用期间保持；下次冷启动需要重新登录。
-      // 这样新用户/重新编译后不会直接显示旧用户。
-      clearAuth();
-      this.token = '';
-      this.user = null;
+      try {
+        const cached = uni.getStorageSync(STORAGE_KEYS.user) as UserBrief | null;
+        if (cached) this.user = cached;
+      } catch {
+        // storage unavailable
+      }
 
       this.bootstrapped = true;
-      this.ready = true;
+      if (!this.token) {
+        this.ready = true;
+        return;
+      }
+
+      try {
+        const me = await (await import('@/api/user')).userApi.getMe();
+        const userStore = (await import('@/store/user')).useUserStore();
+        userStore.me = me;
+        this.setUser({
+          id: me.id,
+          nickname: me.nickname,
+          avatar_url: me.avatar_url,
+          is_new_user: false,
+          agreement_confirmed: me.agreement_confirmed,
+          is_member: me.is_member,
+        });
+      } catch (error: any) {
+        if (error?.code === 40101 || error?.statusCode === 401) this.logout();
+      } finally {
+        this.ready = true;
+      }
     },
 
     _setAuthData(data: AuthResult) {

@@ -50,6 +50,7 @@
             <view class="bar" />
             <text class="title">今日训练</text>
             <liquid-glass-pill v-if="training.status === 'in_progress'" text="进行中" variant="primary" size="xs" />
+            <liquid-glass-pill v-else-if="training.status === 'completed'" text="已完成" variant="soft" size="xs" />
             <liquid-glass-pill v-else-if="training.is_rest_day" text="休息日" variant="soft" size="xs" />
           </view>
           <text class="more">查看 ›</text>
@@ -76,6 +77,7 @@
               :block="false"
               @tap.stop="continueSession"
             />
+            <liquid-glass-pill v-else-if="training.status === 'completed'" text="今日训练已完成 ✓" variant="soft" size="sm" />
             <liquid-glass-button
               v-else-if="!training.is_rest_day"
               text="开始训练"
@@ -87,6 +89,12 @@
             <liquid-glass-pill v-else text="好好休息" variant="soft" size="sm" />
           </view>
         </view>
+      </liquid-glass-card>
+
+      <liquid-glass-card v-if="!diet.calories_goal" :highlight="true" class="card-section">
+        <view class="empty-title">还没有饮食目标</view>
+        <view class="empty-desc">设置目标后可查看每日热量和三大营养素进度</view>
+        <liquid-glass-button text="设置饮食目标" variant="primary" size="sm" :block="false" @tap="goNutritionGoal" />
       </liquid-glass-card>
 
       <!-- 体重卡 -->
@@ -228,6 +236,10 @@ onShow(async () => {
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
+function goNutritionGoal() {
+  if (!requireAuth({ redirect: '/pages/home/index' })) return;
+  uni.navigateTo({ url: '/pages/mine/goals' });
+}
 
 async function startSession() {
   if (!requireAuth({ redirect: '/pages/home/index' })) return;

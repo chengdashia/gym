@@ -46,6 +46,32 @@
         <input v-model.number="form.serving_weight_g" type="digit" placeholder="可选，例 200" class="form-input" />
         <text class="form-unit">g</text>
       </view>
+
+      <view class="divider" />
+      <view class="hint">同时记入饮食记录</view>
+      <view class="form-row">
+        <text class="form-label">餐次</text>
+        <picker :range="mealTypes" range-key="label" @change="mealIndex = Number($event.detail.value)">
+          <text class="picker-value">{{ mealTypes[mealIndex].label }}</text>
+        </picker>
+      </view>
+      <view class="form-row">
+        <text class="form-label">日期</text>
+        <picker mode="date" :value="record.date" @change="record.date = $event.detail.value">
+          <text class="picker-value">{{ record.date }}</text>
+        </picker>
+      </view>
+      <view class="form-row">
+        <text class="form-label">时间</text>
+        <picker mode="time" :value="record.time" @change="record.time = $event.detail.value">
+          <text class="picker-value">{{ record.time }}</text>
+        </picker>
+      </view>
+      <view class="form-row">
+        <text class="form-label">食用重量</text>
+        <input v-model.number="record.amount" type="digit" placeholder="100" class="form-input" />
+        <text class="form-unit">g</text>
+      </view>
     </liquid-glass-card>
 
     <view class="action-bar">
@@ -55,15 +81,22 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 import { foodApi } from '@/api/food';
+import { dietApi } from '@/api/diet';
+import { useDietStore } from '@/store/diet';
 import { useAuthStore } from '@/store/auth';
-import { FOOD_CATEGORIES } from '@/utils/constants';
+import { FOOD_CATEGORIES, MEAL_TYPES } from '@/utils/constants';
+import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 
 const categories = FOOD_CATEGORIES;
 const auth = useAuthStore();
+const diet = useDietStore();
+const mealTypes = MEAL_TYPES;
+const mealIndex = ref(0);
+const record = reactive({ date: today(), time: formatTime(new Date()), amount: 100 });
 
 onMounted(async () => {
   if (!auth.ready) await auth.bootstrap();
@@ -92,9 +125,13 @@ async function save() {
     uni.showToast({ title: '营养值需为非负数字', icon: 'none' });
     return;
   }
+  if (!Number.isFinite(record.amount) || record.amount <= 0) {
+    uni.showToast({ title: '食用重量必须大于 0', icon: 'none' });
+    return;
+  }
   uni.showLoading({ title: '保存中...' });
   try {
-    await foodApi.createCustom({
+    const food = await foodApi.createCustom({
       name: form.name.trim(),
       category: form.category,
       calories_per_100g: form.calories_per_100g,
@@ -104,8 +141,18 @@ async function save() {
       default_unit: 'g',
       serving_weight_g: form.serving_weight_g || null,
     });
+    await dietApi.create({
+      record_date: record.date,
+      record_time: record.time,
+      meal_type: mealTypes[mealIndex.value].value,
+      food_source: 'custom',
+      custom_food_id: food.id,
+      unit_type: 'g',
+      amount_g: record.amount,
+    });
+    if (record.date === diet.selectedDate) await diet.fetch(record.date);
     uni.hideLoading();
-    uni.showToast({ title: '已保存', icon: 'success' });
+    uni.showToast({ title: '食物和记录已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
   } catch (e: any) {
     uni.hideLoading();
@@ -145,6 +192,7 @@ async function save() {
   color: $text-3;
   font-size: $fs-sm;
 }
+.picker-value { color: $text-1; font-size: $fs-md; }
 .cat-chips {
   flex: 1;
   display: flex;
