@@ -17,6 +17,15 @@
       </view>
     </view>
 
+    <view v-if="!keyword && recentFoods.length" class="recent-section">
+      <view class="recent-title">最近吃过</view>
+      <view class="recent-list">
+        <view v-for="food in recentFoods" :key="`${food.source}-${food.id}`" class="recent-item" @tap="pickRecent(food)">
+          {{ food.name }}
+        </view>
+      </view>
+    </view>
+
     <view v-if="results.length" class="result-list">
       <liquid-glass-card :highlight="true" padding="0" class="result-card">
         <view
@@ -135,7 +144,7 @@ import { onLoad } from '@dcloudio/uni-app';
 import EmptyState from '@/components/EmptyState.vue';
 import Tag from '@/components/Tag.vue';
 import { foodApi, FoodItem } from '@/api/food';
-import { dietApi } from '@/api/diet';
+import { dietApi, RecentFood } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
 import { useAuthStore } from '@/store/auth';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
@@ -161,6 +170,7 @@ const meal = ref<MealType>(getCurrentMeal());
 const time = ref(formatTime(new Date()));
 const date = ref(dietStore.selectedDate || today());
 const auth = useAuthStore();
+const recentFoods = ref<RecentFood[]>([]);
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -182,7 +192,20 @@ onLoad((options: any) => {
   if (m && ['breakfast', 'lunch', 'dinner', 'snack'].includes(m)) {
     meal.value = m as MealType;
   }
+  loadRecentFoods();
 });
+
+async function loadRecentFoods() {
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) return;
+  const res = await dietApi.recentFoods().catch(() => ({ items: [] }));
+  recentFoods.value = res.items || [];
+}
+
+function pickRecent(food: RecentFood) {
+  pickFood(food);
+  amount.value = Number(food.recent_amount) || (food.default_unit === 'serving' ? 1 : 100);
+}
 
 function getCurrentMeal(): MealType {
   const h = new Date().getHours();

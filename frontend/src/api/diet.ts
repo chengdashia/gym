@@ -1,5 +1,8 @@
 import { http } from '@/utils/request';
 import type { MealType } from '@/utils/constants';
+import type { FoodItem } from '@/api/food';
+
+export interface RecentFood extends FoodItem { recent_amount?: number | null }
 
 export interface DietRecord {
   id: number;
@@ -54,6 +57,18 @@ export interface CreateDietPayload {
 }
 
 export const dietApi = {
+  recentFoods(limit = 10) {
+    return http.get<{ items: RecentFood[] }>('/diet/recent-foods', { limit });
+  },
+  copyMeal(payload: {
+    source_date: string;
+    source_meal_type: MealType;
+    target_date: string;
+    target_meal_type: MealType;
+    record_time: string;
+  }) {
+    return http.post<{ count: number }>('/diet/copy-meal', payload);
+  },
   list(date: string) {
     return http.get<DietRecordsResponse>('/diet/records', { date });
   },

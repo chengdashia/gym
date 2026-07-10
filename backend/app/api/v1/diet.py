@@ -1,7 +1,9 @@
 from decimal import Decimal
+from datetime import date, datetime, time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
@@ -12,6 +14,7 @@ from app.core.response import ok
 from app.models import DietRecord, Food, OperationLog, User, UserCustomFood
 from app.schemas import DietDayOut, DietRecordIn, DietRecordOut, DietRecordUpdateIn, DietSummary
 from app.services.nutrition import calc_nutrition_per_100g, calc_nutrition_per_serving, sum_nutrition
+from app.services.diet_shortcuts import recent_unique_records
 from app.services.validation import merge_and_validate_diet_quantity
 from app.services.uploads import delete_local_file, finalize_upload
 from app.utils.date import day_bounds
@@ -21,6 +24,14 @@ router = APIRouter(prefix="/diet", tags=["diet"])
 
 
 MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack")
+
+
+class CopyMealIn(BaseModel):
+    source_date: date
+    source_meal_type: str
+    target_date: date
+    target_meal_type: str
+    record_time: time
 
 
 def _ensure_food(db: Session, user_id: int, source: str, food_id: Optional[int], custom_food_id: Optional[int]):
@@ -75,6 +86,85 @@ def _record_to_dict(r: DietRecord) -> dict:
         "fat_g": r.fat_g,
         "note": r.note,
     }
+
+
+@router.get("/recent-foods")
+def recent_foods(
+    limit: int = Query(10, ge=1, le=20),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(DietRecord).filter(
+        DietRecord.user_id == user.id,
+        DietRecord.deleted_at.is_(None),
+    ).order_by(DietRecord.created_at.desc(), DietRecord.id.desc()).limit(100).all()
+    items = []
+    for row in recent_unique_records(rows, limit):
+        try:
+            food = _ensure_food(db, user.id, row.food_source, row.food_id, row.custom_food_id)
+        except BizException:
+            continue
+        items.append({
+            "id": food.id,
+            "source": row.food_source,
+            "name": food.name,
+            "category": food.category,
+            "calories_per_100g": food.calories_per_100g,
+            "carbs_per_100g": food.carbs_per_100g,
+            "protein_per_100g": food.protein_per_100g,
+            "fat_per_100g": food.fat_per_100g,
+            "default_unit": row.unit_type,
+            "serving_weight_g": food.serving_weight_g,
+            "recent_amount": row.serving_count if row.unit_type == "serving" else row.amount_g,
+        })
+    return ok({"items": items})
+
+
+@router.post("/copy-meal")
+def copy_meal(
+    body: CopyMealIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if body.source_meal_type not in MEAL_TYPES or body.target_meal_type not in MEAL_TYPES:
+        raise BizException(40001, "餐次不正确")
+    start, end = day_bounds(body.source_date)
+    source_rows = db.query(DietRecord).filter(
+        DietRecord.user_id == user.id,
+        DietRecord.deleted_at.is_(None),
+        DietRecord.record_date >= start,
+        DietRecord.record_date < end,
+        DietRecord.meal_type == body.source_meal_type,
+    ).all()
+    if not source_rows:
+        raise BizException(40401, "没有可复制的餐次记录")
+    copied = []
+    for source in source_rows:
+        row = DietRecord(
+            user_id=user.id,
+            record_date=datetime.combine(body.target_date, time.min),
+            record_time=body.record_time,
+            meal_type=body.target_meal_type,
+            food_source=source.food_source,
+            food_id=source.food_id,
+            custom_food_id=source.custom_food_id,
+            food_name_snapshot=source.food_name_snapshot,
+            unit_type=source.unit_type,
+            amount_g=source.amount_g,
+            serving_count=source.serving_count,
+            image_url=None,
+            save_image=0,
+            calories_kcal=source.calories_kcal,
+            carbs_g=source.carbs_g,
+            protein_g=source.protein_g,
+            fat_g=source.fat_g,
+            note=source.note,
+        )
+        db.add(row)
+        copied.append(row)
+    db.add(OperationLog(user_id=user.id, action="diet.copy_meal"))
+    db.commit()
+    return ok({"count": len(copied)})
 
 
 @router.get("/records")

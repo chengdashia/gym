@@ -96,7 +96,10 @@
             </view>
           </view>
 
-          <view class="meal-add" @tap="addMeal(m.value)">+ 添加食物</view>
+          <view class="meal-actions">
+            <view class="meal-add" @tap="addMeal(m.value)">+ 添加食物</view>
+            <view v-if="selectedDate !== todayString && (meals[m.value] || []).length" class="meal-add" @tap="copyMeal(m.value)">复制到今天</view>
+          </view>
         </view>
       </liquid-glass-card>
     </view>
@@ -147,7 +150,8 @@ import ProgressRing from '@/components/ProgressRing.vue';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { addDays, formatDate, weekdayCN } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
-import type { DietRecord } from '@/api/diet';
+import { dietApi, type DietRecord } from '@/api/diet';
+import { formatTime } from '@/utils/date';
 import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
 
 // 同步自定义 tabBar 高亮
@@ -175,6 +179,7 @@ const selectedDateHeading = computed(() => dietDateHeading(selectedDate.value, t
 
 const showAddSheet = ref(false);
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
+const copying = ref(false);
 
 const addOptions = [
   { action: 'add' as const,    icon: 'search', tint: 'mint' as const,  text: '搜索食物', desc: '从食物库查找' },
@@ -255,6 +260,27 @@ function editRecord(r: DietRecord) {
   const url = `/pages/diet/record-edit?id=${r.id}`;
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
+}
+
+async function copyMeal(sourceMeal: MealType) {
+  if (copying.value) return;
+  copying.value = true;
+  try {
+    const result = await dietApi.copyMeal({
+      source_date: selectedDate.value,
+      source_meal_type: sourceMeal,
+      target_date: todayString,
+      target_meal_type: sourceMeal,
+      record_time: formatTime(new Date()),
+    });
+    uni.showToast({ title: `已复制 ${result.count} 条`, icon: 'success' });
+    dietStore.setDate(todayString);
+    await dietStore.fetch();
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '复制失败', icon: 'none' });
+  } finally {
+    copying.value = false;
+  }
 }
 
 function go(action: 'add' | 'custom' | 'photo') {
