@@ -69,6 +69,23 @@ def put_preferences(
     return ok(_preference_data(row))
 
 
+@router.get("/active")
+def get_active_program(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    program = db.query(UserDietProgram).filter(
+        UserDietProgram.user_id == user.id, UserDietProgram.status == "active",
+    ).order_by(UserDietProgram.id.desc()).first()
+    if program is None:
+        return ok(None)
+    stage = _active_stage(program, db)
+    preferences = program.preference_snapshot_json or {}
+    return ok({
+        "id": program.id, "template_code": program.template.code, "template_name": program.template.name,
+        "stage": _stage_dict(stage), "meal_count": preferences.get("meal_count", 3),
+        "eating_window_start": (preferences.get("preferences") or {}).get("eating_window_start"),
+        "eating_window_end": (preferences.get("preferences") or {}).get("eating_window_end"),
+    })
+
+
 def _program_template(db: Session, code: str) -> DietProgramTemplate:
     data = next((item for item in get_active_templates() if item["code"] == code), None)
     if data is None:

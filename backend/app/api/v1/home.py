@@ -69,11 +69,6 @@ def home_summary(
         TrainingPlan.is_active == 1,
     ).order_by(TrainingPlan.id.desc()).first()
 
-    incomplete = db.query(TrainingSession).filter(
-        TrainingSession.user_id == user.id, TrainingSession.deleted_at.is_(None),
-        TrainingSession.status.in_(("in_progress", "paused")),
-    ).order_by(TrainingSession.started_at.desc()).first()
-
     if not active_plan:
         training = {
             "status": "no_plan",
@@ -90,37 +85,25 @@ def home_summary(
             }
         else:
             ex_count = len(today_day.exercises)
-            incomplete_today = None
-            if incomplete and incomplete.plan_id == active_plan.id and incomplete.plan_day_id == today_day.id:
-                incomplete_today = incomplete
-            status = "completed"
-            if incomplete_today:
-                status = "in_progress"
-            elif incomplete and incomplete.plan_id == active_plan.id and incomplete.plan_day_id != today_day.id:
-                status = "in_progress"
+            incomplete_today = db.query(TrainingSession).filter(
+                TrainingSession.user_id == user.id, TrainingSession.plan_id == active_plan.id,
+                TrainingSession.plan_day_id == today_day.id, TrainingSession.deleted_at.is_(None),
+                TrainingSession.status.in_(("in_progress", "paused")),
+                TrainingSession.session_date >= start, TrainingSession.session_date <= end,
+            ).order_by(TrainingSession.started_at.desc()).first()
+            has_started = bool(incomplete_today and any(exercise.completed_sets > 0 for exercise in incomplete_today.exercises))
 
             training = {
-                "status": status if status != "completed" else "not_started",
+                "status": "in_progress" if has_started else "not_started",
                 "plan_id": active_plan.id,
                 "plan_day_id": today_day.id,
-                "session_id": incomplete_today.id if incomplete_today else None,
+                "session_id": incomplete_today.id if has_started else None,
                 "title": today_day.day_name,
                 "exercise_count": ex_count,
                 "is_rest_day": False,
             }
 
-    # 未完成训练始终优先于排期结果，即使原计划已停用或当天是休息日。
-    if incomplete:
-        training = {
-            "status": "in_progress",
-            "plan_id": incomplete.plan_id,
-            "plan_day_id": incomplete.plan_day_id,
-            "session_id": incomplete.id,
-            "title": incomplete.session_name,
-            "exercise_count": len(incomplete.exercises or []),
-            "is_rest_day": False,
-        }
-    elif active_plan and training["status"] == "not_started":
+    if active_plan and training["status"] == "not_started":
         completed = db.query(TrainingSession).filter(
             TrainingSession.user_id == user.id,
             TrainingSession.plan_id == active_plan.id,

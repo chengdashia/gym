@@ -56,6 +56,9 @@
         <view><text class="program-entry-title">饮食方案</text><text class="program-entry-sub">16:8、532 碳水渐降、生酮与均衡减脂</text></view>
         <text class="program-entry-arrow">›</text>
       </view>
+      <view v-if="activeProgram" class="program-progress">
+        <view><text class="program-progress-title">{{ activeProgram.template_name }} · 今日执行</text><text class="program-progress-sub">剩余 {{ Math.max(0, Math.round(activeProgram.stage.calories_kcal - summary.calories_kcal)) }} kcal · C {{ Math.max(0, Math.round(activeProgram.stage.carbs_g - summary.carbs_g)) }}g · P {{ Math.max(0, Math.round(activeProgram.stage.protein_g - summary.protein_g)) }}g · F {{ Math.max(0, Math.round(activeProgram.stage.fat_g - summary.fat_g)) }}g</text></view>
+      </view>
       <liquid-glass-card
         v-for="m in mealTypes"
         :key="m.value"
@@ -74,6 +77,10 @@
             <view class="meal-cal">{{ Math.round(mealCal(m.value)) }} kcal</view>
             <text class="meal-arrow">{{ expanded[m.value] ? '▾' : '▸' }}</text>
           </view>
+        </view>
+        <view v-if="mealTarget(m.value)" :class="['meal-target', { outside: isOutsideEatingWindow(m.value) }]">
+          <text>{{ isOutsideEatingWindow(m.value) ? '非进食窗口 · ' : '本餐目标 · ' }}{{ mealTarget(m.value)?.calories }} kcal</text>
+          <text>C {{ mealTarget(m.value)?.carbs }}g · P {{ mealTarget(m.value)?.protein }}g · F {{ mealTarget(m.value)?.fat }}g</text>
         </view>
 
         <view v-if="expanded[m.value]" class="meal-body">
@@ -170,6 +177,7 @@ import { dietApi, type DietRecord } from '@/api/diet';
 import { formatTime } from '@/utils/date';
 import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
 import { buildDietEntryUrl } from '@/utils/diet-context';
+import { dietProgramApi, type ActiveDietProgram } from '@/api/diet-programs';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -198,6 +206,7 @@ const showAddSheet = ref(false);
 const addSheetMeal = ref<MealType>('lunch');
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
 const copying = ref(false);
+const activeProgram = ref<ActiveDietProgram | null>(null);
 
 const addOptions = [
   { action: 'add' as const,    icon: 'search', tint: 'mint' as const,  text: '搜索食物', desc: '从食物库查找' },
@@ -225,7 +234,31 @@ async function load() {
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) return;
   if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
-  await dietStore.fetch();
+  await Promise.all([
+    dietStore.fetch(),
+    dietProgramApi.active().then(value => { activeProgram.value = value; }).catch(() => { activeProgram.value = null; }),
+  ]);
+}
+
+function mealTarget(meal: MealType) {
+  if (!activeProgram.value) return null;
+  const count = activeProgram.value.meal_count;
+  const shares: Record<number, Record<MealType, number>> = {
+    2: { breakfast: 0.4, lunch: 0.6, dinner: 0, snack: 0 },
+    3: { breakfast: 0.3, lunch: 0.4, dinner: 0.3, snack: 0 },
+    4: { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snack: 0.1 },
+    5: { breakfast: 0.2, lunch: 0.3, dinner: 0.25, snack: 0.25 },
+    6: { breakfast: 0.2, lunch: 0.25, dinner: 0.25, snack: 0.3 },
+  };
+  const share = (shares[count] || shares[3])[meal];
+  if (!share) return null;
+  const target = activeProgram.value.stage;
+  return { calories: Math.round(target.calories_kcal * share), carbs: Math.round(target.carbs_g * share), protein: Math.round(target.protein_g * share), fat: Math.round(target.fat_g * share) };
+}
+
+function isOutsideEatingWindow(meal: MealType) {
+  if (activeProgram.value?.template_code !== 'time_restricted_16_8') return false;
+  return meal === 'breakfast' || meal === 'snack';
 }
 
 onMounted(load);
@@ -349,6 +382,8 @@ function openPrograms() {
   overflow: hidden;
 }
 .program-entry{margin:0 0 $gap-3;padding:26rpx 28rpx;border-radius:24rpx;background:linear-gradient(135deg,#eafaf2,#fff);border:1rpx solid rgba(79,191,139,.22);display:flex;align-items:center;justify-content:space-between;box-shadow:0 8rpx 24rpx rgba(40,130,92,.08)}.program-entry-title{display:block;font-size:32rpx;font-weight:750;color:$text-1}.program-entry-sub{display:block;margin-top:6rpx;font-size:23rpx;color:$text-3}.program-entry-arrow{font-size:44rpx;color:#46ae7f}
+.program-progress{margin:0 0 $gap-3;padding:22rpx 26rpx;border-radius:20rpx;background:#173d2c;color:#fff}.program-progress-title{display:block;font-size:29rpx;font-weight:750}.program-progress-sub{display:block;margin-top:8rpx;font-size:23rpx;line-height:1.5;color:#c8ead9}
+.meal-target{display:flex;justify-content:space-between;gap:14rpx;flex-wrap:wrap;margin:8rpx 0 18rpx;padding:14rpx 18rpx;border-radius:14rpx;background:#eff9f3;color:#438161;font-size:23rpx}.meal-target.outside{background:#fff5e6;color:#a66d19}
 
 .header::before {
   content: '';
