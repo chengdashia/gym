@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional
 
@@ -6,6 +6,7 @@ from sqlalchemy import (
     DECIMAL,
     JSON,
     BigInteger,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -133,6 +134,7 @@ class Food(Base):
     carbs_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
     protein_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
     fat_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
+    fiber_per_100g: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
     default_unit: Mapped[str] = mapped_column(String(16), nullable=False, default="g")
     serving_weight_g: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
     is_system: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -160,6 +162,7 @@ class UserCustomFood(Base):
     carbs_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
     protein_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
     fat_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
+    fiber_per_100g: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
     default_unit: Mapped[str] = mapped_column(String(16), nullable=False, default="g")
     serving_weight_g: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
@@ -173,6 +176,161 @@ class UserCustomFood(Base):
     __table_args__ = (
         Index("idx_custom_foods_user_name", "user_id", "name"),
     )
+
+
+class DietPreference(Base):
+    __tablename__ = "diet_preferences"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False, unique=True)
+    meal_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    allergens_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    preference_rules_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    __table_args__ = (Index("idx_diet_preferences_user", "user_id"),)
+
+
+class DietProgramTemplate(Base):
+    __tablename__ = "diet_program_templates"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rules_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    applicability_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    programs: Mapped[list["UserDietProgram"]] = relationship("UserDietProgram", back_populates="template")
+
+    __table_args__ = (
+        UniqueConstraint("code", "version", name="uk_diet_program_template_code_version"),
+        Index("idx_diet_program_templates_status", "status"),
+    )
+
+
+class UserDietProgram(Base):
+    __tablename__ = "user_diet_programs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    template_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("diet_program_templates.id"), nullable=False)
+    template_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    eligibility_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    preference_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    template: Mapped["DietProgramTemplate"] = relationship("DietProgramTemplate", back_populates="programs")
+    stages: Mapped[list["DietProgramStage"]] = relationship(
+        "DietProgramStage", back_populates="program", cascade="all, delete-orphan", order_by="DietProgramStage.stage_number"
+    )
+    meal_plan_days: Mapped[list["MealPlanDay"]] = relationship(
+        "MealPlanDay", back_populates="program", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("idx_user_diet_programs_user", "user_id"),
+        Index("idx_user_diet_programs_user_status", "user_id", "status"),
+    )
+
+
+class DietProgramStage(Base):
+    __tablename__ = "diet_program_stages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    program_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_diet_programs.id"), nullable=False)
+    stage_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    calories_kcal: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False)
+    carbs_g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False)
+    protein_g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False)
+    fat_g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False)
+    observation_days: Mapped[int] = mapped_column(Integer, nullable=False, default=14)
+    evaluation_snapshot_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    program: Mapped["UserDietProgram"] = relationship("UserDietProgram", back_populates="stages")
+    meal_plan_days: Mapped[list["MealPlanDay"]] = relationship("MealPlanDay", back_populates="stage")
+
+    __table_args__ = (
+        UniqueConstraint("program_id", "stage_number", name="uk_diet_program_stage_number"),
+        Index("idx_diet_program_stages_program", "program_id"),
+    )
+
+
+class MealPlanDay(Base):
+    __tablename__ = "meal_plan_days"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    program_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_diet_programs.id"), nullable=False)
+    stage_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("diet_program_stages.id"), nullable=False)
+    plan_date: Mapped[date] = mapped_column(Date, nullable=False)
+    target_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    program: Mapped["UserDietProgram"] = relationship("UserDietProgram", back_populates="meal_plan_days")
+    stage: Mapped["DietProgramStage"] = relationship("DietProgramStage", back_populates="meal_plan_days")
+    meals: Mapped[list["MealPlanMeal"]] = relationship(
+        "MealPlanMeal", back_populates="day", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("program_id", "plan_date", name="uk_meal_plan_program_date"),
+        Index("idx_meal_plan_days_stage", "stage_id"),
+    )
+
+
+class MealPlanMeal(Base):
+    __tablename__ = "meal_plan_meals"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("meal_plan_days.id"), nullable=False)
+    meal_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    planned_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    target_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    day: Mapped["MealPlanDay"] = relationship("MealPlanDay", back_populates="meals")
+    items: Mapped[list["MealPlanItem"]] = relationship(
+        "MealPlanItem", back_populates="meal", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (Index("idx_meal_plan_meals_day", "day_id"),)
+
+
+class MealPlanItem(Base):
+    __tablename__ = "meal_plan_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    meal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("meal_plan_meals.id"), nullable=False)
+    food_source: Mapped[str] = mapped_column(String(32), nullable=False)
+    food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    custom_food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    food_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    amount_g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False)
+    nutrition_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    constraint_snapshot_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    replaced_from_item_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("meal_plan_items.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    meal: Mapped["MealPlanMeal"] = relationship("MealPlanMeal", back_populates="items")
+
+    __table_args__ = (Index("idx_meal_plan_items_meal", "meal_id"),)
 
 
 class DietRecord(Base):

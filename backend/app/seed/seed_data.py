@@ -68,6 +68,31 @@ FOODS = [
     ("乳清蛋白粉", "其他", 380, 8.0, 80.0, 5.0),
 ]
 
+# Values are grams per 100 g for common, minimally processed foods. Foods without
+# a sufficiently reliable value intentionally remain NULL.
+FIBER_PER_100G = {
+    "燕麦": 10.1,
+    "全麦面包": 6.0,
+    "玉米": 2.4,
+    "红薯": 3.0,
+    "土豆": 2.2,
+    "西兰花": 2.6,
+    "菠菜": 2.2,
+    "生菜": 1.3,
+    "西红柿": 1.2,
+    "黄瓜": 0.5,
+    "胡萝卜": 2.8,
+    "蘑菇": 1.0,
+    "苹果": 2.4,
+    "香蕉": 2.6,
+    "橙子": 2.4,
+    "蓝莓": 2.4,
+    "猕猴桃": 3.0,
+    "草莓": 2.0,
+    "杏仁": 12.5,
+    "核桃": 6.7,
+}
+
 EXERCISES = [
     ("杠铃卧推", "胸", "平躺仰卧，双手略宽于肩握杠铃，下放至胸口推起"),
     ("哑铃卧推", "胸", "平躺仰卧持哑铃推举"),
@@ -107,10 +132,13 @@ EXERCISES = [
 
 
 def _ensure_foods(db: Session) -> None:
-    exists = {f[0]: f[1] for f in db.execute(select(Food.name, Food.id)).all()}
+    existing_foods = {f.name: f for f in db.execute(select(Food)).scalars().all()}
     for item in FOODS:
         name = item[0]
-        if name in exists:
+        if name in existing_foods:
+            food = existing_foods[name]
+            if food.fiber_per_100g is None and name in FIBER_PER_100G:
+                food.fiber_per_100g = Decimal(str(FIBER_PER_100G[name]))
             continue
         category = item[1]
         cal = item[2]
@@ -123,6 +151,9 @@ def _ensure_foods(db: Session) -> None:
             name=name, category=category,
             calories_per_100g=Decimal(str(cal)), carbs_per_100g=Decimal(str(carb)),
             protein_per_100g=Decimal(str(prot)), fat_per_100g=Decimal(str(fat)),
+            fiber_per_100g=(
+                Decimal(str(FIBER_PER_100G[name])) if name in FIBER_PER_100G else None
+            ),
             default_unit=default_unit,
             serving_weight_g=Decimal(str(serving)) if serving else None,
             is_system=1, status="active",

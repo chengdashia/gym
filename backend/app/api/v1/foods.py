@@ -25,6 +25,7 @@ def _food_to_dict(f, source: str) -> dict:
         "carbs_per_100g": f.carbs_per_100g,
         "protein_per_100g": f.protein_per_100g,
         "fat_per_100g": f.fat_per_100g,
+        "fiber_per_100g": f.fiber_per_100g,
         "default_unit": f.default_unit,
         "serving_weight_g": f.serving_weight_g,
     }
