@@ -170,6 +170,34 @@ class DietPreferenceOut(DietPreferenceIn):
     snapshot: dict
 
 
+class DietProgramCreateIn(BaseModel):
+    template_code: Literal["balanced_cut", "time_restricted_16_8", "carb_taper_532", "ketogenic"]
+    activity_level: Literal["sedentary", "light", "moderate", "very_active"]
+    calories_kcal: Decimal = Field(..., ge=1200)
+    macro_ratio: Literal["532", "442"] = "532"
+    eligibility: DietEligibilityIn
+
+
+class DietProgramEvaluateIn(BaseModel):
+    end_date: date = Field(default_factory=date.today)
+    target_loss_rate: Decimal = Field(default=Decimal("0.005"), ge=Decimal("0.005"), le=Decimal("0.01"))
+    reduction_g: Literal[15, 20, 25] = 20
+
+
+class DietProgramStageOut(ORMBase):
+    id: int
+    stage_number: int
+    status: str
+    start_date: Optional[date]
+    end_date: Optional[date]
+    calories_kcal: Decimal
+    carbs_g: Decimal
+    protein_g: Decimal
+    fat_g: Decimal
+    observation_days: int
+    evaluation_snapshot_json: Optional[dict]
+
+
 class NutritionRecommendOut(BaseModel):
     calories_kcal: Decimal
     carbs_g: Decimal

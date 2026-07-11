@@ -1,14 +1,20 @@
-from dataclasses import asdict
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
 from app.core.database import get_db
+from app.core.exceptions import BizException
 from app.core.response import ok
-from app.models import DietPreference, User
-from app.schemas import DietEligibilityIn, DietPreferenceIn
+from app.models import (
+    DietPreference, DietProgramStage, DietProgramTemplate, DietRecord,
+    NutritionGoal, User, UserDietProgram, UserProfile, WeightRecord,
+)
+from app.schemas import DietEligibilityIn, DietPreferenceIn, DietProgramCreateIn, DietProgramEvaluateIn
 from app.services.diet_eligibility import check_eligibility
+from app.services.diet_program_engine import DietSafetyError, create_initial_targets, estimate_tdee, evaluate_532
 from app.services.diet_templates import get_active_templates
 
 
@@ -28,7 +34,7 @@ def list_templates(user: User = Depends(get_current_user)):
 
 @router.post("/eligibility")
 def eligibility(body: DietEligibilityIn, user: User = Depends(get_current_user)):
-    return ok(asdict(check_eligibility(body.model_dump())))
+    return ok(check_eligibility(body.model_dump()).__dict__)
 
 
 @router.get("/preferences")
@@ -54,3 +60,163 @@ def put_preferences(
     db.commit()
     db.refresh(row)
     return ok(_preference_data(row))
+
+
+def _program_template(db: Session, code: str) -> DietProgramTemplate:
+    data = next((item for item in get_active_templates() if item["code"] == code), None)
+    if data is None:
+        raise BizException(40401, "饮食方案不存在", 404)
+    row = db.query(DietProgramTemplate).filter(
+        DietProgramTemplate.code == code, DietProgramTemplate.version == data["version"],
+    ).first()
+    if row is None:
+        row = DietProgramTemplate(
+            code=data["code"], name=data["name"], version=data["version"],
+            description=data["description"], rules_json=data["rules"],
+            applicability_json=data["applicability"], status="active",
+        )
+        db.add(row)
+        db.flush()
+    return row
+
+
+def _program_or_404(db: Session, user_id: int, program_id: int) -> UserDietProgram:
+    row = db.query(UserDietProgram).filter(
+        UserDietProgram.id == program_id, UserDietProgram.user_id == user_id,
+    ).first()
+    if row is None:
+        raise BizException(40401, "饮食方案不存在", 404)
+    return row
+
+
+def _stage_dict(stage: DietProgramStage) -> dict:
+    return {
+        "id": stage.id, "stage_number": stage.stage_number, "status": stage.status,
+        "start_date": stage.start_date, "end_date": stage.end_date,
+        "calories_kcal": stage.calories_kcal, "carbs_g": stage.carbs_g,
+        "protein_g": stage.protein_g, "fat_g": stage.fat_g,
+        "observation_days": stage.observation_days,
+        "evaluation_snapshot_json": stage.evaluation_snapshot_json,
+    }
+
+
+@router.post("")
+def create_program(
+    body: DietProgramCreateIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    eligibility_result = check_eligibility(body.eligibility.model_dump())
+    if not eligibility_result.eligible:
+        raise BizException(40031, "当前健康情况不适合创建自动饮食方案，请仅使用普通记录并咨询医生或营养师")
+    preference = db.query(DietPreference).filter(DietPreference.user_id == user.id).first()
+    if preference is None:
+        raise BizException(40032, "请先完成饮食偏好设置")
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    tdee = estimate_tdee(profile, body.activity_level) if profile else {
+        "status": "needs_profile", "missing_fields": ["gender", "age", "height_cm", "current_weight_kg"],
+    }
+    if isinstance(tdee, dict):
+        raise BizException(40033, "请补充完整的性别、年龄、身高和当前体重后再创建方案", data=tdee)
+    try:
+        targets = create_initial_targets(body.calories_kcal, ratio=body.macro_ratio)
+    except DietSafetyError as exc:
+        raise BizException(40034, str(exc)) from exc
+    template = _program_template(db, body.template_code)
+    program = UserDietProgram(
+        user_id=user.id, template_id=template.id, template_version=template.version, status="pending",
+        eligibility_snapshot_json={**body.eligibility.model_dump(), "eligible": True},
+        preference_snapshot_json=_preference_data(preference)["snapshot"],
+    )
+    db.add(program)
+    db.flush()
+    stage = DietProgramStage(program_id=program.id, stage_number=1, status="pending", observation_days=14, **targets)
+    db.add(stage)
+    db.commit()
+    db.refresh(program)
+    db.refresh(stage)
+    return ok({"id": program.id, "status": program.status, "estimated_tdee_kcal": tdee, "stage": _stage_dict(stage)})
+
+
+@router.post("/{program_id}/confirm")
+def confirm_program(
+    program_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    program = _program_or_404(db, user.id, program_id)
+    if program.status != "pending":
+        raise BizException(40035, "只有待确认方案可以确认")
+    stage = db.query(DietProgramStage).filter(
+        DietProgramStage.program_id == program.id, DietProgramStage.stage_number == 1,
+    ).first()
+    if stage is None or stage.status != "pending":
+        raise BizException(40036, "待确认初始阶段不存在")
+    program.status, program.start_date = "active", date.today()
+    stage.status, stage.start_date, stage.confirmed_at = "active", date.today(), datetime.utcnow()
+    goal = db.query(NutritionGoal).filter(NutritionGoal.user_id == user.id).first()
+    if goal is None:
+        goal = NutritionGoal(user_id=user.id, source="diet_program")
+        db.add(goal)
+    goal.calories_kcal, goal.carbs_g = stage.calories_kcal, stage.carbs_g
+    goal.protein_g, goal.fat_g, goal.source = stage.protein_g, stage.fat_g, "diet_program"
+    db.commit()
+    return ok({"id": program.id, "status": program.status, "stage": _stage_dict(stage)})
+
+
+def _daily_weights(db: Session, user_id: int, start: date, end: date) -> list[Decimal]:
+    rows = db.query(WeightRecord).filter(
+        WeightRecord.user_id == user_id, WeightRecord.deleted_at.is_(None),
+        WeightRecord.record_date >= datetime.combine(start, time.min),
+        WeightRecord.record_date <= datetime.combine(end, time.max),
+    ).order_by(WeightRecord.record_date.desc(), WeightRecord.record_time.desc(), WeightRecord.id.desc()).all()
+    by_day: dict[date, Decimal] = {}
+    for row in rows:
+        by_day.setdefault(row.record_date.date(), row.weight_kg)
+    return list(by_day.values())
+
+
+def _adherence_rate(db: Session, user_id: int, start: date, end: date, target_calories: Decimal) -> Decimal:
+    rows = db.query(DietRecord).filter(
+        DietRecord.user_id == user_id, DietRecord.deleted_at.is_(None),
+        DietRecord.record_date >= datetime.combine(start, time.min),
+        DietRecord.record_date <= datetime.combine(end, time.max),
+    ).all()
+    totals: dict[date, Decimal] = {}
+    for row in rows:
+        day = row.record_date.date()
+        totals[day] = totals.get(day, Decimal("0")) + row.calories_kcal
+    on_target = sum(Decimal("1") for total in totals.values() if target_calories * Decimal("0.8") <= total <= target_calories * Decimal("1.2"))
+    return on_target / Decimal("7")
+
+
+@router.post("/{program_id}/evaluate")
+def evaluate_program(
+    program_id: int,
+    body: DietProgramEvaluateIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    program = _program_or_404(db, user.id, program_id)
+    if program.status != "active":
+        raise BizException(40037, "只有进行中的方案可以评估")
+    stage = db.query(DietProgramStage).filter(
+        DietProgramStage.program_id == program.id, DietProgramStage.status == "active",
+    ).order_by(DietProgramStage.stage_number.desc()).first()
+    if stage is None:
+        raise BizException(40038, "当前阶段不存在")
+    current_start = body.end_date - timedelta(days=6)
+    previous_start = current_start - timedelta(days=7)
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    result = evaluate_532(
+        previous_weights=_daily_weights(db, user.id, previous_start, current_start - timedelta(days=1)),
+        current_weights=_daily_weights(db, user.id, current_start, body.end_date),
+        adherence_rate=_adherence_rate(db, user.id, current_start, body.end_date, stage.calories_kcal),
+        target_loss_rate=body.target_loss_rate,
+        stage=_stage_dict(stage), observation_days=(body.end_date - stage.start_date).days + 1 if stage.start_date else 0,
+        target_weight_kg=profile.target_weight_kg if profile else None, reduction_g=body.reduction_g,
+    )
+    # Evaluation never changes the active target; confirmation creates any next stage.
+    stage.evaluation_snapshot_json = result.to_dict()
+    db.commit()
+    return ok(result.to_dict())
