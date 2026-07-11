@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hydrateRecognizedItems, mergeSelectedFood, summarizeRecognizedMeal, type RecognizedMealItem } from './recognized-meal';
+import { appendSelectionMode, hasUnresolvedDetails, hydrateRecognizedItems, mergeSelectedFood, summarizeRecognizedMeal, type RecognizedMealItem } from './recognized-meal';
 
 describe('recognized meal', () => {
   it('sums nutrition for edited recognized items', () => {
@@ -44,6 +44,27 @@ describe('recognized meal', () => {
 
   it('replaces one draft or appends a selected food without saving it', () => {
     const selected = { id: 9, source: 'custom' as const, name: '沙拉', calories_per_100g: 80, carbs_per_100g: 8, protein_per_100g: 3, fat_per_100g: 4 };
-    expect(mergeSelectedFood([], selected, null)[0]).toMatchObject({ food_id: null, custom_food_id: 9, name: '沙拉' });
+    const appended = mergeSelectedFood([], selected, null)[0];
+    expect(appended).toMatchObject({ food_id: null, custom_food_id: 9, name: '沙拉' });
+    expect(appended).not.toHaveProperty('id');
+  });
+
+  it('replaces only the requested draft index', () => {
+    const base = (name: string, id: number): RecognizedMealItem => ({
+      food_id: id, custom_food_id: null, source: 'system', name, confidence: .8,
+      estimated_amount_g: 80, calories_per_100g: 10, carbs_per_100g: 1,
+      protein_per_100g: 1, fat_per_100g: 1,
+    });
+    const selected = { id: 9, source: 'system' as const, name: 'new', calories_per_100g: 80, carbs_per_100g: 8, protein_per_100g: 3, fat_per_100g: 4 };
+    expect(mergeSelectedFood([base('a', 1), base('b', 2)], selected, 1).map(item => item.name)).toEqual(['a', 'new']);
+  });
+
+  it('blocks confirmation while nutrition details are unresolved', () => {
+    expect(hasUnresolvedDetails([{ detailError: 'failed' } as RecognizedMealItem])).toBe(true);
+  });
+
+  it('preserves context when adding selection mode to a redirect URL', () => {
+    expect(appendSelectionMode('/pages/diet/add?date=2026-07-11&meal=lunch&time=12%3A10', true))
+      .toBe('/pages/diet/add?date=2026-07-11&meal=lunch&time=12%3A10&mode=select');
   });
 });

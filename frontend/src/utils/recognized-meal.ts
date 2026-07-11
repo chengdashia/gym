@@ -42,16 +42,24 @@ export async function hydrateRecognizedItems(
 export function mergeSelectedFood(
   items: RecognizedMealItem[], selected: SelectedFood, replaceIndex: number | null,
 ): RecognizedMealItem[] {
+  const { id, source, name, ...nutrition } = selected;
   const item: RecognizedMealItem = {
-    food_id: selected.source === 'system' ? selected.id : null,
-    custom_food_id: selected.source === 'custom' ? selected.id : null,
-    source: selected.source, name: selected.name, confidence: 1, estimated_amount_g: 100,
-    ...selected,
+    food_id: source === 'system' ? id : null,
+    custom_food_id: source === 'custom' ? id : null,
+    source, name, confidence: 1, estimated_amount_g: 100, ...nutrition,
   };
   const next = [...items];
   if (replaceIndex == null) next.push(item);
   else next.splice(replaceIndex, 1, item);
   return next;
+}
+
+export function hasUnresolvedDetails(items: RecognizedMealItem[]) {
+  return items.some(item => Boolean(item.detailError));
+}
+
+export function appendSelectionMode(url: string, selectMode: boolean) {
+  return selectMode ? `${url}&mode=select` : url;
 }
 
 export function summarizeRecognizedMeal(items: RecognizedMealItem[]) {

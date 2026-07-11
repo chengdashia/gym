@@ -132,7 +132,7 @@ import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
-import { hydrateRecognizedItems, mergeSelectedFood, summarizeRecognizedMeal, type RecognizedMealItem } from '@/utils/recognized-meal';
+import { appendSelectionMode, hasUnresolvedDetails, hydrateRecognizedItems, mergeSelectedFood, summarizeRecognizedMeal, type RecognizedMealItem } from '@/utils/recognized-meal';
 
 const dietStore = useDietStore();
 const mealTypes = MEAL_TYPES;
@@ -217,11 +217,11 @@ function reset() {
 
 function goSearch(replaceIndex: number | null) {
   uni.navigateTo({
-    url: `${buildDietEntryUrl('/pages/diet/add', {
+    url: appendSelectionMode(buildDietEntryUrl('/pages/diet/add', {
       date: recordDate.value,
       meal: meal.value,
       time: recordTime.value,
-    })}&mode=select`,
+    }), true),
     success: res => res.eventChannel.on('foodSelected', food => {
       items.value = mergeSelectedFood(items.value, food, replaceIndex);
     }),
@@ -235,6 +235,10 @@ async function retryDetail(index: number) {
 
 async function save() {
   if (!items.value.length) return;
+  if (hasUnresolvedDetails(items.value)) {
+    uni.showToast({ title: '请先重试或替换营养详情加载失败的食物', icon: 'none' });
+    return;
+  }
   if (items.value.some(item => !Number.isFinite(item.estimated_amount_g) || item.estimated_amount_g <= 0)) {
     uni.showToast({ title: '请输入有效克数', icon: 'none' });
     return;

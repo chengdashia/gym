@@ -154,6 +154,7 @@ import { safeNavigateBack } from '@/utils/nav';
 import { iconSrc } from '@/utils/icons';
 import { requireAuth } from '@/utils/auth-guard';
 import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
+import { appendSelectionMode } from '@/utils/recognized-meal';
 
 const searchIconSrc = iconSrc('search', '#8FA3A1', 1.8);
 
@@ -186,12 +187,12 @@ onLoad((options: any) => {
   if (!auth.ready) {
     auth.bootstrap().then(() => {
       if (!auth.isLogged) {
-        const redirect = buildDietEntryUrl('/pages/diet/add', context);
+        const redirect = appendSelectionMode(buildDietEntryUrl('/pages/diet/add', context), selectMode.value);
         requireAuth({ redirect });
       }
     });
   } else if (!auth.isLogged) {
-    const redirect = buildDietEntryUrl('/pages/diet/add', context);
+    const redirect = appendSelectionMode(buildDietEntryUrl('/pages/diet/add', context), selectMode.value);
     requireAuth({ redirect });
   }
   loadRecentFoods();
