@@ -54,17 +54,19 @@
         <view v-else class="cand-list">
           <view
             v-for="(item, index) in items"
-            :key="`${item.source}-${item.food_id}`"
+            :key="`${item.source}-${item.food_id ?? item.custom_food_id}-${index}`"
             class="cand-item"
           >
             <view class="cand-info">
               <view class="cand-name">{{ item.name }}</view>
               <view class="cand-meta">{{ Math.round(item.confidence * 100) }}% 置信度</view>
               <view v-if="item.saveError" class="save-error">{{ item.saveError }}</view>
+              <view v-if="item.detailError" class="save-error" @tap="retryDetail(index)">{{ item.detailError }}（点此重试）</view>
             </view>
             <input v-model.number="item.estimated_amount_g" type="digit" class="amount-input" />
             <text class="form-unit">g</text>
             <text class="remove-item" @tap="items.splice(index, 1)">删除</text>
+            <text class="remove-item" @tap="goSearch(index)">替换</text>
           </view>
         </view>
 
@@ -109,7 +111,7 @@
         <view class="card-actions">
           <liquid-glass-button variant="ghost" size="md" :block="false" custom-style="flex:1;" text="重新选择" @tap="reset" />
           <liquid-glass-button v-if="items.length" variant="primary" size="md" :block="false" custom-style="flex:1;" :text="`保存到${mealTypes.find(m => m.value === meal)?.label}`" @tap="save" />
-          <liquid-glass-button variant="ghost" size="md" :block="false" custom-style="flex:1;" text="替换/添加" @tap="goSearch" />
+          <liquid-glass-button variant="ghost" size="md" :block="false" custom-style="flex:1;" text="添加食物" @tap="goSearch(null)" />
         </view>
       </liquid-glass-card>
     </view>
@@ -130,7 +132,7 @@ import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
-import { summarizeRecognizedMeal, type RecognizedMealItem } from '@/utils/recognized-meal';
+import { hydrateRecognizedItems, mergeSelectedFood, summarizeRecognizedMeal, type RecognizedMealItem } from '@/utils/recognized-meal';
 
 const dietStore = useDietStore();
 const mealTypes = MEAL_TYPES;
@@ -197,11 +199,7 @@ async function handleImage(path: string) {
     uploadedFileId.value = up.file_id;
     uploadedUrl.value = up.file_url;
     const ai = await aiApi.recognizeFood({ file_id: up.file_id, image_url: up.file_url });
-    const details = await Promise.all(ai.recognized_items.map(async item => {
-      const food = await foodApi.getDetail(item.food_id, item.source);
-      return { ...item, ...food, food_id: item.food_id };
-    }));
-    items.value = details;
+    items.value = await hydrateRecognizedItems(ai.recognized_items, foodApi.getDetail);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '识别失败', icon: 'none' });
     items.value = [];
@@ -217,14 +215,22 @@ function reset() {
   items.value = [];
 }
 
-function goSearch() {
+function goSearch(replaceIndex: number | null) {
   uni.navigateTo({
-    url: buildDietEntryUrl('/pages/diet/add', {
+    url: `${buildDietEntryUrl('/pages/diet/add', {
       date: recordDate.value,
       meal: meal.value,
       time: recordTime.value,
+    })}&mode=select`,
+    success: res => res.eventChannel.on('foodSelected', food => {
+      items.value = mergeSelectedFood(items.value, food, replaceIndex);
     }),
   });
+}
+
+async function retryDetail(index: number) {
+  const [item] = await hydrateRecognizedItems([items.value[index]], foodApi.getDetail);
+  items.value.splice(index, 1, item);
 }
 
 async function save() {
@@ -242,7 +248,7 @@ async function save() {
           record_date: recordDate.value, record_time: recordTime.value, meal_type: meal.value,
           food_source: item.source,
           food_id: item.source === 'system' ? item.food_id : null,
-          custom_food_id: item.source === 'custom' ? item.food_id : null,
+          custom_food_id: item.source === 'custom' ? item.custom_food_id : null,
           food_name_snapshot: item.name, unit_type: 'g', amount_g: item.estimated_amount_g,
           image_url: saveImage.value ? uploadedUrl.value : null,
           image_file_id: uploadedFileId.value, save_image: saveImage.value,
@@ -259,8 +265,6 @@ async function save() {
     uni.showToast({ title: '已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
     uni.hideLoading();
   }

@@ -276,7 +276,14 @@ class AICandidate(BaseModel):
 
 
 class AIRecognizedItem(AICandidate):
-    estimated_amount_g: Decimal = Field(..., gt=0)
+    estimated_amount_g: float = Field(..., gt=0)
+
+    @model_validator(mode="after")
+    def validate_source_id(self):
+        item_id = self.food_id if self.source == "system" else self.custom_food_id
+        if item_id is None:
+            raise ValueError(f"{self.source} recognized item requires its source ID")
+        return self
 
 
 class AIRecognizeOut(BaseModel):

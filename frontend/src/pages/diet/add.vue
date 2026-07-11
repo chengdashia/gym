@@ -131,7 +131,7 @@
 
         <view class="picker-actions">
           <liquid-glass-button variant="ghost" size="md" :block="false" text="取消" @tap="cancelPick" />
-          <liquid-glass-button variant="primary" size="md" :block="false" text="保存记录" @tap="save" />
+          <liquid-glass-button variant="primary" size="md" :block="false" :text="selectMode ? '加入识别草稿' : '保存记录'" @tap="save" />
         </view>
       </view>
     </view>
@@ -172,10 +172,12 @@ const time = ref(formatTime(new Date()));
 const date = ref(dietStore.selectedDate || today());
 const auth = useAuthStore();
 const recentFoods = ref<RecentFood[]>([]);
+const selectMode = ref(false);
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 onLoad((options: any) => {
+  selectMode.value = options?.mode === 'select';
   const context = parseDietContext(options, { date: date.value, meal: meal.value, time: time.value });
   date.value = context.date;
   meal.value = context.meal;
@@ -299,6 +301,13 @@ async function save() {
   if (!picked.value) return;
   if (!Number.isFinite(amount.value) || amount.value <= 0) {
     uni.showToast({ title: '请输入有效的数量', icon: 'none' });
+    return;
+  }
+  if (selectMode.value) {
+    const food = { ...picked.value };
+    const pages = getCurrentPages();
+    (pages[pages.length - 1] as any).getOpenerEventChannel().emit('foodSelected', food);
+    safeNavigateBack('/pages/diet/photo-recognize');
     return;
   }
   uni.showLoading({ title: '保存中...' });

@@ -1,7 +1,8 @@
 import { http } from '@/utils/request';
 
 export interface RecognitionCandidate {
-  food_id: number;
+  food_id: number | null;
+  custom_food_id?: number | null;
   source: 'system' | 'custom';
   name: string;
   confidence: number;
