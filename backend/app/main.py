@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import auth, ai, diet, exercises, foods, home, stats, training, uploads, users, weight
+from app.api.v1 import auth, ai, diet, diet_programs, exercises, foods, home, stats, training, uploads, users, weight
 from app.core.config import settings
 from app.core.exceptions import (
     biz_exception_handler,
@@ -39,7 +39,7 @@ def create_app() -> FastAPI:
     api_prefix = "/api/v1"
     routers = [auth.router, users.router, home.router, foods.router, diet.router,
                uploads.router, ai.router, exercises.router, training.router,
-               weight.router, stats.router]
+               weight.router, stats.router, diet_programs.router]
     for r in routers:
         app.include_router(r, prefix=api_prefix)
 

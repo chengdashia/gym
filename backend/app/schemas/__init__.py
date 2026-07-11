@@ -4,7 +4,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.services.validation import validate_diet_quantity, validate_plan_days
 
@@ -111,6 +111,63 @@ class NutritionGoalIn(BaseModel):
 class NutritionGoalOut(NutritionGoalIn, ORMBase):
     user_id: int
     source: str = "manual"
+
+
+# ============ Diet Programs ============
+class DietEligibilityIn(BaseModel):
+    under_18: bool
+    pregnant_or_breastfeeding: bool
+    diabetes: bool
+    serious_liver_kidney_gallbladder: bool
+    eating_disorder_history: bool
+
+
+class DietPreferenceIn(BaseModel):
+    meal_count: int = Field(..., ge=2, le=6)
+    allergens: list[Literal[
+        "dairy", "egg", "peanut", "tree_nut", "wheat", "soy",
+        "fish", "shellfish", "sesame", "other",
+    ]]
+    vegetarian_type: Literal["none", "lacto_ovo", "lacto", "ovo", "vegan"] = "none"
+    avoid_foods: list[str] = Field(default_factory=list)
+    eats_breakfast: Optional[bool] = None
+    budget_level: Optional[Literal["low", "medium", "high"]] = None
+    cooking_setup: Optional[Literal["full_kitchen", "simple_heating", "none"]] = None
+    cuisine_preference: Optional[Literal["home_chinese", "light_meal", "takeout"]] = None
+    eating_window_start: Optional[time] = None
+    eating_window_end: Optional[time] = None
+
+    @field_validator("allergens")
+    @classmethod
+    def validate_unique_allergens(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError("过敏原不能重复")
+        return value
+
+    @model_validator(mode="after")
+    def validate_eating_window(self):
+        if (self.eating_window_start is None) != (self.eating_window_end is None):
+            raise ValueError("进食时间窗必须同时提供开始和结束时间")
+        if self.eating_window_start is not None and self.eating_window_start >= self.eating_window_end:
+            raise ValueError("进食时间窗结束时间必须晚于开始时间")
+        return self
+
+    def to_snapshot(self) -> dict:
+        values = self.model_dump(mode="json")
+        return {
+            "schema_version": 1,
+            "meal_count": values.pop("meal_count"),
+            "hard_constraints": {
+                "allergens": values.pop("allergens"),
+                "vegetarian_type": values.pop("vegetarian_type"),
+                "avoid_foods": values.pop("avoid_foods"),
+            },
+            "preferences": values,
+        }
+
+
+class DietPreferenceOut(DietPreferenceIn):
+    snapshot: dict
 
 
 class NutritionRecommendOut(BaseModel):
