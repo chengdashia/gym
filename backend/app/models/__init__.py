@@ -265,7 +265,9 @@ class DietProgramStage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     program: Mapped["UserDietProgram"] = relationship("UserDietProgram", back_populates="stages")
-    meal_plan_days: Mapped[list["MealPlanDay"]] = relationship("MealPlanDay", back_populates="stage")
+    meal_plan_days: Mapped[list["MealPlanDay"]] = relationship(
+        "MealPlanDay", back_populates="stage", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint("program_id", "stage_number", name="uk_diet_program_stage_number"),
