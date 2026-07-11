@@ -49,6 +49,10 @@
           </view>
         </view>
       </liquid-glass-panel>
+      <view class="program-entry" @tap="openPrograms">
+        <view><text class="program-entry-title">饮食方案</text><text class="program-entry-sub">16:8、532 碳水渐降、生酮与均衡减脂</text></view>
+        <text class="program-entry-arrow">›</text>
+      </view>
     </view>
 
     <view class="meal-list">
@@ -316,6 +320,11 @@ function go(action: 'add' | 'custom' | 'photo') {
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
+
+function openPrograms() {
+  if (!requireAuth({ redirect: '/pages/diet/programs' })) return;
+  uni.navigateTo({ url: '/pages/diet/programs' });
+}
 </script>
 
 <style lang="scss" scoped>
@@ -339,6 +348,7 @@ function go(action: 'add' | 'custom' | 'photo') {
   position: relative;
   overflow: hidden;
 }
+.program-entry{margin-top:$gap-3;padding:24rpx 28rpx;border-radius:24rpx;background:rgba(255,255,255,.78);display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}.program-entry-title{display:block;font-size:31rpx;font-weight:750;color:$text-1}.program-entry-sub{display:block;margin-top:6rpx;font-size:23rpx;color:$text-3}.program-entry-arrow{font-size:44rpx;color:#46ae7f}
 
 .header::before {
   content: '';

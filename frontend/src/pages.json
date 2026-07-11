@@ -39,6 +39,18 @@
       }
     },
     {
+      "path": "pages/diet/programs",
+      "style": { "navigationBarTitleText": "饮食方案" }
+    },
+    {
+      "path": "pages/diet/program-setup",
+      "style": { "navigationBarTitleText": "创建饮食方案" }
+    },
+    {
+      "path": "pages/diet/meal-plan",
+      "style": { "navigationBarTitleText": "七日菜单" }
+    },
+    {
       "path": "pages/diet/record-edit",
       "style": {
         "navigationBarTitleText": "编辑记录"
