@@ -13,12 +13,13 @@ export interface DietTemplate {
 export interface DietPreferencePayload {
   meal_count: number;
   allergens: string[];
-  vegetarian_type: 'none' | 'vegetarian' | 'vegan';
+  vegetarian_type: 'none' | 'lacto_ovo' | 'lacto' | 'ovo' | 'vegan';
   avoid_foods: string[];
-  eating_window?: string | null;
-  budget?: 'low' | 'medium' | 'high';
-  equipment?: string[];
-  cuisine_preference?: 'chinese_home' | 'takeout' | 'mixed';
+  eating_window_start?: string | null;
+  eating_window_end?: string | null;
+  budget_level?: 'low' | 'medium' | 'high';
+  cooking_setup?: 'full_kitchen' | 'simple_heating' | 'none';
+  cuisine_preference?: 'home_chinese' | 'light_meal' | 'takeout';
 }
 
 export interface EligibilityPayload {
