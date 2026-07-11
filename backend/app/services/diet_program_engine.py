@@ -17,6 +17,7 @@ MIN_OBSERVATION_DAYS = 10
 MAX_OBSERVATION_DAYS = 14
 MIN_WEIGHT_RECORDS_PER_WINDOW = 5
 MIN_ADHERENCE_RATE = Decimal("0.80")
+MAX_WEEKLY_LOSS_KG = Decimal("0.90")
 ACTIVITY_FACTORS = {
     "sedentary": Decimal("1.20"),
     "light": Decimal("1.375"),
@@ -32,6 +33,14 @@ _TWO_PLACES = Decimal("0.01")
 
 class DietSafetyError(ValueError):
     """The proposed target would cross a non-negotiable safety boundary."""
+
+
+class TargetLossRateError(DietSafetyError):
+    """A percentage target would exceed the absolute weekly-loss ceiling."""
+
+    def __init__(self, weekly_loss_kg: Decimal):
+        self.weekly_loss_kg = weekly_loss_kg
+        super().__init__("目标减重速度超过每周 0.9kg 安全上限")
 
 
 @dataclass(frozen=True)
@@ -60,6 +69,15 @@ def _decimal(value: Any) -> Decimal:
 
 def _round(value: Decimal) -> Decimal:
     return value.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
+
+
+def validate_target_loss_rate(target_loss_rate: Any, reference_weight_kg: Any) -> Decimal:
+    """Validate the percentage target against the 0.9kg/week absolute cap."""
+    rate = _decimal(target_loss_rate)
+    weekly_loss = _round(rate * _decimal(reference_weight_kg))
+    if weekly_loss > MAX_WEEKLY_LOSS_KG:
+        raise TargetLossRateError(weekly_loss)
+    return weekly_loss
 
 
 def estimate_tdee(profile: Mapping[str, Any] | Any, activity_level: str) -> Decimal | dict[str, Any]:
@@ -146,6 +164,7 @@ def evaluate_532(
     stage: Mapping[str, Any],
     observation_days: int,
     target_weight_kg: Any | None = None,
+    reference_weight_kg: Any | None = None,
     reduction_g: int = 20,
 ) -> EvaluationResult:
     """Evaluate two adjacent seven-day windows without mutating the stage.
@@ -153,6 +172,8 @@ def evaluate_532(
     A suggested change is only returned as ``pending_adjustment``. Persistence
     and the user confirmation that creates the next stage remain API concerns.
     """
+    if reference_weight_kg is not None:
+        validate_target_loss_rate(target_loss_rate, reference_weight_kg)
     if observation_days < MIN_OBSERVATION_DAYS:
         return EvaluationResult("needs_observation", "当前阶段观察不足 10 天")
     if len(previous_weights) < MIN_WEIGHT_RECORDS_PER_WINDOW or len(current_weights) < MIN_WEIGHT_RECORDS_PER_WINDOW:

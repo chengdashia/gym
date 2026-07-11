@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -21,7 +22,7 @@ class BizException(Exception):
 async def biz_exception_handler(request: Request, exc: BizException):
     content = fail(exc.code, exc.message)
     content["data"] = exc.data
-    return JSONResponse(status_code=exc.status_code, content=content)
+    return JSONResponse(status_code=exc.status_code, content=jsonable_encoder(content))
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

@@ -14,10 +14,12 @@ from app.main import app
 from app.models import DietPreference, DietProgramStage, DietProgramTemplate, NutritionGoal, User, UserDietProgram, UserProfile
 from app.services.diet_program_engine import (
     DietSafetyError,
+    TargetLossRateError,
     apply_carb_reduction,
     create_initial_targets,
     estimate_tdee,
     evaluate_532,
+    validate_target_loss_rate,
 )
 
 
@@ -153,6 +155,23 @@ def test_suggested_adjustment_is_pending_and_requires_confirmation():
     assert stage["carbs_g"] == Decimal("250.00")
 
 
+@pytest.mark.parametrize(
+    ("weight_kg", "rate", "should_raise"),
+    [
+        (Decimal("90"), Decimal("0.01"), False),
+        (Decimal("100"), Decimal("0.01"), True),
+        (Decimal("250"), Decimal("0.005"), True),
+    ],
+)
+def test_target_loss_rate_respects_absolute_weekly_ceiling(weight_kg, rate, should_raise):
+    if should_raise:
+        with pytest.raises(TargetLossRateError) as exc:
+            validate_target_loss_rate(rate, weight_kg)
+        assert exc.value.weekly_loss_kg > Decimal("0.90")
+    else:
+        assert validate_target_loss_rate(rate, weight_kg) == Decimal("0.90")
+
+
 @pytest.fixture
 def program_http_client():
     engine = create_engine(
@@ -181,7 +200,9 @@ def program_http_client():
     engine.dispose()
 
 
-def _seed_program_user(session_factory, user_id: int, *, gender: str | None = "female"):
+def _seed_program_user(
+    session_factory, user_id: int, *, gender: str | None = "female", weight_kg: Decimal = Decimal("60"),
+):
     with session_factory() as db:
         db.add(User(id=user_id, status="active", phone=f"1380000{user_id:04d}"))
         db.add(DietPreference(
@@ -195,7 +216,7 @@ def _seed_program_user(session_factory, user_id: int, *, gender: str | None = "f
         if gender is not None:
             db.add(UserProfile(
                 user_id=user_id, gender=gender, age=30, height_cm=Decimal("165"),
-                current_weight_kg=Decimal("60"), target_weight_kg=Decimal("55"),
+                current_weight_kg=weight_kg, target_weight_kg=Decimal("55"),
             ))
         db.commit()
 
@@ -241,6 +262,18 @@ def test_http_creation_returns_4xx_for_other_gender_profile(program_http_client)
     assert response.status_code == 400
     assert response.json()["data"]["status"] == "unsupported_profile"
     assert response.json()["data"]["unsupported_fields"] == ["gender"]
+
+
+def test_http_creation_rejects_target_speed_above_absolute_weekly_cap(program_http_client):
+    client, session_factory, _ = program_http_client
+    _seed_program_user(session_factory, 1, weight_kg=Decimal("100"))
+
+    response = client.post("/api/v1/diet-programs", json=_create_payload(target_loss_rate="0.01"))
+
+    assert response.status_code == 400
+    assert response.json()["code"] == 40042
+    assert response.json()["data"]["status"] == "target_loss_rate_exceeds_cap"
+    assert response.json()["data"]["weekly_loss_kg"] == 1
 
 
 def test_http_confirm_is_idempotent_and_programs_are_user_isolated(program_http_client):

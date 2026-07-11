@@ -14,7 +14,10 @@ from app.models import (
 )
 from app.schemas import DietEligibilityIn, DietPreferenceIn, DietProgramCreateIn, DietProgramEvaluateIn
 from app.services.diet_eligibility import check_eligibility
-from app.services.diet_program_engine import DietSafetyError, create_initial_targets, estimate_tdee, evaluate_532
+from app.services.diet_program_engine import (
+    DietSafetyError, TargetLossRateError, create_initial_targets, estimate_tdee,
+    evaluate_532, validate_target_loss_rate,
+)
 from app.services.diet_templates import get_active_templates
 
 
@@ -127,7 +130,16 @@ def create_program(
             message = "当前性别资料无法使用 Mifflin–St Jeor 公式估算，请咨询专业人员后使用普通记录"
         raise BizException(40033, message, data=tdee)
     try:
+        weekly_loss_kg = validate_target_loss_rate(body.target_loss_rate, profile.current_weight_kg)
         targets = create_initial_targets(body.calories_kcal, ratio=body.macro_ratio)
+    except TargetLossRateError as exc:
+        raise BizException(40042, str(exc), data={
+            "status": "target_loss_rate_exceeds_cap",
+            "target_loss_rate": body.target_loss_rate,
+            "reference_weight_kg": profile.current_weight_kg,
+            "weekly_loss_kg": exc.weekly_loss_kg,
+            "max_weekly_loss_kg": Decimal("0.90"),
+        }) from exc
     except DietSafetyError as exc:
         raise BizException(40034, str(exc)) from exc
     template = _program_template(db, body.template_code)
@@ -138,7 +150,12 @@ def create_program(
     )
     db.add(program)
     db.flush()
-    stage = DietProgramStage(program_id=program.id, stage_number=1, status="pending", observation_days=14, **targets)
+    stage = DietProgramStage(
+        program_id=program.id, stage_number=1, status="pending", observation_days=14,
+        evaluation_snapshot_json={
+            "target_loss_rate": str(body.target_loss_rate), "weekly_loss_kg": str(weekly_loss_kg),
+        }, **targets,
+    )
     db.add(stage)
     db.commit()
     db.refresh(program)
@@ -235,14 +252,24 @@ def evaluate_program(
     current_start = body.end_date - timedelta(days=6)
     previous_start = current_start - timedelta(days=7)
     profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
-    result = evaluate_532(
-        previous_weights=_daily_weights(db, user.id, previous_start, current_start - timedelta(days=1)),
-        current_weights=_daily_weights(db, user.id, current_start, body.end_date),
-        adherence_rate=_adherence_rate(db, user.id, current_start, body.end_date, stage.calories_kcal),
-        target_loss_rate=body.target_loss_rate,
-        stage=_stage_dict(stage), observation_days=(body.end_date - stage.start_date).days + 1 if stage.start_date else 0,
-        target_weight_kg=profile.target_weight_kg if profile else None, reduction_g=body.reduction_g,
-    )
+    try:
+        result = evaluate_532(
+            previous_weights=_daily_weights(db, user.id, previous_start, current_start - timedelta(days=1)),
+            current_weights=_daily_weights(db, user.id, current_start, body.end_date),
+            adherence_rate=_adherence_rate(db, user.id, current_start, body.end_date, stage.calories_kcal),
+            target_loss_rate=body.target_loss_rate,
+            stage=_stage_dict(stage), observation_days=(body.end_date - stage.start_date).days + 1 if stage.start_date else 0,
+            target_weight_kg=profile.target_weight_kg if profile else None,
+            reference_weight_kg=profile.current_weight_kg if profile else None, reduction_g=body.reduction_g,
+        )
+    except TargetLossRateError as exc:
+        raise BizException(40042, str(exc), data={
+            "status": "target_loss_rate_exceeds_cap",
+            "target_loss_rate": body.target_loss_rate,
+            "reference_weight_kg": profile.current_weight_kg if profile else None,
+            "weekly_loss_kg": exc.weekly_loss_kg,
+            "max_weekly_loss_kg": Decimal("0.90"),
+        }) from exc
     # Evaluation never changes the active target; confirmation creates any next stage.
     stage.evaluation_snapshot_json = result.to_dict()
     db.commit()
