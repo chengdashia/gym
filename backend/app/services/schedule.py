@@ -43,9 +43,10 @@ def resolve_today_day(
     # sequence is calendar-driven: every calendar day occupies one slot,
     # including rest days.  A missed or partial session is historical data;
     # it must never hold tomorrow's plan hostage.
-    anchor = plan.created_at.date() if plan.created_at else d
-    offset = max(0, (d - anchor).days)
-    return days[offset % len(days)]
+    anchor = getattr(plan, "sequence_anchor_date", None) or (plan.created_at.date() if plan.created_at else d)
+    anchor_index = getattr(plan, "sequence_anchor_day_index", None) or plan.current_day_index or days[0].day_index
+    start = next((i for i, row in enumerate(days) if row.day_index == anchor_index), 0)
+    return days[(start + (d - anchor).days) % len(days)]
 
 
 def next_sequence_day_index(days: list[TrainingPlanDay], current_day_index: int | None) -> int | None:

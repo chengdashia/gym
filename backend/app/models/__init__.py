@@ -500,6 +500,8 @@ class TrainingPlan(Base):
     schedule_type: Mapped[str] = mapped_column(String(32), nullable=False)
     source_template_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     current_day_index: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    sequence_anchor_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    sequence_anchor_day_index: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

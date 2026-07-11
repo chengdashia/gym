@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -224,6 +224,8 @@ def create_plan(body: PlanIn, user: User = Depends(get_current_user), db: Sessio
         schedule_type=body.schedule_type,
         source_template_id=body.source_template_id,
         current_day_index=1,
+        sequence_anchor_date=date.today() if body.schedule_type == "sequence" else None,
+        sequence_anchor_day_index=1 if body.schedule_type == "sequence" else None,
         is_active=1,
     )
     db.add(plan)
