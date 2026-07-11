@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import get_current_user
 from app.core.database import get_db
 from app.core.exceptions import BizException
-from app.core.response import ok
+from app.core.response import ok, utcnow
 from app.models import (
     DietPreference, DietProgramStage, DietProgramTemplate, DietRecord,
     NutritionGoal, User, UserDietProgram, UserProfile, WeightRecord,
@@ -106,6 +106,11 @@ def create_program(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Task 5 only has an engine for the carb-taper program.  Rejecting the
+    # other templates is intentional until their target-generation contracts
+    # (16:8 window allocation, keto net-carbs/fibre) are implemented.
+    if body.template_code != "carb_taper_532":
+        raise BizException(40039, "当前版本仅支持创建 532 碳水渐降方案；其他方案需使用各自的目标生成规则")
     eligibility_result = check_eligibility(body.eligibility.model_dump())
     if not eligibility_result.eligible:
         raise BizException(40031, "当前健康情况不适合创建自动饮食方案，请仅使用普通记录并咨询医生或营养师")
@@ -117,7 +122,10 @@ def create_program(
         "status": "needs_profile", "missing_fields": ["gender", "age", "height_cm", "current_weight_kg"],
     }
     if isinstance(tdee, dict):
-        raise BizException(40033, "请补充完整的性别、年龄、身高和当前体重后再创建方案", data=tdee)
+        message = "请补充完整的性别、年龄、身高和当前体重后再创建方案"
+        if tdee["status"] == "unsupported_profile":
+            message = "当前性别资料无法使用 Mifflin–St Jeor 公式估算，请咨询专业人员后使用普通记录"
+        raise BizException(40033, message, data=tdee)
     try:
         targets = create_initial_targets(body.calories_kcal, ratio=body.macro_ratio)
     except DietSafetyError as exc:
@@ -144,16 +152,33 @@ def confirm_program(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    program = _program_or_404(db, user.id, program_id)
-    if program.status != "pending":
-        raise BizException(40035, "只有待确认方案可以确认")
+    # Serialising on the user row also serialises first-time NutritionGoal
+    # creation, avoiding a unique-key race between duplicate confirms.
+    db.query(User).filter(User.id == user.id).with_for_update().one()
+    program = db.query(UserDietProgram).filter(
+        UserDietProgram.id == program_id, UserDietProgram.user_id == user.id,
+    ).with_for_update().first()
+    if program is None:
+        raise BizException(40401, "饮食方案不存在", 404)
     stage = db.query(DietProgramStage).filter(
         DietProgramStage.program_id == program.id, DietProgramStage.stage_number == 1,
+    ).with_for_update().first()
+    if program.status == "active":
+        if stage is None:
+            raise BizException(40036, "初始阶段不存在")
+        return ok({"id": program.id, "status": program.status, "stage": _stage_dict(stage)})
+    if program.status != "pending":
+        raise BizException(40035, "只有待确认方案可以确认")
+    existing_active = db.query(UserDietProgram.id).filter(
+        UserDietProgram.user_id == user.id, UserDietProgram.status == "active",
+        UserDietProgram.id != program.id,
     ).first()
+    if existing_active:
+        raise BizException(40040, "请先暂停或结束当前饮食方案")
     if stage is None or stage.status != "pending":
         raise BizException(40036, "待确认初始阶段不存在")
     program.status, program.start_date = "active", date.today()
-    stage.status, stage.start_date, stage.confirmed_at = "active", date.today(), datetime.utcnow()
+    stage.status, stage.start_date, stage.confirmed_at = "active", date.today(), utcnow()
     goal = db.query(NutritionGoal).filter(NutritionGoal.user_id == user.id).first()
     if goal is None:
         goal = NutritionGoal(user_id=user.id, source="diet_program")
@@ -200,6 +225,8 @@ def evaluate_program(
     program = _program_or_404(db, user.id, program_id)
     if program.status != "active":
         raise BizException(40037, "只有进行中的方案可以评估")
+    if program.template.code != "carb_taper_532":
+        raise BizException(40041, "当前方案不适用 532 碳水渐降评估")
     stage = db.query(DietProgramStage).filter(
         DietProgramStage.program_id == program.id, DietProgramStage.status == "active",
     ).order_by(DietProgramStage.stage_number.desc()).first()

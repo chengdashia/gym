@@ -80,7 +80,11 @@ def estimate_tdee(profile: Mapping[str, Any] | Any, activity_level: str) -> Deci
 
     gender = get("gender")
     if gender not in {"male", "female"}:
-        raise ValueError("gender must be male or female for Mifflin–St Jeor")
+        return {
+            "status": "unsupported_profile",
+            "missing_fields": [],
+            "unsupported_fields": ["gender"],
+        }
     weight = _decimal(get("current_weight_kg"))
     height = _decimal(get("height_cm"))
     age = _decimal(get("age"))

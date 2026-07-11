@@ -19,7 +19,9 @@ class BizException(Exception):
 
 
 async def biz_exception_handler(request: Request, exc: BizException):
-    return JSONResponse(status_code=exc.status_code, content=fail(exc.code, exc.message))
+    content = fail(exc.code, exc.message)
+    content["data"] = exc.data
+    return JSONResponse(status_code=exc.status_code, content=content)
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
