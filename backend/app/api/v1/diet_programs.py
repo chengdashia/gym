@@ -232,12 +232,13 @@ def replace_plan_item(item_id: int, body: MealPlanItemReplaceIn, user: User = De
     item, program = _owned_item(db, user.id, item_id)
     candidate = _candidate_food(db, body.food_id)
     try:
-        replacement = replace_item({"role": item.food_snapshot_json["role"], "name": item.food_snapshot_json["name"], "allergens": (item.constraint_snapshot_json or {}).get("allergens", [])}, candidate, program.preference_snapshot_json)
+        replacement = replace_item({"role": item.food_snapshot_json["role"], "name": item.food_snapshot_json["name"], "amount_g": item.amount_g, "allergens": (item.constraint_snapshot_json or {}).get("allergens", [])}, candidate, program.preference_snapshot_json)
     except MealPlanConflict as exc:
         _conflict(exc)
     item.food_id, item.food_source = candidate["food_id"], "system"
     item.food_snapshot_json = {"name": replacement["name"], "role": replacement["role"]}
     item.constraint_snapshot_json = {"allergens": replacement["allergens"]}
+    item.nutrition_snapshot_json = jsonable_encoder(replacement["nutrition"])
     db.commit()
     return ok({"id": item.id, "name": replacement["name"], "amount_g": item.amount_g})
 
@@ -254,7 +255,7 @@ def update_plan_item_amount(item_id: int, body: MealPlanItemAmountIn, user: User
     day = item.meal.day
     day_data = {"totals": {key: sum((Decimal(str(plan_item.nutrition_snapshot_json.get(key, 0))) for meal in day.meals for plan_item in meal.items), Decimal("0")) for key in ("calories_kcal", "carbs_g", "protein_g", "fat_g")}}
     try:
-        validate_meal_plan(day_data, {"calories_kcal": stage.calories_kcal})
+        validate_meal_plan(day_data, {"calories_kcal": stage.calories_kcal, "protein_g": stage.protein_g, "fat_g": stage.fat_g}, code=program.template.code)
     except MealPlanConflict as exc:
         db.rollback(); _conflict(exc)
     item.nutrition_snapshot_json = jsonable_encoder(item.nutrition_snapshot_json)
@@ -274,7 +275,7 @@ def replace_plan_meal(meal_id: int, body: MealPlanMealReplaceIn, user: User = De
             candidate = by_role.get(item.food_snapshot_json["role"])
             if candidate is None:
                 continue
-            replacement = replace_item({"role": item.food_snapshot_json["role"], "name": item.food_snapshot_json["name"], "allergens": (item.constraint_snapshot_json or {}).get("allergens", [])}, candidate, program.preference_snapshot_json)
+            replacement = replace_item({"role": item.food_snapshot_json["role"], "name": item.food_snapshot_json["name"], "amount_g": item.amount_g, "allergens": (item.constraint_snapshot_json or {}).get("allergens", [])}, candidate, program.preference_snapshot_json)
             changes.append((item, replacement))
     except MealPlanConflict as exc:
         _conflict(exc)
@@ -284,6 +285,7 @@ def replace_plan_meal(meal_id: int, body: MealPlanMealReplaceIn, user: User = De
         item.food_id = replacement["food"].get("food_id")
         item.food_snapshot_json = {"name": replacement["name"], "role": replacement["role"]}
         item.constraint_snapshot_json = {"allergens": replacement["allergens"]}
+        item.nutrition_snapshot_json = jsonable_encoder(replacement["nutrition"])
     db.commit()
     return ok(_meal_dict(meal))
 

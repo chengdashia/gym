@@ -39,8 +39,24 @@ def _allowed(food: dict, hard: dict) -> bool:
     return kind == "none" or food.get("vegan" if kind == "vegan" else "vegetarian", False)
 
 
-def _pick(foods: list[dict], role: str, hard: dict) -> dict:
+def _pick(foods: list[dict], role: str, hard: dict, preferences: dict | None = None, *, keto: bool = False) -> dict:
+    prefs = (preferences or {}).get("preferences", preferences or {})
     choices = [food for food in foods if food.get("role") == role and _allowed(food, hard)]
+    if keto:
+        known_fiber = [food for food in choices if food.get("fiber_per_100g") is not None]
+        if not known_fiber:
+            raise MealPlanConflict(["fiber_per_100g"], ["严格生酮菜单需要候选食物具备可靠膳食纤维数据"])
+        choices = known_fiber
+    budget = prefs.get("budget_level")
+    cooking = prefs.get("cooking_setup")
+    cuisine = prefs.get("cuisine_preference")
+    preferred = [food for food in choices if (not budget or food.get("budget") == budget) and (not cooking or food.get("cooking") == cooking) and (not cuisine or cuisine in food.get("cuisines", []))]
+    # Budget, cooking and taste are soft preferences.  They influence the
+    # selection but never silently override allergy/vegetarian constraints.
+    if preferred:
+        choices = preferred
+    elif cooking == "none" and cuisine == "home_chinese":
+        raise MealPlanConflict(["cooking_setup", "cuisine_preference"], ["家常中餐需要可用厨房；可改为外卖或轻食偏好"])
     if not choices:
         raise MealPlanConflict([role, "allergens", "vegetarian_type", "avoid_foods"], ["放宽忌口或选择普通饮食记录"])
     return choices[0]
@@ -48,6 +64,8 @@ def _pick(foods: list[dict], role: str, hard: dict) -> dict:
 
 def _item(food: dict, amount_g: Decimal, *, macro: dict[str, Decimal]) -> dict:
     amount = _round(amount_g)
+    fiber = _round(amount * _d(food.get("fiber_per_100g") or 0) / Decimal("100"))
+    macro = {**macro, "fiber_g": fiber}
     return {
         "name": food["name"], "role": food["role"], "amount_g": amount,
         "allergens": list(food.get("allergens", [])), "food": dict(food), "nutrition": macro,
@@ -84,9 +102,7 @@ def _times(count: int, code: str, prefs: dict) -> list[time]:
 
 def _day(targets: dict[str, Decimal], prefs: dict, code: str, foods: list[dict], day_date: date) -> dict:
     hard = _hard(prefs)
-    if code == "ketogenic" and any(food.get("fiber_per_100g") is None for food in foods):
-        raise MealPlanConflict(["fiber_per_100g"], ["严格生酮菜单需要所有候选食物具备可靠膳食纤维数据"])
-    protein, carb, fat, vegetable = (_pick(foods, role, hard) for role in ("protein", "carb", "fat", "vegetable"))
+    protein, carb, fat, vegetable = (_pick(foods, role, hard, prefs, keto=code == "ketogenic") for role in ("protein", "carb", "fat", "vegetable"))
     meal_count = int(prefs.get("meal_count", 3))
     names = ["breakfast", "lunch", "dinner", "snack", "snack", "snack"][:meal_count]
     times = _times(meal_count, code, prefs)
@@ -110,7 +126,10 @@ def _day(targets: dict[str, Decimal], prefs: dict, code: str, foods: list[dict],
             _item(vegetable, Decimal("150") * share, macro={"calories_kcal": Decimal("0"), "carbs_g": Decimal("0"), "protein_g": Decimal("0"), "fat_g": Decimal("0")}),
         ]
         meals.append({"meal_type": meal_type, "planned_time": planned_time, "items": items})
-    totals = {key: _round(sum((item["nutrition"][key] for meal in meals for item in meal["items"]), Decimal("0"))) for key in ("calories_kcal", "carbs_g", "protein_g", "fat_g")}
+    totals = {key: _round(sum((item["nutrition"][key] for meal in meals for item in meal["items"]), Decimal("0"))) for key in ("calories_kcal", "carbs_g", "protein_g", "fat_g", "fiber_g")}
+    totals["net_carbs_g"] = _round(max(Decimal("0"), totals["carbs_g"] - totals["fiber_g"]))
+    if code == "ketogenic" and totals["net_carbs_g"] > Decimal("30"):
+        raise MealPlanConflict(["net_carbs_g"], ["严格生酮菜单每日净碳水不能超过 30g"])
     return {"plan_date": day_date, "meals": meals, "totals": totals}
 
 
@@ -123,11 +142,15 @@ def generate_seven_day_plan(targets: dict, preferences: dict, *, code: str = "ba
     return {"code": code, "days": [_day(normalized, preferences, code, library, start + timedelta(days=index)) for index in range(7)]}
 
 
-def validate_meal_plan(day: dict, targets: dict) -> None:
+def validate_meal_plan(day: dict, targets: dict, *, code: str = "balanced_cut") -> None:
     target = _d(targets["calories_kcal"])
     actual = _d(day["totals"]["calories_kcal"])
     if abs(actual - target) > target * Decimal("0.05"):
         raise MealPlanConflict(["calories_kcal"], ["调整目标热量或餐数后重新生成菜单"])
+    if code == "carb_taper_532":
+        for key in ("protein_g", "fat_g"):
+            if abs(_d(day["totals"][key]) - _d(targets[key])) > Decimal("0.05"):
+                raise MealPlanConflict([key], ["532 阶段只能调整碳水，蛋白质和脂肪保持不变"])
 
 
 def replace_item(item: dict, candidate: dict, preferences: dict) -> dict:
@@ -137,7 +160,15 @@ def replace_item(item: dict, candidate: dict, preferences: dict) -> dict:
     if not _allowed(candidate, _hard(preferences)):
         raise MealPlanConflict(["allergens", "vegetarian_type", "avoid_foods"], ["请选择符合饮食偏好的替换食物"])
     replacement = dict(item)
-    replacement.update({"name": candidate["name"], "allergens": list(candidate.get("allergens", [])), "food": dict(candidate)})
+    amount = _d(item.get("amount_g", 0))
+    nutrition = {
+        "calories_kcal": _round(amount * _d(candidate["calories_per_100g"]) / 100),
+        "carbs_g": _round(amount * _d(candidate["carbs_per_100g"]) / 100),
+        "protein_g": _round(amount * _d(candidate["protein_per_100g"]) / 100),
+        "fat_g": _round(amount * _d(candidate["fat_per_100g"]) / 100),
+        "fiber_g": _round(amount * _d(candidate.get("fiber_per_100g") or 0) / 100),
+    }
+    replacement.update({"name": candidate["name"], "allergens": list(candidate.get("allergens", [])), "food": dict(candidate), "nutrition": nutrition})
     return replacement
 
 

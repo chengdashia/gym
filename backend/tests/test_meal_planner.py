@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.v1.deps import get_current_user
 from app.core.database import Base, get_db
 from app.main import app
-from app.services.meal_planner import MealPlanConflict, generate_seven_day_plan, validate_meal_plan
+from app.services.meal_planner import MealPlanConflict, generate_seven_day_plan, replace_item, validate_meal_plan
 from app.models import DietProgramStage, DietProgramTemplate, Food, User, UserDietProgram
 
 
@@ -92,6 +92,54 @@ def test_conflicting_hard_constraints_return_structured_recovery():
         }))
     assert exc.value.fields
     assert exc.value.suggestions
+
+
+def test_keto_plan_uses_net_carbs_and_known_fiber_candidates():
+    targets = {"calories_kcal": Decimal("1800"), "carbs_g": Decimal("30"), "protein_g": Decimal("135"), "fat_g": Decimal("126.67")}
+    plan = generate_seven_day_plan(targets, preferences(), code="ketogenic")
+    day = plan["days"][0]
+    assert day["totals"]["net_carbs_g"] <= Decimal("30")
+    assert all(item["nutrition"]["fiber_g"] >= 0 for meal in day["meals"] for item in meal["items"])
+
+
+def test_soft_preferences_filter_budget_and_cooking_then_sort_cuisine():
+    plan = generate_seven_day_plan(TARGETS, preferences(preferences={
+        "budget_level": "low", "cooking_setup": "none", "cuisine_preference": "takeout",
+    }))
+    foods = [item["food"] for meal in plan["days"][0]["meals"] for item in meal["items"]]
+    assert all(food["budget"] == "low" and food["cooking"] == "none" for food in foods)
+    assert all("takeout" in food["cuisines"] for food in foods)
+
+
+def test_replacement_recalculates_food_snapshot_and_nutrition():
+    original = {"role": "carb", "name": "米饭", "amount_g": Decimal("100"), "allergens": [], "food": {
+        "name": "米饭", "role": "carb", "calories_per_100g": 116, "carbs_per_100g": 25.6, "protein_per_100g": 2.6, "fat_per_100g": .3, "fiber_per_100g": 0, "allergens": [],
+    }, "nutrition": {"calories_kcal": Decimal("116"), "carbs_g": Decimal("25.6"), "protein_g": Decimal("2.6"), "fat_g": Decimal(".3")}}
+    oat = {"name": "燕麦", "role": "carb", "calories_per_100g": 389, "carbs_per_100g": 66.3, "protein_per_100g": 13, "fat_per_100g": 6.5, "fiber_per_100g": 10.1, "allergens": [], "vegetarian": True, "vegan": True}
+    replaced = replace_item(original, oat, preferences())
+    assert replaced["food"]["name"] == "燕麦"
+    assert replaced["nutrition"]["calories_kcal"] == Decimal("389.00")
+    assert replaced["nutrition"]["fiber_g"] == Decimal("10.10")
+
+
+def test_validate_plan_rejects_locked_protein_or_fat_macro_change():
+    day = {"totals": {"calories_kcal": Decimal("1800"), "carbs_g": Decimal("180"), "protein_g": Decimal("110"), "fat_g": Decimal("60")}}
+    with pytest.raises(MealPlanConflict) as exc:
+        validate_meal_plan(day, {"calories_kcal": Decimal("1800"), "carbs_g": Decimal("180"), "protein_g": Decimal("135"), "fat_g": Decimal("60")}, code="carb_taper_532")
+    assert "protein_g" in exc.value.fields
+
+
+def test_soft_preference_conflict_is_structured_when_role_has_no_candidate():
+    with pytest.raises(MealPlanConflict) as exc:
+        generate_seven_day_plan(TARGETS, preferences(preferences={
+            "budget_level": "low", "cooking_setup": "none", "cuisine_preference": "home_chinese",
+        }))
+    assert "cooking_setup" in exc.value.fields
+
+
+def test_validate_plan_allows_carb_change_while_532_protein_and_fat_are_locked():
+    day = {"totals": {"calories_kcal": Decimal("1760"), "carbs_g": Decimal("170"), "protein_g": Decimal("135"), "fat_g": Decimal("60")}}
+    validate_meal_plan(day, {"calories_kcal": Decimal("1800"), "carbs_g": Decimal("180"), "protein_g": Decimal("135"), "fat_g": Decimal("60")}, code="carb_taper_532")
 
 
 def _seed_active_program(session_factory):
