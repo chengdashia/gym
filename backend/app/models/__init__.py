@@ -346,6 +346,7 @@ class DietRecord(Base):
     food_source: Mapped[str] = mapped_column(String(32), nullable=False)
     food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     custom_food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    plan_meal_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("meal_plan_meals.id"), nullable=True)
     food_name_snapshot: Mapped[str] = mapped_column(String(100), nullable=False)
     unit_type: Mapped[str] = mapped_column(String(16), nullable=False)
     amount_g: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
@@ -367,6 +368,7 @@ class DietRecord(Base):
     __table_args__ = (
         Index("idx_diet_user_date", "user_id", "record_date"),
         Index("idx_diet_user_meal", "user_id", "meal_type"),
+        UniqueConstraint("plan_meal_id", "food_name_snapshot", name="uk_diet_record_plan_meal_food"),
     )
 
 

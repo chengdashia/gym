@@ -74,6 +74,20 @@ def test_low_calorie_plan_is_rejected():
         create_initial_targets(1100, ratio="532")
 
 
+def test_other_program_templates_have_explicit_safe_initial_targets():
+    from app.services.diet_program_engine import create_program_initial_targets
+
+    balanced = create_program_initial_targets("balanced_cut", 1800)
+    fasting = create_program_initial_targets("time_restricted_16_8", 1800)
+    keto = create_program_initial_targets("ketogenic", 1800)
+
+    assert balanced == fasting
+    assert balanced["calories_kcal"] == Decimal("1800.00")
+    assert keto["carbs_g"] == Decimal("30")
+    assert keto["protein_g"] == Decimal("135.00")
+    assert keto["fat_g"] == Decimal("126.67")
+
+
 def test_532_adjustment_only_reduces_carbs_and_respects_floor():
     stage = create_initial_targets(2000, ratio="532")
     next_stage = apply_carb_reduction(stage, grams=20)
@@ -234,13 +248,14 @@ def _create_payload(**overrides):
     return body
 
 
-def test_http_creation_rejects_non_532_templates_and_returns_profile_recovery_data(program_http_client):
+@pytest.mark.parametrize("template_code", ["balanced_cut", "time_restricted_16_8", "ketogenic"])
+def test_http_creation_supports_all_confirmed_program_templates(program_http_client, template_code):
     client, session_factory, _ = program_http_client
     _seed_program_user(session_factory, 1)
 
-    keto = client.post("/api/v1/diet-programs", json=_create_payload(template_code="ketogenic"))
-    assert keto.status_code == 400
-    assert keto.json()["code"] == 40039
+    created = client.post("/api/v1/diet-programs", json=_create_payload(template_code=template_code))
+    assert created.status_code == 200
+    assert created.json()["data"]["stage"]["calories_kcal"] == 1800
 
     with session_factory() as db:
         db.query(UserProfile).filter(UserProfile.user_id == 1).delete()

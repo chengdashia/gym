@@ -39,7 +39,7 @@ def create_app() -> FastAPI:
     api_prefix = "/api/v1"
     routers = [auth.router, users.router, home.router, foods.router, diet.router,
                uploads.router, ai.router, exercises.router, training.router,
-               weight.router, stats.router, diet_programs.router]
+               weight.router, stats.router, diet_programs.router, diet_programs.meal_plan_router]
     for r in routers:
         app.include_router(r, prefix=api_prefix)
 

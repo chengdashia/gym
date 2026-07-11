@@ -28,6 +28,13 @@ RATIO_PERCENTAGES = {
     "532": (Decimal("0.50"), Decimal("0.30"), Decimal("0.20")),
     "442": (Decimal("0.40"), Decimal("0.40"), Decimal("0.20")),
 }
+PROGRAM_MACROS = {
+    # Both ordinary calorie control and 16:8 use a moderate, explainable
+    # baseline.  16:8 changes timing, not the calorie deficit contract.
+    "balanced_cut": (Decimal("0.40"), Decimal("0.30"), Decimal("0.30")),
+    "time_restricted_16_8": (Decimal("0.40"), Decimal("0.30"), Decimal("0.30")),
+}
+KETO_MAX_NET_CARBS_G = Decimal("30")
 _TWO_PLACES = Decimal("0.01")
 
 
@@ -125,6 +132,38 @@ def create_initial_targets(calories_kcal: Any, *, ratio: str = "532") -> dict[st
         "protein_g": _round(calories * protein_ratio / Decimal("4")),
         "fat_g": _round(calories * fat_ratio / Decimal("9")),
     }
+
+
+def create_program_initial_targets(template_code: str, calories_kcal: Any, *, ratio: str = "532") -> dict[str, Decimal]:
+    """Create explicit, safe targets for every currently offered program.
+
+    Ketogenic targets cap net carbohydrate at 30g; the remainder is allocated
+    to fat after a moderate protein target.  Net-carb validation is performed
+    again by the planner against foods with known fibre data.
+    """
+    if template_code == "carb_taper_532":
+        return create_initial_targets(calories_kcal, ratio=ratio)
+    calories = _decimal(calories_kcal)
+    if calories < MIN_CALORIES_KCAL:
+        raise DietSafetyError("目标热量低于 1200kcal，不能创建自动方案")
+    if template_code in PROGRAM_MACROS:
+        carbs_ratio, protein_ratio, fat_ratio = PROGRAM_MACROS[template_code]
+        return {
+            "calories_kcal": _round(calories),
+            "carbs_g": _round(calories * carbs_ratio / Decimal("4")),
+            "protein_g": _round(calories * protein_ratio / Decimal("4")),
+            "fat_g": _round(calories * fat_ratio / Decimal("9")),
+        }
+    if template_code == "ketogenic":
+        protein = _round(calories * Decimal("0.30") / Decimal("4"))
+        fat = _round((calories - KETO_MAX_NET_CARBS_G * 4 - protein * 4) / Decimal("9"))
+        if fat < 0:
+            raise DietSafetyError("目标热量无法满足严格生酮的最低蛋白质与净碳水边界")
+        return {
+            "calories_kcal": _round(calories), "carbs_g": KETO_MAX_NET_CARBS_G,
+            "protein_g": protein, "fat_g": fat,
+        }
+    raise ValueError("unsupported diet program template")
 
 
 def apply_carb_reduction(stage: Mapping[str, Any], *, grams: int = 20) -> dict[str, Decimal]:

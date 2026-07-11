@@ -199,6 +199,19 @@ class DietProgramStageOut(ORMBase):
     evaluation_snapshot_json: Optional[dict]
 
 
+class MealPlanItemReplaceIn(BaseModel):
+    food_id: int = Field(..., ge=1)
+    food_source: Literal["system"] = "system"
+
+
+class MealPlanItemAmountIn(BaseModel):
+    amount_g: Decimal = Field(..., gt=0, le=5000)
+
+
+class MealPlanMealReplaceIn(BaseModel):
+    items: list[MealPlanItemReplaceIn] = Field(..., min_length=1, max_length=12)
+
+
 class NutritionRecommendOut(BaseModel):
     calories_kcal: Decimal
     carbs_g: Decimal
