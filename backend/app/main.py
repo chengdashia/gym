@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import auth, ai, diet, diet_programs, exercises, foods, home, stats, training, uploads, users, weight
 from app.core.config import settings
+from app.core.database import Base, engine, using_local_sqlite
 from app.core.exceptions import (
     biz_exception_handler,
     unhandled_exception_handler,
@@ -17,6 +18,16 @@ from app.core.response import ok
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, debug=settings.debug)
+
+    @app.on_event("startup")
+    def _prepare_local_development_database():
+        if using_local_sqlite:
+            # Local SQLite is a development fallback only.  It avoids every
+            # database-backed screen failing when the optional remote MySQL
+            # host is unavailable.
+            Base.metadata.create_all(bind=engine)
+            from app.seed.seed_data import run_seed
+            run_seed()
 
     app.add_middleware(
         CORSMiddleware,
