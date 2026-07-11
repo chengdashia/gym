@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.exceptions import BizException
 from app.core.response import ok
 from app.models import Food, FoodRecognitionLog, UploadedFile, User
-from app.schemas import AIRecognizeIn, AICandidate
+from app.schemas import AIRecognizeIn, AICandidate, AIRecognizedItem
 
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -44,20 +44,31 @@ def food_recognition(
     else:
         candidates_payload = list(MOCK_CANDIDATES)
 
+    recognized_items_payload = [
+        {**candidate, "estimated_amount_g": 100}
+        for candidate in candidates_payload[:3]
+    ]
+    candidates = [AICandidate(**c) for c in candidates_payload]
+    recognized_items = [AIRecognizedItem(**item) for item in recognized_items_payload]
+    recognized_items_json = [item.model_dump(mode="json") for item in recognized_items]
+
     log = FoodRecognitionLog(
         user_id=user.id,
         image_url=uf.file_url,
         recognition_status="success",
-        candidates_json={"candidates": candidates_payload},
+        candidates_json={
+            "recognized_items": recognized_items_json,
+            "candidates": candidates_payload,
+        },
         provider="mock",
     )
     db.add(log)
     db.commit()
     db.refresh(log)
 
-    candidates = [AICandidate(**c) for c in candidates_payload]
     return ok({
         "recognition_id": log.id,
         "provider": "mock",
+        "recognized_items": recognized_items_json,
         "candidates": [c.model_dump() for c in candidates],
     })

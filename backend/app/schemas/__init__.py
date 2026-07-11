@@ -275,9 +275,14 @@ class AICandidate(BaseModel):
     confidence: float
 
 
+class AIRecognizedItem(AICandidate):
+    estimated_amount_g: Decimal = Field(..., gt=0)
+
+
 class AIRecognizeOut(BaseModel):
     recognition_id: int
     provider: str
+    recognized_items: list[AIRecognizedItem]
     candidates: list[AICandidate]
 
 
