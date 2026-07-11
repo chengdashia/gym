@@ -53,6 +53,9 @@
             @tap="todayInfo.session_id ? continueSession() : startSession()"
           />
         </view>
+        <view v-if="todayInfo.previous_session" class="carryover" @tap="goHistory">
+          昨天的「{{ todayInfo.previous_session.session_name }}」{{ todayInfo.previous_session.status === 'partial' ? '未完成，可从历史补练' : '未训练，可从历史补练' }} ›
+        </view>
       </liquid-glass-card>
     </template>
 
@@ -112,6 +115,7 @@ const title = computed(() => {
 const subtitle = computed(() => {
   if (!todayInfo.value?.has_plan) return '选择模板，马上建立你的训练节奏';
   if (todayInfo.value.is_rest_day) return '休息、拉伸，准备下一次训练';
+  if (todayInfo.value?.previous_session) return `昨天有未完成记录，今天仍按计划训练`;
   return `${todayExercises.value.length} 个动作已经为你准备好`;
 });
 const statusText = computed(() => todayInfo.value?.session_id ? '进行中' : todayInfo.value?.today_completed ? '已完成' : todayInfo.value?.is_rest_day ? '休息日' : '待开始');
@@ -234,6 +238,7 @@ onShow(() => { syncTabBar(); if (auth.isLogged) load(); });
 .today-meta { margin-top: 4rpx; color: $text-3; font-size: $fs-sm; }
 .exercise-row { display: flex; align-items: center; gap: $gap-2; padding: 22rpx 0; border-top: 1rpx solid $divider; }
 .exercise-row.in_progress { margin: 4rpx -12rpx; padding: 20rpx 12rpx; border-radius: $r-12; background: rgba(91,200,154,.12); }
+.carryover{margin-top:20rpx;padding:18rpx 20rpx;border-radius:16rpx;background:rgba(255,183,77,.14);color:#8a5a00;font-size:25rpx;}
 .exercise-row.completed { margin: 4rpx -12rpx; padding: 20rpx 12rpx; border-radius: $r-12; background: rgba(91,200,154,.2); }
 .exercise-row.completed .exercise-name, .exercise-row.completed .exercise-detail { color: $primary-deep; }
 .exercise-index { width: 44rpx; height: 44rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: $primary-tint; color: $primary-deep; font-weight: 700; }

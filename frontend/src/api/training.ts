@@ -87,7 +87,7 @@ export interface TrainingSession {
   plan_day_id: number | null;
   session_date: string;
   session_name: string;
-  status: 'in_progress' | 'paused' | 'completed' | 'cancelled';
+  status: 'in_progress' | 'paused' | 'completed' | 'cancelled' | 'partial' | 'missed' | 'rest';
   started_at: string;
   ended_at: string | null;
   duration_seconds: number;
@@ -109,6 +109,7 @@ export interface TodayTraining {
   today_completed?: boolean;
   today_day?: PlanDay | null;
   incomplete_session?: TrainingSession | null;
+  previous_session?: TrainingSession | null;
 }
 
 export const trainingApi = {

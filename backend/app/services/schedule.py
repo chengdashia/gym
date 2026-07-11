@@ -40,14 +40,12 @@ def resolve_today_day(
                 return d_row
         # 未匹配到指定星期 -> 该日休息
         return None
-    # sequence
-    current = plan.current_day_index or days[0].day_index
-    start = next((i for i, row in enumerate(days) if row.day_index == current), 0)
-    for offset in range(len(days)):
-        chosen = days[(start + offset) % len(days)]
-        if not chosen.is_rest_day:
-            return chosen
-    return None
+    # sequence is calendar-driven: every calendar day occupies one slot,
+    # including rest days.  A missed or partial session is historical data;
+    # it must never hold tomorrow's plan hostage.
+    anchor = plan.created_at.date() if plan.created_at else d
+    offset = max(0, (d - anchor).days)
+    return days[offset % len(days)]
 
 
 def next_sequence_day_index(days: list[TrainingPlanDay], current_day_index: int | None) -> int | None:

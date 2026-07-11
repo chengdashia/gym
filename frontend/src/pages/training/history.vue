@@ -45,6 +45,7 @@
             />
           </view>
           <view class="footer-right">
+            <text v-if="s.status === 'missed' || s.status === 'partial'" class="makeup-btn" @tap.stop="makeup(s)">补练</text>
             <text class="more">详情 ›</text>
             <text class="del-btn" @tap.stop="confirmDelete(s)">删除</text>
           </view>
@@ -91,11 +92,25 @@ function setRange(r: number) {
 }
 
 function statusText(s: string) {
-  return { in_progress: '进行中', paused: '已暂停', completed: '已完成', cancelled: '已放弃' }[s] || s;
+  return { in_progress: '进行中', paused: '已暂停', completed: '已完成', cancelled: '已放弃', partial: '部分完成', missed: '未训练', rest: '休息日' }[s] || s;
 }
 
 function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/training/history-detail?id=${id}` });
+}
+
+async function makeup(session: TrainingSession) {
+  if (!session.plan_id || !session.plan_day_id) return;
+  try {
+    const next = await trainingApi.createSession({
+      plan_id: session.plan_id,
+      plan_day_id: session.plan_day_id,
+      session_date: today(),
+    });
+    uni.navigateTo({ url: `/pages/training/execute?id=${next.id}` });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '补练创建失败', icon: 'none' });
+  }
 }
 
 function confirmDelete(s: TrainingSession) {

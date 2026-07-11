@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -42,13 +42,48 @@ from app.schemas import (
     TemplateOut,
     TrainingTodayOut,
 )
-from app.services.schedule import resolve_today_day, advance_sequence_plan
+from app.services.schedule import resolve_today_day
 from app.services.exercise_stats import effective_set_values
 from app.services.training_history import last_completed_sets
 from app.utils.date import date_str
 
 
 router = APIRouter(prefix="/training", tags=["training"])
+
+
+def _close_previous_sequence_day(db: Session, user_id: int, plan: TrainingPlan, d) -> TrainingSession | None:
+    """Persist yesterday's result without changing today's calendar slot."""
+    if plan.schedule_type != "sequence":
+        return None
+    previous_date = d - timedelta(days=1)
+    previous_day = resolve_today_day(db, plan, previous_date)
+    if previous_day is None:
+        return None
+    start = datetime.combine(previous_date, datetime.min.time())
+    end = datetime.combine(previous_date, datetime.max.time())
+    session = db.query(TrainingSession).filter(
+        TrainingSession.user_id == user_id, TrainingSession.plan_id == plan.id,
+        TrainingSession.plan_day_id == previous_day.id, TrainingSession.deleted_at.is_(None),
+        TrainingSession.session_date >= start, TrainingSession.session_date <= end,
+    ).order_by(TrainingSession.started_at.desc()).first()
+    if session is None:
+        session = TrainingSession(
+            user_id=user_id, plan_id=plan.id, plan_day_id=previous_day.id,
+            session_date=start, session_name=previous_day.day_name,
+            status="rest" if previous_day.is_rest_day else "missed",
+            started_at=end, ended_at=end, duration_seconds=0, total_volume=0,
+            note="系统按日历序列归档",
+        )
+        db.add(session)
+        db.flush()
+        return session
+    if session.status in ("in_progress", "paused"):
+        completed = sum(exercise.completed_sets for exercise in session.exercises)
+        session.status = "partial" if completed else "missed"
+        session.ended_at = end
+        session.duration_seconds = int((end - session.started_at).total_seconds()) if session.started_at else 0
+        db.flush()
+    return session
 
 
 # ================== Templates ==================
@@ -346,6 +381,10 @@ def today(
         TrainingPlan.is_active == 1,
     ).order_by(TrainingPlan.id.desc()).first()
 
+    previous_session = _close_previous_sequence_day(db, user.id, active_plan, d) if active_plan else None
+    if previous_session:
+        db.commit()
+
     incomplete = db.query(TrainingSession).filter(
         TrainingSession.user_id == user.id,
         TrainingSession.deleted_at.is_(None),
@@ -361,13 +400,14 @@ def today(
         "schedule_type": active_plan.schedule_type if active_plan else None,
         "is_rest_day": False,
         "plan_day_id": None,
-        "session_id": incomplete.id if incomplete else None,
-        "session_status": incomplete.status if incomplete else None,
+        "session_id": None,
+        "session_status": None,
         "title": None,
         "exercise_count": 0,
         "today_day": None,
         "today_completed": False,
-        "incomplete_session": _session_to_dict(incomplete) if incomplete else None,
+        "incomplete_session": None,
+        "previous_session": _session_to_dict(previous_session) if previous_session and previous_session.status in ("missed", "partial") else None,
     }
 
     if active_plan:
@@ -641,9 +681,6 @@ def finish_session(session_id: int, user: User = Depends(get_current_user), db: 
             except Exception:
                 pass
     s.total_volume = total
-    plan = db.query(TrainingPlan).filter(TrainingPlan.id == s.plan_id).first()
-    if plan and plan.schedule_type == "sequence" and plan.is_active:
-        advance_sequence_plan(db, plan)
     db.add(OperationLog(user_id=user.id, action="training.session.finish", target_type="session", target_id=s.id))
     db.commit()
     db.refresh(s)
