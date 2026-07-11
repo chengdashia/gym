@@ -117,7 +117,19 @@
       <view class="sheet-wrap" @tap.stop>
         <view class="sheet-grip" />
         <view class="sheet-title">添加饮食</view>
-        <view class="sheet-subtitle">选择一种记录方式</view>
+        <view class="sheet-subtitle">先选择餐次，再选择记录方式</view>
+        <view class="sheet-meals">
+          <liquid-glass-pill
+            v-for="mealType in mealTypes"
+            :key="mealType.value"
+            :text="mealType.label"
+            :variant="addSheetMeal === mealType.value ? 'primary' : 'default'"
+            size="sm"
+            interactive
+            :active="addSheetMeal === mealType.value"
+            @tap="addSheetMeal = mealType.value"
+          />
+        </view>
         <view class="sheet-grid">
           <view
             v-for="opt in addOptions"
@@ -153,6 +165,7 @@ import { requireAuth } from '@/utils/auth-guard';
 import { dietApi, type DietRecord } from '@/api/diet';
 import { formatTime } from '@/utils/date';
 import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
+import { buildDietEntryUrl } from '@/utils/diet-context';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -178,6 +191,7 @@ const todayString = formatDate(new Date());
 const selectedDateHeading = computed(() => dietDateHeading(selectedDate.value, todayString));
 
 const showAddSheet = ref(false);
+const addSheetMeal = ref<MealType>('lunch');
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
 const copying = ref(false);
 
@@ -251,7 +265,11 @@ function formatAmount(r: DietRecord) {
 }
 
 function addMeal(v: MealType) {
-  const url = `/pages/diet/add?date=${selectedDate.value}&meal=${v}`;
+  const url = buildDietEntryUrl('/pages/diet/add', {
+    date: selectedDate.value,
+    meal: v,
+    time: formatTime(new Date()),
+  });
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
@@ -285,10 +303,16 @@ async function copyMeal(sourceMeal: MealType) {
 
 function go(action: 'add' | 'custom' | 'photo') {
   showAddSheet.value = false;
-  const url =
-    action === 'add' ? `/pages/diet/add?date=${selectedDate.value}` :
-    action === 'custom' ? '/pages/diet/custom-food' :
-    '/pages/diet/photo-recognize';
+  const paths = {
+    add: '/pages/diet/add',
+    custom: '/pages/diet/custom-food',
+    photo: '/pages/diet/photo-recognize',
+  } as const;
+  const url = buildDietEntryUrl(paths[action], {
+    date: selectedDate.value,
+    meal: addSheetMeal.value,
+    time: formatTime(new Date()),
+  });
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
@@ -676,6 +700,13 @@ function go(action: 'add' | 'custom' | 'photo') {
   font-size: $fs-xs;
   color: $text-3;
   margin-top: 4rpx;
+  margin-bottom: $gap-3;
+}
+
+.sheet-meals {
+  display: flex;
+  justify-content: space-between;
+  gap: 8rpx;
   margin-bottom: $gap-3;
 }
 

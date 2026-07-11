@@ -153,6 +153,7 @@ import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { iconSrc } from '@/utils/icons';
 import { requireAuth } from '@/utils/auth-guard';
+import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
 
 const searchIconSrc = iconSrc('search', '#8FA3A1', 1.8);
 
@@ -175,22 +176,21 @@ const recentFoods = ref<RecentFood[]>([]);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 onLoad((options: any) => {
+  const context = parseDietContext(options, { date: date.value, meal: meal.value, time: time.value });
+  date.value = context.date;
+  meal.value = context.meal;
+  time.value = context.time;
+
   if (!auth.ready) {
     auth.bootstrap().then(() => {
       if (!auth.isLogged) {
-        const redirect = `/pages/diet/add?date=${options?.date || date.value}&meal=${options?.meal || meal.value}`;
+        const redirect = buildDietEntryUrl('/pages/diet/add', context);
         requireAuth({ redirect });
       }
     });
   } else if (!auth.isLogged) {
-    const redirect = `/pages/diet/add?date=${options?.date || date.value}&meal=${options?.meal || meal.value}`;
+    const redirect = buildDietEntryUrl('/pages/diet/add', context);
     requireAuth({ redirect });
-  }
-
-  if (options?.date) date.value = options.date;
-  const m = options?.meal;
-  if (m && ['breakfast', 'lunch', 'dinner', 'snack'].includes(m)) {
-    meal.value = m as MealType;
   }
   loadRecentFoods();
 });
@@ -326,7 +326,13 @@ async function save() {
 }
 
 function goCustom() {
-  uni.navigateTo({ url: '/pages/diet/custom-food' });
+  uni.navigateTo({
+    url: buildDietEntryUrl('/pages/diet/custom-food', {
+      date: date.value,
+      meal: meal.value,
+      time: time.value,
+    }),
+  });
 }
 </script>
 

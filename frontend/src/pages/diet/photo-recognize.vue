@@ -1,12 +1,38 @@
 <template>
   <view class="photo-page">
     <view v-if="!imagePath" class="upload-block">
-      <EmptyState icon="camera" tint="sky" title="拍照识别食物" desc="支持拍照或从相册选择">
-        <view class="upload-actions">
-          <liquid-glass-button variant="primary" size="md" :block="false" text="拍照" @tap="chooseCamera" />
-          <liquid-glass-button variant="ghost" size="md" :block="false" text="相册" @tap="chooseAlbum" />
+      <liquid-glass-card variant="light" :highlight="true" class="context-card">
+        <view class="date-row">
+          <text class="context-label">记录日期</text>
+          <picker mode="date" :value="recordDate" @change="(e: any) => recordDate = e.detail.value">
+            <text class="date-value">{{ recordDate }}</text>
+          </picker>
         </view>
-      </EmptyState>
+        <view class="meal-selector">
+          <liquid-glass-pill
+            v-for="m in mealTypes"
+            :key="m.value"
+            :text="m.label"
+            :variant="meal === m.value ? 'primary' : 'default'"
+            size="sm"
+            interactive
+            :active="meal === m.value"
+            @tap="meal = m.value as MealType"
+          />
+        </view>
+      </liquid-glass-card>
+
+      <view class="camera-frame" @tap="chooseCamera">
+        <view class="camera-icon">＋</view>
+        <view class="camera-title">拍下你的食物</view>
+        <view class="camera-desc">保持光线充足，让食物完整出现在画面中</view>
+      </view>
+
+      <view class="upload-actions">
+        <liquid-glass-button variant="primary" size="lg" text="拍照识别" @tap="chooseCamera" />
+        <liquid-glass-button variant="ghost" size="lg" text="从相册选择" @tap="chooseAlbum" />
+      </view>
+      <view class="privacy-note">图片仅用于本次食物识别，我们会妥善保护你的隐私</view>
     </view>
 
     <view v-else-if="recognizing" class="recognizing">
@@ -93,8 +119,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import EmptyState from '@/components/EmptyState.vue';
+import { ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { uploadApi } from '@/api/uploads';
 import { aiApi, RecognitionCandidate } from '@/api/ai';
 import { foodApi } from '@/api/food';
@@ -105,17 +131,11 @@ import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
+import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
 
 const dietStore = useDietStore();
 const mealTypes = MEAL_TYPES;
 const auth = useAuthStore();
-
-onMounted(async () => {
-  if (!auth.ready) await auth.bootstrap();
-  if (!auth.isLogged) {
-    requireAuth({ redirect: '/pages/diet/photo-recognize' });
-  }
-});
 
 const imagePath = ref('');
 const uploadedUrl = ref('');
@@ -138,6 +158,22 @@ function getCurrentMeal(): MealType {
   return 'snack';
 }
 meal.value = getCurrentMeal();
+
+onLoad(async (options: any) => {
+  const context = parseDietContext(options, {
+    date: recordDate.value,
+    meal: meal.value,
+    time: recordTime.value,
+  });
+  recordDate.value = context.date;
+  meal.value = context.meal;
+  recordTime.value = context.time;
+
+  if (!auth.ready) await auth.bootstrap();
+  if (!auth.isLogged) {
+    requireAuth({ redirect: buildDietEntryUrl('/pages/diet/photo-recognize', context) });
+  }
+});
 
 function chooseCamera() {
   uni.chooseImage({
@@ -182,7 +218,13 @@ function reset() {
 }
 
 function goSearch() {
-  uni.navigateTo({ url: `/pages/diet/add?date=${dietStore.selectedDate || today()}` });
+  uni.navigateTo({
+    url: buildDietEntryUrl('/pages/diet/add', {
+      date: recordDate.value,
+      meal: meal.value,
+      time: recordTime.value,
+    }),
+  });
 }
 
 async function save() {
@@ -229,15 +271,88 @@ async function save() {
 .photo-page {
   background: $bg;
   padding: $gap-3;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 .upload-block {
-  padding-top: $gap-5;
+  display: flex;
+  flex-direction: column;
+  gap: $gap-3;
+  padding-bottom: calc(#{$gap-4} + env(safe-area-inset-bottom));
+}
+.context-card {
+  margin-bottom: 0;
+}
+.date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  border-bottom: 1rpx solid $divider;
+}
+.context-label {
+  color: $text-2;
+  font-size: $fs-md;
+}
+.date-value {
+  color: $primary;
+  font-size: $fs-md;
+  font-weight: 600;
+}
+.meal-selector {
+  display: flex;
+  justify-content: space-between;
+  gap: 8rpx;
+  padding-top: $gap-2;
+}
+.camera-frame {
+  min-height: 400rpx;
+  border: 2rpx dashed rgba(91, 200, 154, 0.55);
+  border-radius: $r-20;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(166, 227, 197, 0.2));
+  box-shadow: $shadow-sm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $gap-3;
+  box-sizing: border-box;
+}
+.camera-icon {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: $primary-tint;
+  color: $primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56rpx;
+  line-height: 1;
+}
+.camera-title {
+  margin-top: $gap-2;
+  color: $text-1;
+  font-size: $fs-lg;
+  font-weight: 600;
+}
+.camera-desc {
+  margin-top: $gap-1;
+  color: $text-3;
+  font-size: $fs-sm;
+  text-align: center;
 }
 .upload-actions {
   display: flex;
+  flex-direction: column;
   gap: $gap-2;
-  margin-top: $gap-3;
-  justify-content: center;
+}
+.privacy-note {
+  color: $text-3;
+  font-size: $fs-xs;
+  line-height: 1.6;
+  text-align: center;
+  padding: 0 $gap-2;
 }
 
 .preview-img {

@@ -81,7 +81,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import { foodApi } from '@/api/food';
 import { dietApi } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
@@ -90,6 +91,7 @@ import { FOOD_CATEGORIES, MEAL_TYPES } from '@/utils/constants';
 import { formatTime, today } from '@/utils/date';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
+import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
 
 const categories = FOOD_CATEGORIES;
 const auth = useAuthStore();
@@ -98,10 +100,19 @@ const mealTypes = MEAL_TYPES;
 const mealIndex = ref(0);
 const record = reactive({ date: today(), time: formatTime(new Date()), amount: 100 });
 
-onMounted(async () => {
+onLoad(async (options: any) => {
+  const context = parseDietContext(options, {
+    date: record.date,
+    meal: mealTypes[mealIndex.value].value,
+    time: record.time,
+  });
+  record.date = context.date;
+  record.time = context.time;
+  mealIndex.value = mealTypes.findIndex(item => item.value === context.meal);
+
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) {
-    requireAuth({ redirect: '/pages/diet/custom-food' });
+    requireAuth({ redirect: buildDietEntryUrl('/pages/diet/custom-food', context) });
   }
 });
 
