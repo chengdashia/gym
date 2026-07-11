@@ -47,10 +47,10 @@
 
         <view v-if="!todayInfo.is_rest_day" class="primary-action">
           <liquid-glass-button
-            :text="todayInfo.session_id ? '继续训练' : (todayInfo.today_completed ? '再练一次' : '开始今日训练')"
+            :text="sessionHasProgress ? '继续训练' : (todayInfo.today_completed ? '再练一次' : '开始今日训练')"
             :variant="todayInfo.today_completed ? 'soft' : 'primary'"
             size="lg"
-            @tap="todayInfo.session_id ? continueSession() : startSession()"
+            @tap="sessionHasProgress ? continueSession() : startSession()"
           />
         </view>
         <view v-if="todayInfo.previous_session" class="carryover" @tap="goHistory">
@@ -104,11 +104,12 @@ const todayInfo = computed(() => trainingStore.today);
 const activePlan = computed(() => trainingStore.activePlan);
 const todayExercises = computed(() => todayInfo.value?.today_day?.exercises || []);
 const totalSets = computed(() => todayExercises.value.reduce((sum, item) => sum + Number(item.target_sets || 0), 0));
+const sessionHasProgress = computed(() => Boolean(todayInfo.value?.session_id && todayInfo.value.incomplete_session?.exercises?.some(exercise => exercise.completed_sets > 0 || exercise.sets.some(set => set.completed))));
 const dateLabel = `${dateMD(today())} ${weekdayCN(today())}`;
 const title = computed(() => {
   if (!todayInfo.value?.has_plan) return '今天练什么？';
   if (todayInfo.value.is_rest_day) return '今天好好恢复';
-  if (todayInfo.value.session_id) return '继续完成今天的训练';
+  if (sessionHasProgress.value) return '继续完成今天的训练';
   if (todayInfo.value.today_completed) return '今天已经完成';
   return todayInfo.value.title || '今日训练';
 });
@@ -118,8 +119,8 @@ const subtitle = computed(() => {
   if (todayInfo.value?.previous_session) return `昨天有未完成记录，今天仍按计划训练`;
   return `${todayExercises.value.length} 个动作已经为你准备好`;
 });
-const statusText = computed(() => todayInfo.value?.session_id ? '进行中' : todayInfo.value?.today_completed ? '已完成' : todayInfo.value?.is_rest_day ? '休息日' : '待开始');
-const statusVariant = computed<'primary' | 'soft' | 'default'>(() => todayInfo.value?.session_id ? 'primary' : 'soft');
+const statusText = computed(() => sessionHasProgress.value ? '进行中' : todayInfo.value?.today_completed ? '已完成' : todayInfo.value?.is_rest_day ? '休息日' : '待开始');
+const statusVariant = computed<'primary' | 'soft' | 'default'>(() => sessionHasProgress.value ? 'primary' : 'soft');
 
 function syncTabBar() {
   const pages = getCurrentPages();

@@ -49,13 +49,13 @@
           </view>
         </view>
       </liquid-glass-panel>
+    </view>
+
+    <view class="meal-list">
       <view class="program-entry" @tap="openPrograms">
         <view><text class="program-entry-title">饮食方案</text><text class="program-entry-sub">16:8、532 碳水渐降、生酮与均衡减脂</text></view>
         <text class="program-entry-arrow">›</text>
       </view>
-    </view>
-
-    <view class="meal-list">
       <liquid-glass-card
         v-for="m in mealTypes"
         :key="m.value"
@@ -348,7 +348,7 @@ function openPrograms() {
   position: relative;
   overflow: hidden;
 }
-.program-entry{margin-top:$gap-3;padding:24rpx 28rpx;border-radius:24rpx;background:rgba(255,255,255,.78);display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}.program-entry-title{display:block;font-size:31rpx;font-weight:750;color:$text-1}.program-entry-sub{display:block;margin-top:6rpx;font-size:23rpx;color:$text-3}.program-entry-arrow{font-size:44rpx;color:#46ae7f}
+.program-entry{margin:0 0 $gap-3;padding:26rpx 28rpx;border-radius:24rpx;background:linear-gradient(135deg,#eafaf2,#fff);border:1rpx solid rgba(79,191,139,.22);display:flex;align-items:center;justify-content:space-between;box-shadow:0 8rpx 24rpx rgba(40,130,92,.08)}.program-entry-title{display:block;font-size:32rpx;font-weight:750;color:$text-1}.program-entry-sub{display:block;margin-top:6rpx;font-size:23rpx;color:$text-3}.program-entry-arrow{font-size:44rpx;color:#46ae7f}
 
 .header::before {
   content: '';
