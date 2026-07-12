@@ -139,16 +139,10 @@
         <view class="sheet-title">添加饮食</view>
         <view class="sheet-subtitle">先选择餐次，再选择记录方式</view>
         <view class="sheet-meals">
-          <liquid-glass-pill
-            v-for="mealType in mealTypes"
-            :key="mealType.value"
-            :text="mealType.label"
-            :variant="addSheetMeal === mealType.value ? 'primary' : 'default'"
-            size="sm"
-            interactive
-            :active="addSheetMeal === mealType.value"
-            @tap="addSheetMeal = mealType.value"
-          />
+          <view v-for="mealType in mealTypes" :key="mealType.value" :class="['sheet-meal-choice', { active: addSheetMeal === mealType.value }]" @tap="addSheetMeal = mealType.value">
+            <line-icon :name="mealIcon(mealType.value).icon" :tint="mealIcon(mealType.value).tint" :size="38" />
+            <text>{{ mealType.label }}</text>
+          </view>
         </view>
         <view class="sheet-grid">
           <view
@@ -157,7 +151,7 @@
             class="sheet-grid-item"
             @tap="go(opt.action)"
           >
-            <line-icon :name="opt.icon" :tint="opt.tint" :size="80" class="sheet-emoji" />
+            <line-icon :name="opt.icon" :tint="opt.tint" :size="56" class="sheet-emoji" />
             <view class="sheet-text-wrap">
               <view class="sheet-text">{{ opt.text }}</view>
               <view class="sheet-desc">{{ opt.desc }}</view>
@@ -389,7 +383,7 @@ function openPrograms() {
   background: linear-gradient(160deg, rgba(166, 227, 197, 0.35) 0%, rgba(91, 200, 154, 0.12) 100%);
   border-radius: 0 0 40rpx 40rpx;
   padding: $gap-3;
-  margin-bottom: $gap-3;
+  margin-bottom: $gap-1;
   position: relative;
   overflow: hidden;
 }
@@ -763,10 +757,10 @@ function openPrograms() {
 
 .sheet-meals {
   display: flex;
-  justify-content: space-between;
-  gap: 8rpx;
+  gap: 12rpx;
   margin-bottom: $gap-3;
 }
+.sheet-meal-choice{flex:1;min-height:84rpx;border-radius:18rpx;background:#f2f7f4;color:$text-3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4rpx;font-size:22rpx;font-weight:650}.sheet-meal-choice.active{background:#ddf7ea;color:$primary-deep;box-shadow:inset 0 0 0 2rpx rgba(63,166,124,.25)}
 
 .sheet-grid {
   display: flex;

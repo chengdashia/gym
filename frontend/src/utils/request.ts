@@ -20,6 +20,13 @@ interface BizResponse<T = any> {
 
 let token: string | null = null;
 
+/** Convert backend static paths into a Mini Program-loadable absolute URL. */
+export function resolveStaticUrl(url: string | null | undefined): string {
+  if (!url || url.startsWith('http://') || url.startsWith('https://')) return url || '';
+  if (!url.startsWith('/')) return url;
+  return `${API_BASE.replace(/\/api\/v1$/, '')}${url}`;
+}
+
 export function setToken(t: string | null) {
   token = t;
   if (t) {

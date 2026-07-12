@@ -101,6 +101,7 @@ import { FITNESS_GOALS, TRAINING_FREQUENCIES } from '@/utils/constants';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 import { uploadApi } from '@/api/uploads';
+import { resolveStaticUrl } from '@/utils/request';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -132,7 +133,7 @@ function syncFromStore() {
   const me = userStore.me;
   if (!me) return;
   form.nickname = me.nickname || '';
-  form.avatar_url = me.avatar_url || '';
+  form.avatar_url = resolveStaticUrl(me.avatar_url);
   if (me.profile) {
     form.profile.gender = (me.profile.gender as any) || 'male';
     form.profile.age = me.profile.age || 25;
@@ -184,7 +185,7 @@ function chooseAvatar() {
       uploadingAvatar.value = true;
       try {
         const uploaded = await uploadApi.avatar(filePath);
-        form.avatar_url = uploaded.file_url;
+        form.avatar_url = resolveStaticUrl(uploaded.file_url);
         uni.showToast({ title: '头像已上传', icon: 'success' });
       } catch (e: any) {
         uni.showToast({ title: e?.message || '头像上传失败', icon: 'none' });
