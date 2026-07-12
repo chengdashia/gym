@@ -57,6 +57,9 @@ def _close_previous_sequence_day(db: Session, user_id: int, plan: TrainingPlan, 
     if plan.schedule_type != "sequence":
         return None
     previous_date = d - timedelta(days=1)
+    anchor = plan.sequence_anchor_date or (plan.created_at.date() if plan.created_at else d)
+    if previous_date < anchor:
+        return None
     previous_day = resolve_today_day(db, plan, previous_date)
     if previous_day is None:
         return None
