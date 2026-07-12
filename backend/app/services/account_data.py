@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models import (
+    DietPreference,
     DietRecord,
     FoodRecognitionLog,
     NutritionGoal,
@@ -15,6 +16,7 @@ from app.models import (
     User,
     UserCustomExercise,
     UserCustomFood,
+    UserDietProgram,
     UserProfile,
     UserReminder,
     WeightRecord,
@@ -22,10 +24,12 @@ from app.models import (
 
 
 PERSONAL_DATA_MODELS = (
+    DietPreference,
     DietRecord,
     WeightRecord,
     UserCustomFood,
     UserCustomExercise,
+    UserDietProgram,
     TrainingPlan,
     TrainingSession,
     FoodRecognitionLog,

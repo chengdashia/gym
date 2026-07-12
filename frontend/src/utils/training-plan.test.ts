@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateTrainingPlan } from './training-plan';
+import { templatePlanEditUrl, validateTrainingPlan } from './training-plan';
 
 describe('validateTrainingPlan', () => {
   const validPlan = () => ({
@@ -82,5 +82,15 @@ describe('validateTrainingPlan', () => {
       rest_seconds: 600,
     });
     expect(validateTrainingPlan(plan as any)).toBeNull();
+  });
+});
+
+describe('templatePlanEditUrl', () => {
+  it('opens the blank plan editor when no template is chosen', () => {
+    expect(templatePlanEditUrl()).toBe('/pages/training/plan-edit');
+  });
+
+  it('opens template configuration instead of creating a plan directly', () => {
+    expect(templatePlanEditUrl(42)).toBe('/pages/training/plan-edit?templateId=42');
   });
 });

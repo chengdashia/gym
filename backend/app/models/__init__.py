@@ -65,7 +65,7 @@ class UserProfile(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("users.id"), unique=True, nullable=False
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     gender: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -88,7 +88,7 @@ class NutritionGoal(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("users.id"), unique=True, nullable=False
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     calories_kcal: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
     carbs_g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
@@ -108,7 +108,7 @@ class UserReminder(Base):
     __tablename__ = "user_reminders"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     reminder_type: Mapped[str] = mapped_column(String(32), nullable=False)
     enabled: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     reminder_time: Mapped[Optional[datetime]] = mapped_column(Time, nullable=True)
@@ -155,7 +155,7 @@ class UserCustomFood(Base):
     __tablename__ = "user_custom_foods"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     calories_per_100g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False, default=0)
@@ -182,7 +182,7 @@ class DietPreference(Base):
     __tablename__ = "diet_preferences"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False, unique=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
     meal_count: Mapped[int] = mapped_column(Integer, nullable=False)
     allergens_json: Mapped[list] = mapped_column(JSON, nullable=False)
     preference_rules_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -219,7 +219,7 @@ class UserDietProgram(Base):
     __tablename__ = "user_diet_programs"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     template_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("diet_program_templates.id"), nullable=False)
     template_version: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
@@ -250,7 +250,7 @@ class DietProgramStage(Base):
     __tablename__ = "diet_program_stages"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    program_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_diet_programs.id"), nullable=False)
+    program_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_diet_programs.id", ondelete="CASCADE"), nullable=False)
     stage_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
@@ -279,8 +279,8 @@ class MealPlanDay(Base):
     __tablename__ = "meal_plan_days"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    program_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_diet_programs.id"), nullable=False)
-    stage_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("diet_program_stages.id"), nullable=False)
+    program_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_diet_programs.id", ondelete="CASCADE"), nullable=False)
+    stage_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("diet_program_stages.id", ondelete="CASCADE"), nullable=False)
     plan_date: Mapped[date] = mapped_column(Date, nullable=False)
     target_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -301,7 +301,7 @@ class MealPlanMeal(Base):
     __tablename__ = "meal_plan_meals"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("meal_plan_days.id"), nullable=False)
+    day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("meal_plan_days.id", ondelete="CASCADE"), nullable=False)
     meal_type: Mapped[str] = mapped_column(String(32), nullable=False)
     planned_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
     target_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
@@ -319,7 +319,7 @@ class MealPlanItem(Base):
     __tablename__ = "meal_plan_items"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    meal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("meal_plan_meals.id"), nullable=False)
+    meal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("meal_plan_meals.id", ondelete="CASCADE"), nullable=False)
     food_source: Mapped[str] = mapped_column(String(32), nullable=False)
     food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     custom_food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
@@ -327,7 +327,9 @@ class MealPlanItem(Base):
     amount_g: Mapped[Decimal] = mapped_column(DECIMAL(8, 2), nullable=False)
     nutrition_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     constraint_snapshot_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    replaced_from_item_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("meal_plan_items.id"), nullable=True)
+    replaced_from_item_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("meal_plan_items.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     meal: Mapped["MealPlanMeal"] = relationship("MealPlanMeal", back_populates="items")
@@ -339,14 +341,16 @@ class DietRecord(Base):
     __tablename__ = "diet_records"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     record_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     record_time: Mapped[datetime] = mapped_column(Time, nullable=False)
     meal_type: Mapped[str] = mapped_column(String(32), nullable=False)
     food_source: Mapped[str] = mapped_column(String(32), nullable=False)
     food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     custom_food_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    plan_meal_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("meal_plan_meals.id"), nullable=True)
+    plan_meal_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("meal_plan_meals.id", ondelete="SET NULL"), nullable=True
+    )
     food_name_snapshot: Mapped[str] = mapped_column(String(100), nullable=False)
     unit_type: Mapped[str] = mapped_column(String(16), nullable=False)
     amount_g: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(8, 2), nullable=True)
@@ -376,7 +380,7 @@ class FoodRecognitionLog(Base):
     __tablename__ = "food_recognition_logs"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     image_url: Mapped[str] = mapped_column(String(500), nullable=False)
     recognition_status: Mapped[str] = mapped_column(String(32), nullable=False, default="success")
     candidates_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -416,7 +420,7 @@ class UserCustomExercise(Base):
     __tablename__ = "user_custom_exercises"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     body_part: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
@@ -495,7 +499,7 @@ class TrainingPlan(Base):
     __tablename__ = "training_plans"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     schedule_type: Mapped[str] = mapped_column(String(32), nullable=False)
     source_template_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
@@ -525,7 +529,7 @@ class TrainingPlanDay(Base):
     __tablename__ = "training_plan_days"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    plan_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("training_plans.id"), nullable=False)
+    plan_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("training_plans.id", ondelete="CASCADE"), nullable=False)
     day_index: Mapped[int] = mapped_column(Integer, nullable=False)
     day_name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_rest_day: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -548,7 +552,7 @@ class TrainingPlanExercise(Base):
     __tablename__ = "training_plan_exercises"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    plan_day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("training_plan_days.id"), nullable=False)
+    plan_day_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("training_plan_days.id", ondelete="CASCADE"), nullable=False)
     exercise_source: Mapped[str] = mapped_column(String(32), nullable=False)
     exercise_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     custom_exercise_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
@@ -573,7 +577,7 @@ class TrainingSession(Base):
     __tablename__ = "training_sessions"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     plan_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     plan_day_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     session_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -606,7 +610,7 @@ class TrainingSessionExercise(Base):
     __tablename__ = "training_session_exercises"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    session_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("training_sessions.id"), nullable=False)
+    session_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("training_sessions.id", ondelete="CASCADE"), nullable=False)
     exercise_name_snapshot: Mapped[str] = mapped_column(String(100), nullable=False)
     body_part_snapshot: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -632,7 +636,7 @@ class TrainingSessionSet(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     session_exercise_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("training_session_exercises.id"), nullable=False
+        BigInteger, ForeignKey("training_session_exercises.id", ondelete="CASCADE"), nullable=False
     )
     set_index: Mapped[int] = mapped_column(Integer, nullable=False)
     target_reps: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -658,7 +662,7 @@ class WeightRecord(Base):
     __tablename__ = "weight_records"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     record_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     record_time: Mapped[datetime] = mapped_column(Time, nullable=False)
     weight_kg: Mapped[Decimal] = mapped_column(DECIMAL(6, 2), nullable=False)
@@ -679,7 +683,7 @@ class UploadedFile(Base):
     __tablename__ = "uploaded_files"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     file_type: Mapped[str] = mapped_column(String(32), nullable=False)
     usage_type: Mapped[str] = mapped_column(String(32), nullable=False)
     file_url: Mapped[str] = mapped_column(String(500), nullable=False)

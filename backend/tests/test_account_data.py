@@ -1,4 +1,5 @@
 from app.models import (
+    DietPreference,
     DietRecord,
     FoodRecognitionLog,
     NutritionGoal,
@@ -7,6 +8,7 @@ from app.models import (
     UploadedFile,
     UserCustomExercise,
     UserCustomFood,
+    UserDietProgram,
     UserProfile,
     UserReminder,
     WeightRecord,
@@ -25,10 +27,12 @@ class FakeUser:
 
 def test_clear_personal_data_covers_all_user_owned_models():
     assert set(PERSONAL_DATA_MODELS) == {
+        DietPreference,
         DietRecord,
         WeightRecord,
         UserCustomFood,
         UserCustomExercise,
+        UserDietProgram,
         TrainingPlan,
         TrainingSession,
         FoodRecognitionLog,

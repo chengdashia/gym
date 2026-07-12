@@ -6,6 +6,10 @@ interface TrainingPlanDraft {
   days: PlanDay[];
 }
 
+export function templatePlanEditUrl(templateId?: number): string {
+  return templateId ? `/pages/training/plan-edit?templateId=${templateId}` : '/pages/training/plan-edit';
+}
+
 export function validateTrainingPlan(plan: TrainingPlanDraft): string | null {
   if (!plan.name.trim()) return '请填写计划名称';
   if (!plan.days.length) return '请至少添加一个训练日';

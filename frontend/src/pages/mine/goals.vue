@@ -39,7 +39,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue';
+import { reactive, onMounted, ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import LiquidGlassCard from '@/components/LiquidGlassCard.vue';
 import LiquidGlassButton from '@/components/LiquidGlassButton.vue';
 import { useUserStore } from '@/store/user';
@@ -49,6 +50,7 @@ import { requireAuth } from '@/utils/auth-guard';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
+const redirectUrl = ref('');
 
 const goal = reactive({
   calories_kcal: 0,
@@ -69,6 +71,10 @@ onMounted(async () => {
     });
   }
   Object.assign(goal, userStore.goal);
+});
+
+onLoad((options: any) => {
+  redirectUrl.value = options?.redirect ? decodeURIComponent(options.redirect) : '';
 });
 
 async function recommend() {
@@ -101,7 +107,9 @@ async function save() {
   try {
     await userStore.updateGoal({ ...goal });
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => safeNavigateBack('/pages/mine/index'), 600);
+    setTimeout(() => redirectUrl.value
+      ? uni.redirectTo({ url: redirectUrl.value })
+      : safeNavigateBack('/pages/mine/index'), 600);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {

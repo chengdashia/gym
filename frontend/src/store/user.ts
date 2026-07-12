@@ -51,12 +51,12 @@ export const useUserStore = defineStore('user', {
       }
     },
     async fetchGoal() {
-      try {
-        this.goal = await userApi.getNutritionGoal();
-      } catch {
-        // 首次用户可能未设置目标，使用 recommend 兜底
-        this.goal = await userApi.recommendNutritionGoal();
-      }
+      this.goal = await userApi.getNutritionGoal() || {
+        calories_kcal: 0,
+        carbs_g: 0,
+        protein_g: 0,
+        fat_g: 0,
+      };
     },
     async updateGoal(payload: NutritionGoal) {
       this.goal = await userApi.updateNutritionGoal(payload);

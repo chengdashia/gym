@@ -182,6 +182,7 @@ import { formatTime } from '@/utils/date';
 import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
 import { buildDietEntryUrl } from '@/utils/diet-context';
 import { dietProgramApi, type ActiveDietProgram } from '@/api/diet-programs';
+import { requireNutritionGoal } from '@/utils/feature-gates';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -240,7 +241,6 @@ const weekDates = computed(() => {
 async function load() {
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) return;
-  if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
   await Promise.all([
     dietStore.fetch(),
     dietProgramApi.active().then(value => { activeProgram.value = value; }).catch(() => { activeProgram.value = null; }),
@@ -315,6 +315,7 @@ function addMeal(v: MealType) {
     time: formatTime(new Date()),
   });
   if (!requireAuth({ redirect: url })) return;
+  if (!requireNutritionGoal(userStore.goal, url)) return;
   uni.navigateTo({ url });
 }
 
@@ -358,6 +359,7 @@ function go(action: 'add' | 'custom' | 'photo') {
     time: formatTime(new Date()),
   });
   if (!requireAuth({ redirect: url })) return;
+  if (!requireNutritionGoal(userStore.goal, url)) return;
   uni.navigateTo({ url });
 }
 

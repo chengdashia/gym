@@ -17,7 +17,8 @@
         <input v-model="plan.name" placeholder="例如：胸部+三头训练" class="input" />
       </view>
       <view class="row column">
-        <text class="label">排期方式</text>
+        <text class="label">如何安排训练</text>
+        <text class="schedule-hint">按顺序适合循环训练；按周可指定每个训练日的星期</text>
         <view class="seg">
           <liquid-glass-pill
             v-for="s in SCHEDULE_TYPES"
@@ -35,23 +36,30 @@
 
     <!-- 模板选择 -->
     <liquid-glass-card v-if="!id && templates.length" variant="light" radius="20rpx" padding="24rpx">
-      <view class="section-title">从模板开始</view>
-      <view class="tpl-grid">
-        <liquid-glass-card
+      <view class="template-section-head">
+        <view>
+          <view class="section-title">选择一个训练模板</view>
+          <view class="section-desc">模板会带入训练日与动作，之后仍可自由修改。</view>
+        </view>
+        <text class="template-count">{{ templates.length }} 个可选</text>
+      </view>
+      <view class="template-list">
+        <view
           v-for="t in templates"
           :key="t.id"
-          :tint="selectedTplId === t.id"
-          :highlight="true"
-          hoverable
-          radius="12rpx"
-          padding="16rpx"
+          :class="['template-option', { selected: selectedTplId === t.id }]"
           @tap="pickTemplate(t)"
         >
-          <view class="tpl-name">{{ t.name }}</view>
-          <view class="tpl-desc">{{ t.description }}</view>
-          <view class="tpl-meta">{{ t.days?.length || 0 }} 个训练日</view>
-        </liquid-glass-card>
+          <view class="template-option-icon"><line-icon name="dumbbell" color="#3FA67C" :size="42" /></view>
+          <view class="template-option-copy">
+            <view class="template-option-name">{{ t.name }}</view>
+            <view class="template-option-desc">{{ t.description || '可按你的训练节奏继续调整' }}</view>
+            <view class="template-option-meta">{{ t.days?.length || 0 }} 个训练日</view>
+          </view>
+          <text class="template-option-arrow">›</text>
+        </view>
       </view>
+      <view class="blank-plan-option" @tap="clearTemplate"><text>不使用模板，空白创建</text><text>›</text></view>
     </liquid-glass-card>
 
     <!-- 训练日列表 -->
@@ -297,6 +305,7 @@ onMounted(async () => {
   const pages = getCurrentPages();
   const opt = (pages[pages.length - 1] as any)?.options || {};
   id.value = Number(opt.id || 0);
+  const templateId = Number(opt.templateId || 0);
 
   if (id.value) {
     try {
@@ -320,6 +329,14 @@ onMounted(async () => {
   try {
     const res = await trainingApi.getTemplates();
     templates.value = res.items || [];
+    if (!id.value && templateId) {
+      const template = templates.value.find((item) => item.id === templateId);
+      if (!template) {
+        uni.showToast({ title: '训练模板不存在', icon: 'none' });
+      } else {
+        pickTemplate(template);
+      }
+    }
   } catch (e) {
     uni.showToast({ title: '加载模板失败', icon: 'none' });
   }
@@ -349,6 +366,13 @@ function pickTemplate(t: TrainingTemplate) {
       note: ex.note,
     })),
   }));
+}
+
+function clearTemplate() {
+  selectedTplId.value = null;
+  plan.source_template_id = null;
+  plan.name = '';
+  plan.days = [];
 }
 
 function addDay() {
@@ -634,6 +658,7 @@ async function removePlan() {
   color: $text-2;
   font-size: $fs-sm;
 }
+.schedule-hint { margin: -8rpx 0 8rpx; color: $text-3; font-size: $fs-xs; line-height: 1.5; }
 .input {
   flex: 1;
   min-width: 0;
@@ -664,26 +689,20 @@ async function removePlan() {
   color: $text-1;
 }
 
-.tpl-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: $gap-2;
-}
-.tpl-name {
-  font-size: $fs-md;
-  font-weight: 600;
-  color: $text-1;
-}
-.tpl-desc {
-  font-size: $fs-xs;
-  color: $text-3;
-  margin: 4rpx 0;
-}
-.tpl-meta {
-  font-size: $fs-xs;
-  color: $primary;
-  font-weight: 500;
-}
+.template-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: $gap-2; }
+.section-desc { margin-top: 6rpx; color: $text-3; font-size: $fs-xs; line-height: 1.5; }
+.template-count { flex: none; padding: 6rpx 12rpx; border-radius: $r-pill; background: $primary-tint; color: $primary-deep; font-size: $fs-xs; }
+.template-list { display: flex; flex-direction: column; gap: 16rpx; margin-top: 20rpx; }
+.template-option { min-height: 156rpx; display: flex; align-items: center; gap: 20rpx; padding: 22rpx; box-sizing: border-box; border: 1rpx solid $divider; border-radius: 18rpx; background: $card; }
+.template-option.selected { border-color: $primary; background: $primary-tint; box-shadow: 0 8rpx 18rpx rgba(63, 166, 124, .12); }
+.template-option-icon { width: 64rpx; height: 64rpx; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 18rpx; background: $primary-tint; }
+.template-option.selected .template-option-icon { background: rgba(255, 255, 255, .72); }
+.template-option-copy { flex: 1; min-width: 0; }
+.template-option-name { color: $text-1; font-size: $fs-md; font-weight: 700; }
+.template-option-desc { display: -webkit-box; margin-top: 6rpx; overflow: hidden; color: $text-3; font-size: $fs-xs; line-height: 1.45; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.template-option-meta { margin-top: 10rpx; color: $primary-deep; font-size: $fs-xs; font-weight: 650; }
+.template-option-arrow { flex: none; color: $primary-deep; font-size: 40rpx; line-height: 1; }
+.blank-plan-option { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; padding: 22rpx 6rpx 0; border-top: 1rpx dashed $divider; color: $text-2; font-size: $fs-sm; }
 
 .day-empty {
   text-align: center;

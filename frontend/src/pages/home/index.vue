@@ -213,7 +213,6 @@ onMounted(async () => {
   }
   if (auth.isLogged) {
     if (!userStore.me) await userStore.fetchMe().catch(() => {});
-    if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
     await load();
   }
 });

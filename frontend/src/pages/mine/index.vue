@@ -127,7 +127,6 @@ async function load() {
   if (!auth.ready) await auth.bootstrap();
   if (!auth.isLogged) return;
   if (!userStore.me) await userStore.fetchMe().catch(() => {});
-  if (!userStore.goal?.calories_kcal) await userStore.fetchGoal().catch(() => {});
 }
 
 onMounted(load);

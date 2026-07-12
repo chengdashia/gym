@@ -1,7 +1,15 @@
 // 真机无法访问电脑的 127.0.0.1。发布时通过 VITE_API_BASE 覆盖为正式 HTTPS 域名。
 import { resolveApiBase } from './api-base';
 
-export const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE);
+function runtimePlatform(): string {
+  try {
+    return uni.getSystemInfoSync().platform || '';
+  } catch {
+    return '';
+  }
+}
+
+export const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE, runtimePlatform());
 
 export const APP_NAME = '健身饮食';
 

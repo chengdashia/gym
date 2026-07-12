@@ -220,7 +220,7 @@ def wechat_login(body: WechatLoginIn, db: Session = Depends(get_db)):
     if not user:
         user = User(
             openid=openid,
-            nickname=body.nickname or "微信用户",
+            nickname=body.nickname or "健身伙伴",
             avatar_url=body.avatar_url or "",
             status="active",
         )
