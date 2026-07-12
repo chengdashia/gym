@@ -4,12 +4,20 @@
     <view v-if="step === 0" class="step step-auth">
       <view class="auth-center">
         <view class="logo-wrap">
-          <line-icon name="leaf" tint="mint" :size="120" class="logo" />
+          <image src="/static/logo.png" mode="aspectFit" class="logo" />
           <view class="brand">健身饮食</view>
           <view class="brand-sub">让健康管理更轻盈</view>
         </view>
 
         <view class="auth-card">
+          <!-- #ifdef MP-WEIXIN -->
+          <button class="auth-submit wechat-submit" @tap="submitWechatLogin">微信授权登录</button>
+          <view class="phone-login-toggle" @tap="showPhoneLogin = !showPhoneLogin">
+            {{ showPhoneLogin ? '收起手机号登录' : '使用手机号登录' }}
+          </view>
+          <!-- #endif -->
+
+          <view v-if="showPhoneLogin">
           <view class="auth-tabs">
             <view
               :class="['auth-tab', { active: authMode === 'login' }]"
@@ -83,9 +91,11 @@
               </text>
             </view>
           </template>
+          </view>
         </view>
 
         <button
+          v-if="showPhoneLogin"
           :class="['auth-submit', { disabled: authDisabled }]"
           :disabled="authDisabled"
           @tap="submitAuth"
@@ -302,6 +312,11 @@ const frequencies = TRAINING_FREQUENCIES;
 const auth = useAuthStore();
 const userStore = useUserStore();
 const redirectUrl = ref('/pages/home/index');
+const showPhoneLogin = ref(true);
+
+// #ifdef MP-WEIXIN
+showPhoneLogin.value = false;
+// #endif
 
 onLoad((options: any) => {
   if (options?.redirect) {
@@ -368,6 +383,41 @@ async function submitAuth() {
   }
 }
 
+async function submitWechatLogin() {
+  uni.showLoading({ title: '微信登录中...' });
+  try {
+    const profile = await getWechatProfile();
+    const data = await auth.login(profile);
+    await userStore.fetchMe();
+    uni.showToast({ title: '微信登录成功', icon: 'success' });
+    if (data.user.agreement_confirmed) {
+      goHome();
+      return;
+    }
+    step.value = 1;
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '微信登录失败', icon: 'none' });
+  } finally {
+    (uni.hideLoading as any)({ fail: () => {} });
+  }
+}
+
+async function getWechatProfile(): Promise<{ nickname?: string; avatar_url?: string }> {
+  // #ifdef MP-WEIXIN
+  return new Promise((resolve) => {
+    uni.getUserProfile({
+      desc: '用于设置头像和昵称',
+      success: (res: any) => resolve({
+        nickname: res.userInfo?.nickName || undefined,
+        avatar_url: res.userInfo?.avatarUrl || undefined,
+      }),
+      fail: () => resolve({}),
+    });
+  });
+  // #endif
+  return {};
+}
+
 async function submitProfile() {
   if (!form.age || !form.height_cm || !form.current_weight_kg || !form.target_weight_kg) {
     uni.showToast({ title: '请填写完整信息', icon: 'none' });
@@ -379,6 +429,8 @@ async function submitProfile() {
     const recommended = await userStore.recommendGoal();
     Object.assign(goal, recommended);
     await userStore.confirmAgreement();
+    auth.setUser({ agreement_confirmed: true });
+    uni.showToast({ title: '登录成功，资料已保存', icon: 'success' });
     step.value = 2;
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
@@ -615,6 +667,17 @@ function goAgreement(type: 'agreement' | 'privacy') {
     &::after {
       border: none;
     }
+  }
+
+  .wechat-submit {
+    margin-bottom: $gap-2;
+  }
+
+  .phone-login-toggle {
+    padding: $gap-2 0 $gap-3;
+    text-align: center;
+    color: $primary-deep;
+    font-size: $fs-sm;
   }
 }
 

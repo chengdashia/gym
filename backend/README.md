@@ -103,7 +103,17 @@ curl http://127.0.0.1:8000/health
 
 ## 微信登录
 
-当前处于 **mock 模式**：直接将 `code` 字段当作 `openid` 用于 upsert 用户。可在 `app/core/config.py` 中关闭 `mock_wechat` 并实现真实 `jscode2session` 调用。
+后端使用小程序端 `uni.login` 返回的一次性 `code` 调用微信 `jscode2session`，再用微信返回的 `openid` 登录或创建本地用户。
+
+在 `backend/.env` 配置以下变量（AppSecret 只放后端）：
+
+```env
+WECHAT_APPID=你的微信小程序AppID
+WECHAT_SECRET=你的微信小程序AppSecret
+MOCK_WECHAT=false
+```
+
+同时在微信公众平台配置后端 HTTPS 请求域名。`MOCK_WECHAT=true` 仅用于本地开发，不应在真实小程序环境启用。
 
 ## 测试
 
@@ -116,6 +126,5 @@ pytest -q
 
 ## 后续计划
 
-- 真实微信 jscode2session 接入
 - 对象存储（OSS / COS）替换本地静态文件
 - 实时 AI 识别 provider

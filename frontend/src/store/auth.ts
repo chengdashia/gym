@@ -89,20 +89,7 @@ export const useAuthStore = defineStore('auth', {
         wechatCode = '';
       }
 
-      // 开发/无 wechat 凭据场景：后端把 code 直接当 openid 使用，
-      // 每次拿到的 code 都不同会创建新用户。这里复用首次缓存的稳定 id。
-      if (!wechatCode || wechatCode === 'mock_openid_undefined') {
-        const cachedId = (() => {
-          try { return uni.getStorageSync('gym_dev_openid') as string; } catch { return ''; }
-        })();
-        if (cachedId) {
-          wechatCode = cachedId;
-        } else {
-          const stable = `dev_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-          try { uni.setStorageSync('gym_dev_openid', stable); } catch { /* ignore */ }
-          wechatCode = stable;
-        }
-      }
+      if (!wechatCode) throw new Error('微信登录失败，请重试');
 
       const data = await authApi.wechatLogin({
         code: wechatCode,

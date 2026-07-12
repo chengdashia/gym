@@ -5,12 +5,14 @@ import time
 from datetime import datetime
 from secrets import token_urlsafe
 
+import httpx
 from fastapi import APIRouter, Depends
 from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.exceptions import BizException
 from app.core.response import ok
 from app.core.security import create_access_token, hash_password, verify_password
@@ -34,6 +36,32 @@ _CAPTCHA_STORE: dict[str, dict] = {}
 _CAPTCHA_TTL_SECONDS = 300
 _CAPTCHA_MAX_ATTEMPTS = 5
 _CAPTCHA_MAX_ITEMS = 1000
+WECHAT_SESSION_URL = "https://api.weixin.qq.com/sns/jscode2session"
+
+
+def _exchange_wechat_code(code: str) -> dict:
+    if not settings.wechat_appid or not settings.wechat_secret:
+        raise BizException(40008, "微信登录配置不完整")
+
+    try:
+        response = httpx.get(
+            WECHAT_SESSION_URL,
+            params={
+                "appid": settings.wechat_appid,
+                "secret": settings.wechat_secret,
+                "js_code": code,
+                "grant_type": "authorization_code",
+            },
+            timeout=8.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise BizException(40008, "微信登录服务暂时不可用") from exc
+
+    if payload.get("errcode") or not payload.get("openid"):
+        raise BizException(40008, "微信登录失败")
+    return payload
 
 
 def _cleanup_captchas(now: float | None = None) -> None:
@@ -177,10 +205,15 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
 
 @router.post("/wechat-login")
 def wechat_login(body: WechatLoginIn, db: Session = Depends(get_db)):
-    """开发期 mock：直接用 code 作为 openid upsert。"""
-    openid = body.code.strip()
-    if not openid:
+    """使用微信临时 code 登录，并用 openid 绑定本地用户。"""
+    code = body.code.strip()
+    if not code:
         raise BizException(40001, "code 不能为空")
+
+    if settings.mock_wechat:
+        openid = code
+    else:
+        openid = _exchange_wechat_code(code)["openid"]
 
     user = db.query(User).filter(User.openid == openid).first()
     is_new = False
@@ -195,6 +228,11 @@ def wechat_login(body: WechatLoginIn, db: Session = Depends(get_db)):
         db.flush()
         db.add(UserProfile(user_id=user.id))
         is_new = True
+    else:
+        if body.nickname:
+            user.nickname = body.nickname
+        if body.avatar_url:
+            user.avatar_url = body.avatar_url
 
     user.last_login_at = datetime.utcnow()
     db.commit()

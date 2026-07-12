@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     upload_dir: str = str(Path(__file__).resolve().parents[1] / "uploads")
     static_url_prefix: str = "/static"
 
-    mock_wechat: bool = True
+    mock_wechat: bool = False
     wechat_appid: str = ""
     wechat_secret: str = ""
 
