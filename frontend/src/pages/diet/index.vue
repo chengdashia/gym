@@ -24,6 +24,14 @@
 
       <!-- 摘要面板 -->
       <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="summary-panel">
+        <view v-if="activeProgram" class="summary-plan" @tap="openActiveProgram">
+          <view><text class="summary-plan-name">{{ activeProgram.template_name }} · 阶段 {{ activeProgram.stage.stage_number }}</text><text class="summary-plan-state">今日执行中</text></view>
+          <text class="summary-plan-link">管理 ›</text>
+        </view>
+        <view v-else class="summary-plan empty" @tap="openPrograms">
+          <view><text class="summary-plan-name">还未选择饮食方案</text><text class="summary-plan-state">自由记录模式</text></view>
+          <text class="summary-plan-link">选择方案 ›</text>
+        </view>
         <view class="sum-row">
           <view class="sum-main">
             <view class="sum-num">{{ Math.round(summary.calories_kcal) }}</view>
@@ -52,13 +60,6 @@
     </view>
 
     <view class="meal-list">
-      <view v-if="!activeProgram" class="program-entry" @tap="openPrograms">
-        <view><text class="program-entry-title">饮食方案</text><text class="program-entry-sub">16:8、532 碳水渐降、生酮与均衡减脂</text></view>
-        <text class="program-entry-arrow">›</text>
-      </view>
-      <view v-if="activeProgram" class="program-progress" @tap="openPrograms">
-        <view><text class="program-progress-title">{{ activeProgram.template_name }} · 今日执行</text><text class="program-progress-sub">剩余 {{ Math.max(0, Math.round(activeProgram.stage.calories_kcal - summary.calories_kcal)) }} kcal · C {{ Math.max(0, Math.round(activeProgram.stage.carbs_g - summary.carbs_g)) }}g · P {{ Math.max(0, Math.round(activeProgram.stage.protein_g - summary.protein_g)) }}g · F {{ Math.max(0, Math.round(activeProgram.stage.fat_g - summary.fat_g)) }}g</text></view><text class="program-manage">管理 ›</text>
-      </view>
       <liquid-glass-card
         v-for="m in primaryMealTypes"
         :key="m.value"
@@ -364,6 +365,11 @@ function openPrograms() {
   if (!requireAuth({ redirect: '/pages/diet/programs' })) return;
   uni.navigateTo({ url: '/pages/diet/programs' });
 }
+
+function openActiveProgram() {
+  if (!activeProgram.value) return openPrograms();
+  uni.navigateTo({ url: `/pages/diet/meal-plan?programId=${activeProgram.value.id}&name=${encodeURIComponent(activeProgram.value.template_name)}` });
+}
 </script>
 
 <style lang="scss" scoped>
@@ -387,8 +393,7 @@ function openPrograms() {
   position: relative;
   overflow: hidden;
 }
-.program-entry{margin:0 0 $gap-3;padding:26rpx 28rpx;border-radius:24rpx;background:linear-gradient(135deg,#eafaf2,#fff);border:1rpx solid rgba(79,191,139,.22);display:flex;align-items:center;justify-content:space-between;box-shadow:0 8rpx 24rpx rgba(40,130,92,.08)}.program-entry-title{display:block;font-size:32rpx;font-weight:750;color:$text-1}.program-entry-sub{display:block;margin-top:6rpx;font-size:23rpx;color:$text-3}.program-entry-arrow{font-size:44rpx;color:#46ae7f}
-.program-progress{margin:0 0 $gap-3;padding:22rpx 26rpx;border-radius:20rpx;background:#173d2c;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20rpx}.program-progress-title{display:block;font-size:29rpx;font-weight:750}.program-progress-sub{display:block;margin-top:8rpx;font-size:23rpx;line-height:1.5;color:#c8ead9}.program-manage{font-size:25rpx;color:#9be1bf;white-space:nowrap}
+.summary-plan{display:flex;align-items:center;justify-content:space-between;gap:18rpx;padding:6rpx 0 18rpx;margin-bottom:18rpx;border-bottom:1rpx solid rgba(91,160,125,.16)}.summary-plan-name{display:block;font-size:27rpx;font-weight:750;color:#245840}.summary-plan-state{display:block;margin-top:5rpx;font-size:22rpx;color:#67a486}.summary-plan-link{font-size:25rpx;color:#34966a;white-space:nowrap}.summary-plan.empty .summary-plan-name{color:$text-2}.summary-plan.empty .summary-plan-state{color:$text-3}
 .meal-target{display:flex;justify-content:space-between;gap:14rpx;flex-wrap:wrap;margin:8rpx 0 18rpx;padding:14rpx 18rpx;border-radius:14rpx;background:#eff9f3;color:#438161;font-size:23rpx}.meal-target.outside{background:#fff5e6;color:#a66d19}
 .snack-section{margin:0 0 $gap-3;padding:22rpx;border-radius:22rpx;background:#fbf8ff}.snack-section-head{display:flex;justify-content:space-between;margin:0 4rpx 14rpx;font-size:29rpx;font-weight:750;color:$text-1}.snack-section-head text:last-child{font-size:23rpx;font-weight:400;color:$text-3}.snack-record{margin-bottom:14rpx}.snack-add{margin-top:8rpx}.add-snack-entry{margin:0 0 $gap-3;padding:24rpx;border-radius:18rpx;border:2rpx dashed #b9dcca;text-align:center;color:#39936a;font-size:28rpx}
 
