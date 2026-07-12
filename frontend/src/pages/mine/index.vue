@@ -25,7 +25,7 @@
       </view>
     </liquid-glass-panel>
 
-    <!-- 4 格入口 -->
+    <!-- 3 格入口 -->
     <view class="grid">
       <liquid-glass-card :highlight="true" hoverable radius="20rpx" padding="20rpx 0" @tap="goGoals" class="grid-item">
         <line-icon name="target" color="#8FA3A1" :stroke-width="1.7" :size="52" class="gi-icon" />
@@ -280,7 +280,7 @@ function logout() {
 // ----- Grid -----
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: $gap-2;
   margin-bottom: $gap-3;
 }

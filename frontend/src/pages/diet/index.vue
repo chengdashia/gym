@@ -52,15 +52,15 @@
     </view>
 
     <view class="meal-list">
-      <view class="program-entry" @tap="openPrograms">
+      <view v-if="!activeProgram" class="program-entry" @tap="openPrograms">
         <view><text class="program-entry-title">饮食方案</text><text class="program-entry-sub">16:8、532 碳水渐降、生酮与均衡减脂</text></view>
         <text class="program-entry-arrow">›</text>
       </view>
-      <view v-if="activeProgram" class="program-progress">
-        <view><text class="program-progress-title">{{ activeProgram.template_name }} · 今日执行</text><text class="program-progress-sub">剩余 {{ Math.max(0, Math.round(activeProgram.stage.calories_kcal - summary.calories_kcal)) }} kcal · C {{ Math.max(0, Math.round(activeProgram.stage.carbs_g - summary.carbs_g)) }}g · P {{ Math.max(0, Math.round(activeProgram.stage.protein_g - summary.protein_g)) }}g · F {{ Math.max(0, Math.round(activeProgram.stage.fat_g - summary.fat_g)) }}g</text></view>
+      <view v-if="activeProgram" class="program-progress" @tap="openPrograms">
+        <view><text class="program-progress-title">{{ activeProgram.template_name }} · 今日执行</text><text class="program-progress-sub">剩余 {{ Math.max(0, Math.round(activeProgram.stage.calories_kcal - summary.calories_kcal)) }} kcal · C {{ Math.max(0, Math.round(activeProgram.stage.carbs_g - summary.carbs_g)) }}g · P {{ Math.max(0, Math.round(activeProgram.stage.protein_g - summary.protein_g)) }}g · F {{ Math.max(0, Math.round(activeProgram.stage.fat_g - summary.fat_g)) }}g</text></view><text class="program-manage">管理 ›</text>
       </view>
       <liquid-glass-card
-        v-for="m in mealTypes"
+        v-for="m in primaryMealTypes"
         :key="m.value"
         :highlight="true"
         class="meal-card"
@@ -113,6 +113,15 @@
           </view>
         </view>
       </liquid-glass-card>
+      <view v-if="hasSnackSection" class="snack-section">
+        <view class="snack-section-head"><text>加餐</text><text>可多次记录</text></view>
+        <liquid-glass-card v-for="r in meals.snack || []" :key="r.id" :highlight="true" class="snack-record" @tap="editRecord(r)">
+          <view class="record-info"><view class="record-name">{{ r.food_name_snapshot }}</view><view class="record-amount">{{ formatAmount(r) }} · {{ r.record_time }}</view></view>
+          <view class="record-nut"><view class="record-cal">{{ Math.round(r.calories_kcal) }} kcal</view><view class="record-macros">C{{ r.carbs_g }}g · P{{ r.protein_g }}g · F{{ r.fat_g }}g</view></view>
+        </liquid-glass-card>
+        <view class="meal-add snack-add" @tap="addMeal('snack')">+ 添加一次加餐</view>
+      </view>
+      <view v-else class="add-snack-entry" @tap="showSnack = true">+ 添加加餐</view>
     </view>
 
     <!-- FAB -->
@@ -192,6 +201,7 @@ const userStore = useUserStore();
 const auth = useAuthStore();
 
 const mealTypes = MEAL_TYPES;
+const primaryMealTypes = mealTypes.filter(item => item.value !== 'snack');
 const selectedDate = computed(() => dietStore.selectedDate);
 const summary = computed(() => dietStore.summary);
 const meals = computed(() => dietStore.meals);
@@ -206,7 +216,9 @@ const showAddSheet = ref(false);
 const addSheetMeal = ref<MealType>('lunch');
 const expanded = ref<Record<string, boolean>>({ breakfast: true, lunch: true, dinner: true, snack: true });
 const copying = ref(false);
+const showSnack = ref(false);
 const activeProgram = ref<ActiveDietProgram | null>(null);
+const hasSnackSection = computed(() => showSnack.value || (meals.value.snack || []).length > 0);
 
 const addOptions = [
   { action: 'add' as const,    icon: 'search', tint: 'mint' as const,  text: '搜索食物', desc: '从食物库查找' },
@@ -382,8 +394,9 @@ function openPrograms() {
   overflow: hidden;
 }
 .program-entry{margin:0 0 $gap-3;padding:26rpx 28rpx;border-radius:24rpx;background:linear-gradient(135deg,#eafaf2,#fff);border:1rpx solid rgba(79,191,139,.22);display:flex;align-items:center;justify-content:space-between;box-shadow:0 8rpx 24rpx rgba(40,130,92,.08)}.program-entry-title{display:block;font-size:32rpx;font-weight:750;color:$text-1}.program-entry-sub{display:block;margin-top:6rpx;font-size:23rpx;color:$text-3}.program-entry-arrow{font-size:44rpx;color:#46ae7f}
-.program-progress{margin:0 0 $gap-3;padding:22rpx 26rpx;border-radius:20rpx;background:#173d2c;color:#fff}.program-progress-title{display:block;font-size:29rpx;font-weight:750}.program-progress-sub{display:block;margin-top:8rpx;font-size:23rpx;line-height:1.5;color:#c8ead9}
+.program-progress{margin:0 0 $gap-3;padding:22rpx 26rpx;border-radius:20rpx;background:#173d2c;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20rpx}.program-progress-title{display:block;font-size:29rpx;font-weight:750}.program-progress-sub{display:block;margin-top:8rpx;font-size:23rpx;line-height:1.5;color:#c8ead9}.program-manage{font-size:25rpx;color:#9be1bf;white-space:nowrap}
 .meal-target{display:flex;justify-content:space-between;gap:14rpx;flex-wrap:wrap;margin:8rpx 0 18rpx;padding:14rpx 18rpx;border-radius:14rpx;background:#eff9f3;color:#438161;font-size:23rpx}.meal-target.outside{background:#fff5e6;color:#a66d19}
+.snack-section{margin:0 0 $gap-3;padding:22rpx;border-radius:22rpx;background:#fbf8ff}.snack-section-head{display:flex;justify-content:space-between;margin:0 4rpx 14rpx;font-size:29rpx;font-weight:750;color:$text-1}.snack-section-head text:last-child{font-size:23rpx;font-weight:400;color:$text-3}.snack-record{margin-bottom:14rpx}.snack-add{margin-top:8rpx}.add-snack-entry{margin:0 0 $gap-3;padding:24rpx;border-radius:18rpx;border:2rpx dashed #b9dcca;text-align:center;color:#39936a;font-size:28rpx}
 
 .header::before {
   content: '';

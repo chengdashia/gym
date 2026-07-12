@@ -20,7 +20,10 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
-    upload_dir: str = "uploads"
+    # Must not depend on the directory from which uvicorn happens to start.
+    # Otherwise an uploaded avatar can be written to one uploads/ directory
+    # while StaticFiles serves another after a restart.
+    upload_dir: str = str(Path(__file__).resolve().parents[1] / "uploads")
     static_url_prefix: str = "/static"
 
     mock_wechat: bool = True
