@@ -222,7 +222,7 @@ async function save() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 </script>

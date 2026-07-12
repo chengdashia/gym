@@ -535,7 +535,7 @@ async function saveWeight() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
     saving.value = false;
   }
 }
@@ -609,7 +609,7 @@ async function exportData() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '导出失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 
@@ -628,7 +628,7 @@ async function deleteData() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 
@@ -650,7 +650,7 @@ async function cancelAccount() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '操作失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 </script>

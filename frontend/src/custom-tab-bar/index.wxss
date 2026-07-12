@@ -1,0 +1,116 @@
+/* WeChat 自定义 tabBar 样式（wxml/wxss）
+   组件已被 WeChat 框架挂到固定根容器，所以不需要再 position: fixed */
+
+.tab-bar {
+  width: 100%;
+}
+
+.tab-bar__glass {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 100rpx;
+  margin: 0 16rpx 8rpx;
+  padding: 0 6rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 4rpx 12rpx rgba(31, 42, 42, 0.06),
+    0 16rpx 40rpx rgba(95, 175, 145, 0.1),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+}
+
+.tab-bar__glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+.tab-bar__pill {
+  position: absolute;
+  top: 6rpx;
+  bottom: 6rpx;
+  left: 6rpx;
+  width: calc((100% - 12rpx) / 5);
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #5BC89A 0%, #7BD8B0 100%);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.5),
+    0 4rpx 12rpx rgba(95, 175, 145, 0.35);
+  transition: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tab-item {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3rpx;
+  height: 100%;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-item:active {
+  transform: scale(0.92);
+}
+
+.tab-icon {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-icon__img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-icon__img--inactive {
+  opacity: 1;
+}
+
+.tab-icon__img--active {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.tab-item--active .tab-icon__img--inactive {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.tab-item--active .tab-icon__img--active {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.tab-label {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #5C6B6A;
+  transition: color 0.3s ease;
+}
+
+.tab-item--active .tab-label {
+  color: #FFFFFF;
+  font-weight: 600;
+}

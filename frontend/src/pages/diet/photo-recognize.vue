@@ -270,7 +270,7 @@ async function save() {
     setTimeout(() => safeNavigateBack('/pages/diet/index'), 600);
     dietStore.fetch();
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 </script>

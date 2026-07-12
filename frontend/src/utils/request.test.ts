@@ -50,4 +50,10 @@ describe('request HTTP errors', () => {
     expect(normalizeRequestData({ end_date: undefined, keyword: null, range: 7, text: '' }))
       .toEqual({ range: 7, text: '' });
   });
+
+  it('rewrites legacy localhost avatar URLs to the current device API host', async () => {
+    const { resolveStaticUrl } = await import('./request');
+    expect(resolveStaticUrl('http://127.0.0.1:8000/static/avatar.jpg'))
+      .toBe('http://192.168.1.23:8000/static/avatar.jpg');
+  });
 });

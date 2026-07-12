@@ -22,9 +22,13 @@ let token: string | null = null;
 
 /** Convert backend static paths into a Mini Program-loadable absolute URL. */
 export function resolveStaticUrl(url: string | null | undefined): string {
-  if (!url || url.startsWith('http://') || url.startsWith('https://')) return url || '';
+  if (!url) return '';
+  const apiOrigin = API_BASE.replace(/\/api\/v1$/, '');
+  const legacyLocal = url.match(/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(\/.*)$/);
+  if (legacyLocal) return `${apiOrigin}${legacyLocal[1]}`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (!url.startsWith('/')) return url;
-  return `${API_BASE.replace(/\/api\/v1$/, '')}${url}`;
+  return `${apiOrigin}${url}`;
 }
 
 export function setToken(t: string | null) {
@@ -107,7 +111,7 @@ export function request<T = any>(opts: RequestOptions): Promise<T> {
       timeout: 10000,
       header: buildHeaders(header),
       success: (res: any) => {
-        if (showLoading) uni.hideLoading();
+        if (showLoading) (uni.hideLoading as any)({ fail: () => {} });
         if (res.statusCode === 401) {
           onUnauthorized();
           reject({
@@ -138,7 +142,7 @@ export function request<T = any>(opts: RequestOptions): Promise<T> {
         resolve(res.data as T);
       },
       fail: (err: any) => {
-        if (showLoading) uni.hideLoading();
+        if (showLoading) (uni.hideLoading as any)({ fail: () => {} });
         if (!silent) {
           uni.showToast({ title: '网络异常', icon: 'none' });
         }

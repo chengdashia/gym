@@ -156,7 +156,7 @@ async function save() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 
@@ -176,7 +176,7 @@ async function remove() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '删除失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    (uni.hideLoading as any)({ fail: () => {} });
   }
 }
 </script>

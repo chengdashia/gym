@@ -1,0 +1,18 @@
+<view class="tab-bar" style="padding-bottom: env(safe-area-inset-bottom);">
+  <view class="tab-bar__glass">
+    <view wx:if="{{ready}}" class="tab-bar__pill" style="transform: translateX({{activeIdx * 100}}%);" />
+    <view
+      wx:for="{{list}}"
+      wx:key="pagePath"
+      class="tab-item {{activeIdx === index ? 'tab-item--active' : ''}}"
+      data-idx="{{index}}"
+      bindtap="onSwitch"
+    >
+      <view class="tab-icon">
+        <image class="tab-icon__img tab-icon__img--inactive" src="{{item.inactive}}" mode="aspectFit" />
+        <image class="tab-icon__img tab-icon__img--active" src="{{item.active}}" mode="aspectFit" />
+      </view>
+      <text class="tab-label">{{item.text}}</text>
+    </view>
+  </view>
+</view>
