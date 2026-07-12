@@ -8,12 +8,13 @@ export const useUserStore = defineStore('user', {
     goal: { calories_kcal: 0, carbs_g: 0, protein_g: 0, fat_g: 0 } as NutritionGoal,
     reminders: [] as ReminderItem[],
     loading: false,
+    avatarDataUrl: '',
   }),
 
   getters: {
     hasProfile: (s) => !!s.me?.profile,
     nickname: (s) => s.me?.nickname || '健身伙伴',
-    avatar: (s) => resolveStaticUrl(s.me?.avatar_url),
+    avatar: (s) => s.avatarDataUrl || resolveStaticUrl(s.me?.avatar_url),
   },
 
   actions: {
@@ -21,17 +22,24 @@ export const useUserStore = defineStore('user', {
       this.me = null;
       this.goal = { calories_kcal: 0, carbs_g: 0, protein_g: 0, fat_g: 0 };
       this.reminders = [];
+      this.avatarDataUrl = '';
     },
     async fetchMe() {
       this.loading = true;
       try {
         this.me = await userApi.getMe();
+        this.avatarDataUrl = this.me.avatar_url
+          ? (await userApi.getAvatarData()).data_url || ''
+          : '';
       } finally {
         this.loading = false;
       }
     },
     async updateProfile(payload: { nickname?: string; avatar_url?: string; profile?: Partial<UserProfile> }) {
       this.me = await userApi.updateMe(payload);
+      if (payload.avatar_url) {
+        this.avatarDataUrl = (await userApi.getAvatarData()).data_url || '';
+      }
       return this.me;
     },
     async confirmAgreement(version = 'v1.0') {

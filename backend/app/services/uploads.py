@@ -1,7 +1,10 @@
 import io
+import base64
+import mimetypes
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
+from urllib.parse import urlparse
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
@@ -54,6 +57,8 @@ def delete_local_file(file_url: str) -> bool:
 
 
 def local_file_path(file_url: str) -> Path | None:
+    if file_url.startswith(("http://", "https://")):
+        file_url = urlparse(file_url).path
     prefixes = (settings.static_url_prefix.rstrip("/"), "/private")
     prefix = next((item for item in prefixes if file_url.startswith(f"{item}/")), None)
     if prefix is None:
@@ -61,6 +66,15 @@ def local_file_path(file_url: str) -> Path | None:
     upload_root = Path(settings.upload_dir).resolve()
     path = (upload_root / file_url[len(prefix):].lstrip("/")).resolve()
     return path if upload_root in path.parents else None
+
+
+def image_data_url(file_url: str) -> str | None:
+    path = local_file_path(file_url)
+    if path is None or not path.is_file():
+        return None
+    mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
 
 
 def cleanup_expired_uploads(db: Session) -> None:

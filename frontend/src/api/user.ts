@@ -56,6 +56,9 @@ export const userApi = {
   getMe() {
     return http.get<UserMe>('/users/me');
   },
+  getAvatarData() {
+    return http.get<{ data_url: string | null }>('/users/me/avatar-data');
+  },
   updateMe(payload: { nickname?: string; avatar_url?: string; profile?: Partial<UserProfile> }) {
     return http.put<UserMe>('/users/me', payload);
   },

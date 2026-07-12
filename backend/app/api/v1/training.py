@@ -45,6 +45,7 @@ from app.schemas import (
 from app.services.schedule import resolve_today_day
 from app.services.exercise_stats import effective_set_values
 from app.services.training_history import last_completed_sets
+from app.services.training_sessions import can_resume_session
 from app.utils.date import date_str
 
 
@@ -505,12 +506,15 @@ def create_session(body: SessionCreateIn, user: User = Depends(get_current_user)
     if not day:
         raise BizException(40401, "训练日不存在")
 
-    existing = db.query(TrainingSession).filter(
+    active_sessions = db.query(TrainingSession).filter(
         TrainingSession.user_id == user.id,
         TrainingSession.plan_id == plan.id,
         TrainingSession.deleted_at.is_(None),
         TrainingSession.status.in_(("in_progress", "paused")),
-    ).order_by(TrainingSession.started_at.desc()).first()
+    ).order_by(TrainingSession.started_at.desc()).all()
+    existing = next((item for item in active_sessions if can_resume_session(
+        item, plan_id=plan.id, plan_day_id=day.id, session_date=body.session_date
+    )), None)
     if existing:
         return ok(_session_to_dict(existing))
 

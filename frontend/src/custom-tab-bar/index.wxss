@@ -49,6 +49,10 @@
   z-index: 0;
 }
 
+.tab-bar__pill--animate {
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .tab-item {
   position: relative;
   z-index: 1;

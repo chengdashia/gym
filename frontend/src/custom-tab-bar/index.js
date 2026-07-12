@@ -22,6 +22,7 @@ Component({
     activeIdx: 0,
     ready: false,
     navigating: false,
+    animatePill: false,
     list: [
       { pagePath: '/pages/home/index',     text: '首页', icon: 'home',     inactive: '', active: '' },
       { pagePath: '/pages/diet/index',     text: '饮食', icon: 'diet',     inactive: '', active: '' },
@@ -52,6 +53,7 @@ Component({
       // Initialize route and icon data in a single render.  Rendering at index
       // 0 first makes the pill visibly sweep across unrelated tabs on device.
       this.setData({ list: list, activeIdx: idx === -1 ? 0 : idx, ready: true });
+      wx.nextTick(() => this.setData({ animatePill: true }));
     },
   },
 

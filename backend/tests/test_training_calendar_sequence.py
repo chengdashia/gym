@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 
 from app.services.schedule import resolve_today_day
+from app.services.training_sessions import can_resume_session
 
 
 def test_sequence_moves_by_calendar_day_even_when_previous_session_is_unfinished():
@@ -35,3 +36,13 @@ def test_sequence_anchor_keeps_existing_plan_on_its_current_day_after_upgrade():
     )
     assert resolve_today_day(None, plan, date(2026, 7, 12)).day_name == "肩部"
     assert resolve_today_day(None, plan, date(2026, 7, 13)).day_name == "休息"
+
+
+def test_previous_day_session_cannot_be_resumed_for_today():
+    old = SimpleNamespace(plan_id=1, plan_day_id=10, session_date=datetime(2026, 7, 11))
+    assert can_resume_session(old, plan_id=1, plan_day_id=11, session_date=date(2026, 7, 12)) is False
+
+
+def test_same_day_same_plan_session_can_be_resumed():
+    current = SimpleNamespace(plan_id=1, plan_day_id=11, session_date=datetime(2026, 7, 12))
+    assert can_resume_session(current, plan_id=1, plan_day_id=11, session_date=date(2026, 7, 12)) is True

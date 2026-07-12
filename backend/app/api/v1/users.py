@@ -37,7 +37,7 @@ from app.schemas import (
 from app.services.recommend import recommend
 from app.services.account_data import anonymize_account, clear_personal_data
 from app.services.data_export import build_user_export
-from app.services.uploads import delete_local_file
+from app.services.uploads import delete_local_file, image_data_url
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -113,6 +113,11 @@ def get_me(user: User = Depends(get_current_user), db: Session = Depends(get_db)
     profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
     _apply_latest_weight(db, user.id, profile)
     return ok(_to_user_me(user, profile))
+
+
+@router.get("/me/avatar-data")
+def get_avatar_data(user: User = Depends(get_current_user)):
+    return ok({"data_url": image_data_url(user.avatar_url) if user.avatar_url else None})
 
 
 @router.put("/me")

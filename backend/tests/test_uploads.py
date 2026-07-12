@@ -12,6 +12,7 @@ from app.services.uploads import (
     finalize_upload,
     normalize_image,
     validate_image_bytes,
+    image_data_url,
 )
 from app.api.v1.uploads import upload_policy
 from app.core.exceptions import BizException
@@ -50,6 +51,16 @@ class FakeSession:
 
 
 class UploadTest(unittest.TestCase):
+    def test_image_data_url_supports_absolute_saved_avatar_url(self):
+        contents = io.BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(contents, format="JPEG")
+        with patch("app.services.uploads.settings.upload_dir", "/tmp/gym-avatar-test"):
+            path = __import__("pathlib").Path("/tmp/gym-avatar-test/20260712/avatar.jpg")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(contents.getvalue())
+            value = image_data_url("http://127.0.0.1:8000/static/20260712/avatar.jpg")
+        assert value.startswith("data:image/jpeg;base64,")
+
     def test_avatar_upload_is_allowed_and_permanent(self):
         self.assertEqual(upload_policy("avatar", False), ("avatar", False))
 

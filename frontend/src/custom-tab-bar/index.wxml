@@ -1,6 +1,6 @@
 <view class="tab-bar" style="padding-bottom: env(safe-area-inset-bottom);">
   <view class="tab-bar__glass">
-    <view wx:if="{{ready}}" class="tab-bar__pill" style="transform: translateX({{activeIdx * 100}}%);" />
+    <view wx:if="{{ready}}" class="tab-bar__pill {{animatePill ? 'tab-bar__pill--animate' : ''}}" style="transform: translateX({{activeIdx * 100}}%);" />
     <view
       wx:for="{{list}}"
       wx:key="pagePath"
