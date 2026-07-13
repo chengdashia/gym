@@ -39,10 +39,20 @@
             <MacroBar label="脂肪" :value="diet.fat_g" :goal="diet.fat_goal" color="#C490E0" />
           </view>
         </view>
+        <view class="nutrition-action-copy">
+          <text v-if="diet.calories_over > 0">今日已超过目标 {{ Math.round(diet.calories_over) }} kcal</text>
+          <text v-else>今日还可摄入约 {{ Math.round(diet.calories_remaining) }} kcal</text>
+          <text v-if="diet.protein_remaining > 0">蛋白质还差 {{ Math.round(diet.protein_remaining) }} g</text>
+        </view>
       </liquid-glass-panel>
     </view>
 
     <view class="container">
+      <liquid-glass-card v-if="summary?.primary_action" :highlight="true" hoverable class="primary-action" @tap="openPrimaryAction">
+        <view class="primary-action-label">今天下一步</view>
+        <view class="primary-action-title">{{ summary.primary_action.title }}</view>
+        <view class="primary-action-desc">{{ summary.primary_action.description }}</view>
+      </liquid-glass-card>
       <!-- 训练卡 -->
       <liquid-glass-card :highlight="true" hoverable @tap="goTraining" class="card-section">
         <view class="section-head">
@@ -171,6 +181,7 @@ const diet = computed(() => summary.value?.diet || {
   protein_g: 0, protein_goal: 0,
   fat_g: 0, fat_goal: 0,
   record_count: 0,
+  calories_remaining: 0, calories_over: 0, protein_remaining: 0,
 });
 
 const training = computed(() => summary.value?.training || {
@@ -229,6 +240,15 @@ onShow(async () => {
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
+function openPrimaryAction() {
+  const url = summary.value?.primary_action.url;
+  if (!url) return;
+  if (['/pages/home/index', '/pages/diet/index', '/pages/training/index', '/pages/stats/index', '/pages/mine/index'].includes(url)) {
+    uni.switchTab({ url });
+  } else {
+    uni.navigateTo({ url });
+  }
+}
 async function startSession() {
   if (!requireAuth({ redirect: '/pages/home/index' })) return;
   const t = training.value;

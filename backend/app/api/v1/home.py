@@ -19,6 +19,7 @@ from app.models import (
 from app.api.v1.training import _session_to_dict, _plan_to_dict
 from app.api.v1.stats import _goal_kcal, _target_weight
 from app.services.schedule import resolve_today_day
+from app.services.home_action import choose_primary_action
 
 
 router = APIRouter(prefix="/home", tags=["home"])
@@ -61,6 +62,9 @@ def home_summary(
         "fat_g": round(f, 2),
         "fat_goal": f_g,
         "record_count": len(rows),
+        "calories_remaining": round(max(cal_g - cal, 0), 2),
+        "calories_over": round(max(cal - cal_g, 0), 2) if cal_g > 0 else 0,
+        "protein_remaining": round(max(p_g - p, 0), 2),
     }
 
     # training (today)
@@ -136,8 +140,19 @@ def home_summary(
         "last_recorded_at": last_recorded_at,
     }
 
+    hour = datetime.now().hour
+    current_meal = "breakfast" if hour < 11 else "lunch" if hour < 16 else "dinner"
+    primary_action = choose_primary_action(
+        needs_profile=not profile or any(getattr(profile, field) is None for field in ("gender", "age", "height_cm", "current_weight_kg")),
+        has_goal=cal_g > 0,
+        meal_recorded=any(row.meal_type == current_meal for row in rows),
+        training_status=training["status"],
+        weight_recorded_today=bool(w and w.record_date.date() == d),
+    )
+
     return ok({
         "date": d.strftime("%Y-%m-%d"),
+        "primary_action": primary_action,
         "diet": diet,
         "training": training,
         "weight": weight,

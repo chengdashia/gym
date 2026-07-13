@@ -10,6 +10,9 @@ export interface HomeSummaryDiet {
   fat_g: number;
   fat_goal: number;
   record_count: number;
+  calories_remaining: number;
+  calories_over: number;
+  protein_remaining: number;
 }
 
 export interface HomeSummaryTraining {
@@ -31,6 +34,12 @@ export interface HomeSummaryWeight {
 
 export interface HomeSummary {
   date: string;
+  primary_action: {
+    type: 'complete_profile' | 'set_nutrition_goal' | 'record_meal' | 'resume_training' | 'start_training' | 'record_weight' | 'day_complete';
+    title: string;
+    description: string;
+    url: string;
+  };
   diet: HomeSummaryDiet;
   training: HomeSummaryTraining;
   weight: HomeSummaryWeight;
