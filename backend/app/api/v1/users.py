@@ -35,6 +35,7 @@ from app.schemas import (
     UserProfileOut,
 )
 from app.services.recommend import recommend
+from app.services.onboarding import onboarding_step
 from app.services.account_data import anonymize_account, clear_personal_data
 from app.services.data_export import build_user_export
 from app.services.uploads import delete_local_file, image_data_url
@@ -91,6 +92,7 @@ def _to_user_me(user: User, profile: UserProfile | None) -> dict:
         "is_member": bool(user.is_member),
         "member_expired_at": user.member_expired_at,
         "agreement_confirmed": user.agreement_confirmed_at is not None,
+        "onboarding_step": onboarding_step(user, profile),
         "agreement_version": user.agreement_version,
         "agreement_confirmed_at": user.agreement_confirmed_at,
         "profile": profile_out,

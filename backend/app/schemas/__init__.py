@@ -51,6 +51,7 @@ class UserSummary(BaseModel):
     avatar_url: Optional[str] = None
     is_new_user: bool = False
     agreement_confirmed: bool = False
+    onboarding_step: Literal["agreement", "profile", "goal", "complete"] = "agreement"
     is_member: bool = False
     member_expired_at: Optional[datetime] = None
 
@@ -90,6 +91,7 @@ class UserMeOut(BaseModel):
     is_member: bool = False
     member_expired_at: Optional[datetime] = None
     agreement_confirmed: bool = False
+    onboarding_step: Literal["agreement", "profile", "goal", "complete"] = "agreement"
     agreement_version: Optional[str] = None
     agreement_confirmed_at: Optional[datetime] = None
     profile: Optional[UserProfileOut] = None

@@ -20,6 +20,7 @@ export interface UserMe {
   is_member: boolean;
   member_expired_at: string | null;
   agreement_confirmed: boolean;
+  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
   agreement_version: string | null;
   agreement_confirmed_at: string | null;
   profile: UserProfile | null;

@@ -7,6 +7,7 @@ export interface AuthUserSummary {
   avatar_url: string | null;
   is_new_user: boolean;
   agreement_confirmed: boolean;
+  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
   is_member: boolean;
   member_expired_at: string | null;
 }
