@@ -1,6 +1,7 @@
 import { http } from '@/utils/request';
 import type { MealType } from '@/utils/constants';
 import type { FoodItem } from '@/api/food';
+import type { CustomFoodPayload } from '@/api/food';
 
 export interface RecentFood extends FoodItem { recent_amount?: number | null }
 
@@ -77,6 +78,12 @@ export const dietApi = {
   },
   create(payload: CreateDietPayload) {
     return http.post<DietRecord>('/diet/records', payload);
+  },
+  createCustomFoodRecord(food: CustomFoodPayload, record: CreateDietPayload) {
+    return http.post<{ food: Pick<FoodItem, 'id' | 'name' | 'source'>; record: DietRecord }>(
+      '/diet/custom-food-record',
+      { food, record: { ...record, food_source: 'custom' } },
+    );
   },
   update(id: number, payload: Partial<CreateDietPayload>) {
     return http.put<DietRecord>(`/diet/records/${id}`, payload);

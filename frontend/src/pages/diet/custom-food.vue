@@ -83,7 +83,6 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { foodApi } from '@/api/food';
 import { dietApi } from '@/api/diet';
 import { useDietStore } from '@/store/diet';
 import { useAuthStore } from '@/store/auth';
@@ -142,7 +141,7 @@ async function save() {
   }
   uni.showLoading({ title: '保存中...' });
   try {
-    const food = await foodApi.createCustom({
+    await dietApi.createCustomFoodRecord({
       name: form.name.trim(),
       category: form.category,
       calories_per_100g: form.calories_per_100g,
@@ -151,13 +150,11 @@ async function save() {
       fat_per_100g: form.fat_per_100g,
       default_unit: 'g',
       serving_weight_g: form.serving_weight_g || null,
-    });
-    await dietApi.create({
+    }, {
       record_date: record.date,
       record_time: record.time,
       meal_type: mealTypes[mealIndex.value].value,
       food_source: 'custom',
-      custom_food_id: food.id,
       unit_type: 'g',
       amount_g: record.amount,
     });

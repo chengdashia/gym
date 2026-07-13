@@ -301,6 +301,11 @@ class DietRecordIn(BaseModel):
         return self
 
 
+class CustomFoodRecordIn(BaseModel):
+    food: FoodCustomIn
+    record: DietRecordIn
+
+
 class DietRecordUpdateIn(BaseModel):
     record_date: Optional[date] = None
     record_time: Optional[time] = None

@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.exceptions import BizException
 from app.core.response import ok
 from app.models import DietRecord, Food, OperationLog, User, UserCustomFood
-from app.schemas import DietDayOut, DietRecordIn, DietRecordOut, DietRecordUpdateIn, DietSummary
+from app.schemas import CustomFoodRecordIn, DietDayOut, DietRecordIn, DietRecordOut, DietRecordUpdateIn, DietSummary
 from app.services.nutrition import calc_nutrition_per_100g, calc_nutrition_per_serving, sum_nutrition
 from app.services.diet_shortcuts import recent_unique_records
 from app.services.validation import merge_and_validate_diet_quantity
@@ -265,6 +265,58 @@ def create_record(
         delete_local_file(delete_url)
     db.refresh(r)
     return ok(_record_to_dict(r))
+
+
+@router.post("/custom-food-record")
+def create_custom_food_record(
+    body: CustomFoodRecordIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    food = UserCustomFood(
+        user_id=user.id,
+        name=body.food.name,
+        category=body.food.category,
+        calories_per_100g=body.food.calories_per_100g,
+        carbs_per_100g=body.food.carbs_per_100g,
+        protein_per_100g=body.food.protein_per_100g,
+        fat_per_100g=body.food.fat_per_100g,
+        default_unit=body.food.default_unit,
+        serving_weight_g=body.food.serving_weight_g,
+    )
+    db.add(food)
+    db.flush()
+
+    record_in = body.record
+    nutrition = _nutrition_snapshot(
+        food, "custom", record_in.unit_type, record_in.amount_g, record_in.serving_count
+    )
+    record = DietRecord(
+        user_id=user.id,
+        record_date=datetime.combine(record_in.record_date, time.min),
+        record_time=record_in.record_time,
+        meal_type=record_in.meal_type,
+        food_source="custom",
+        custom_food_id=food.id,
+        food_name_snapshot=food.name,
+        unit_type=record_in.unit_type,
+        amount_g=nutrition.get("amount_g") if record_in.unit_type == "serving" else record_in.amount_g,
+        serving_count=record_in.serving_count if record_in.unit_type == "serving" else None,
+        calories_kcal=nutrition["calories_kcal"],
+        carbs_g=nutrition["carbs_g"],
+        protein_g=nutrition["protein_g"],
+        fat_g=nutrition["fat_g"],
+        note=record_in.note,
+    )
+    db.add(record)
+    db.flush()
+    db.add_all([
+        OperationLog(user_id=user.id, action="foods.custom.create", target_type="food", target_id=food.id),
+        OperationLog(user_id=user.id, action="diet.create", target_type="diet_record", target_id=record.id),
+    ])
+    db.commit()
+    db.refresh(record)
+    return ok({"food": {"id": food.id, "name": food.name, "source": "custom"}, "record": _record_to_dict(record)})
 
 
 @router.put("/records/{record_id}")
