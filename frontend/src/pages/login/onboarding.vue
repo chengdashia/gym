@@ -65,7 +65,21 @@
       </view>
     </view>
 
-    <view v-else class="step step-profile">
+    <view v-else-if="step === 1" class="step step-profile">
+      <view class="profile-shell">
+        <view class="profile-topline">
+          <view class="step-title">开始前请确认</view>
+          <view class="step-desc">阅读并同意协议后，再设置你的个人资料</view>
+        </view>
+        <view class="agree-row profile-agree" @tap="agreed = !agreed">
+          <view :class="['checkbox', { checked: agreed }]"><text v-if="agreed">✓</text></view>
+          <text class="agree-text">我已阅读并同意 <text class="agreement-link" @tap.stop="goAgreement('agreement')">《用户协议》</text> 和 <text class="agreement-link" @tap.stop="goAgreement('privacy')">《隐私政策》</text></text>
+        </view>
+        <button :class="['auth-submit', { disabled: !agreed }]" :disabled="!agreed" @tap="confirmAgreement">同意并继续</button>
+      </view>
+    </view>
+
+    <view v-else-if="step === 2" class="step step-profile">
       <view class="profile-shell">
         <view class="profile-topline">
           <view class="step-title">完善个人资料</view>
@@ -108,19 +122,24 @@
 
         <view v-if="profileError" class="profile-feedback">{{ profileError }}</view>
 
-        <view class="agree-row profile-agree" @tap="agreed = !agreed">
-          <view :class="['checkbox', { checked: agreed }]"><text v-if="agreed">✓</text></view>
-          <text class="agree-text">
-            我已阅读并同意
-            <text class="agreement-link" @tap.stop="goAgreement('agreement')">《用户协议》</text>
-            和
-            <text class="agreement-link" @tap.stop="goAgreement('privacy')">《隐私政策》</text>
-          </text>
-        </view>
-
         <button :class="['auth-submit', { disabled: !canFinishProfile }]" :disabled="!canFinishProfile" @tap="finishProfile">
-          {{ profileLoading ? '正在保存' : '完成设置' }}
+          {{ profileLoading ? '正在保存' : '保存并继续' }}
         </button>
+      </view>
+    </view>
+
+    <view v-else-if="step === 3" class="step step-profile">
+      <view class="profile-shell">
+        <view class="profile-topline">
+          <view class="step-title">你当前最关注什么？</view>
+          <view class="step-desc">只选一个核心目标，其他资料以后再补充</view>
+        </view>
+        <view class="goal-options">
+          <view v-for="goal in onboardingGoals" :key="goal.value" :class="['goal-option', { active: selectedGoal === goal.value }]" @tap="selectedGoal = goal.value">
+            {{ goal.label }}
+          </view>
+        </view>
+        <button :class="['auth-submit', { disabled: !selectedGoal }]" :disabled="!selectedGoal" @tap="finishGoal">完成设置</button>
       </view>
     </view>
   </view>
@@ -134,7 +153,8 @@ import { useUserStore } from '@/store/user';
 import { authApi } from '@/api/auth';
 import { uploadApi } from '@/api/uploads';
 import { resolveStaticUrl } from '@/utils/request';
-import { isProfileComplete, profilePayload, type ProfileSource } from './profile-source';
+import { FITNESS_GOALS, type FitnessGoal } from '@/utils/constants';
+import { isProfileComplete, onboardingStepIndex, profilePayload, type ProfileSource } from './profile-source';
 
 const step = ref(0);
 const agreed = ref(false);
@@ -154,6 +174,8 @@ const profileDraft = reactive({ nickname: '', avatar_url: '' });
 const profileSource = ref<ProfileSource>('default');
 const profileLoading = ref(false);
 const profileError = ref('');
+const selectedGoal = ref<FitnessGoal | ''>('');
+const onboardingGoals = FITNESS_GOALS.filter((goal) => goal.value !== 'shaping');
 const phoneReg = /^1[3-9]\d{9}$/;
 
 const authDisabled = computed(() => {
@@ -171,7 +193,7 @@ const profileStatus = computed(() => {
   if (!profileDraft.avatar_url && !profileDraft.nickname.trim()) return '还需要头像和昵称';
   return profileDraft.avatar_url ? '还需要填写昵称' : '还需要选择头像';
 });
-const canFinishProfile = computed(() => agreed.value && isProfileComplete(
+const canFinishProfile = computed(() => isProfileComplete(
   profileSource.value,
   profileDraft.nickname,
   profileDraft.avatar_url,
@@ -181,7 +203,14 @@ onLoad((options: any) => {
   if (options?.redirect) redirectUrl.value = decodeURIComponent(options.redirect);
 });
 
-onMounted(() => {
+onMounted(async () => {
+  if (!auth.ready) await auth.bootstrap();
+  if (auth.isLogged && auth.user) {
+    if (auth.user.onboarding_step === 'complete') return goHome();
+    step.value = onboardingStepIndex(auth.user.onboarding_step);
+    profileDraft.nickname = auth.user.nickname || '';
+    profileDraft.avatar_url = auth.user.avatar_url || '';
+  }
   if (showPhoneLogin.value) refreshCaptcha();
 });
 
@@ -205,12 +234,12 @@ async function submitWechatLogin() {
   uni.showLoading({ title: '微信登录中...' });
   try {
     const data = await auth.login();
-    if (data.user.agreement_confirmed) {
+    if (data.user.onboarding_step === 'complete') {
       goHome();
       return;
     }
     resetProfileDraft();
-    step.value = 1;
+    step.value = onboardingStepIndex(data.user.onboarding_step);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '微信登录失败', icon: 'none' });
   } finally {
@@ -273,13 +302,12 @@ async function submitAuth() {
     const data = authMode.value === 'login'
       ? await auth.phoneLogin(authForm.phone, authForm.password)
       : await auth.register(authForm.phone, authForm.password, authForm.confirmPassword, captcha.id, authForm.captchaCode);
-    if (data.user.agreement_confirmed) {
+    if (data.user.onboarding_step === 'complete') {
       goHome();
       return;
     }
     resetProfileDraft();
-    agreed.value = authMode.value === 'register';
-    step.value = 1;
+    step.value = onboardingStepIndex(data.user.onboarding_step);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '登录失败', icon: 'none' });
     if (authMode.value === 'register') refreshCaptcha();
@@ -290,28 +318,39 @@ async function submitAuth() {
 
 async function finishProfile() {
   if (!canFinishProfile.value) {
-    profileError.value = !profileDraft.nickname.trim() || !profileDraft.avatar_url
-      ? '请先设置头像和昵称'
-      : '请先同意用户协议和隐私政策';
+    profileError.value = '请先设置头像和昵称';
     return;
   }
   uni.showLoading({ title: '保存资料中...' });
   try {
     const payload = profilePayload(profileSource.value, profileDraft.nickname, profileDraft.avatar_url);
     await userStore.updateProfile(payload);
-    await userStore.confirmAgreement();
     auth.setUser({
       nickname: payload.nickname,
       avatar_url: payload.avatar_url || null,
-      agreement_confirmed: true,
+      onboarding_step: 'goal',
     });
-    uni.showToast({ title: '登录成功', icon: 'success' });
-    setTimeout(goHome, 500);
+    step.value = 3;
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败，请重试', icon: 'none' });
   } finally {
     (uni.hideLoading as any)({ fail: () => {} });
   }
+}
+
+async function confirmAgreement() {
+  if (!agreed.value) return;
+  await userStore.confirmAgreement();
+  auth.setUser({ agreement_confirmed: true, onboarding_step: 'profile' });
+  step.value = 2;
+}
+
+async function finishGoal() {
+  if (!selectedGoal.value) return;
+  await userStore.updateProfile({ profile: { fitness_goal: selectedGoal.value } });
+  auth.setUser({ onboarding_step: 'complete' });
+  uni.showToast({ title: '登录成功', icon: 'success' });
+  setTimeout(goHome, 500);
 }
 
 function goHome() {
@@ -370,4 +409,7 @@ function goAgreement(type: 'agreement' | 'privacy') {
 .profile-state { margin-top: $gap-2; color: $text-3; font-size: $fs-xs; }
 .profile-feedback { margin-top: $gap-2; padding: $gap-2 $gap-3; border-radius: $r-12; background: #fff5e8; color: #a86828; font-size: $fs-xs; line-height: 1.5; }
 .profile-agree { margin: 48rpx 0 $gap-3; }
+.goal-options { display: grid; gap: $gap-2; margin-bottom: $gap-4; }
+.goal-option { padding: $gap-3; border: 2rpx solid rgba(63, 166, 124, .18); border-radius: $r-16; background: #fff; color: $text-1; text-align: center; font-size: $fs-lg; font-weight: 600; }
+.goal-option.active { border-color: $primary; background: rgba(63, 166, 124, .1); color: $primary-deep; }
 </style>

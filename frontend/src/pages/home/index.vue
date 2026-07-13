@@ -207,7 +207,7 @@ onMounted(async () => {
   // 登录态但未确认协议 → 跳到 onboarding 完善资料
   // 放在首页 onMounted 中执行（页面 webview 已 ready），避免 onLaunch 过早 reLaunch
   // 触发「routeDone with a webviewId X is not found」错误
-  if (auth.token && auth.user && !auth.user.agreement_confirmed) {
+  if (auth.token && auth.user && auth.needOnboarding) {
     uni.reLaunch({ url: '/pages/login/onboarding' });
     return;
   }

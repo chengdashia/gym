@@ -9,6 +9,7 @@ interface UserBrief {
   avatar_url: string | null;
   is_new_user: boolean;
   agreement_confirmed: boolean;
+  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
   is_member: boolean;
 }
 
@@ -23,7 +24,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isLogged: (s) => !!s.token,
-    needOnboarding: (s) => !s.user?.agreement_confirmed,
+    needOnboarding: (s) => s.user?.onboarding_step !== 'complete',
   },
 
   actions: {
@@ -60,6 +61,7 @@ export const useAuthStore = defineStore('auth', {
           avatar_url: me.avatar_url,
           is_new_user: false,
           agreement_confirmed: me.agreement_confirmed,
+          onboarding_step: me.onboarding_step,
           is_member: me.is_member,
         });
       } catch (error: any) {

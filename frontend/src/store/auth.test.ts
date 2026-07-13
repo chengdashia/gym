@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     avatar_url: null,
     phone: '13800138000',
     agreement_confirmed: true,
+    onboarding_step: 'complete' as const,
     agreement_version: 'v1.0',
     agreement_confirmed_at: '2026-07-10T00:00:00Z',
     is_member: false,
@@ -39,6 +40,7 @@ describe('auth bootstrap', () => {
       avatar_url: null,
       phone: '13800138000',
       agreement_confirmed: true,
+      onboarding_step: 'complete' as const,
       agreement_version: 'v1.0',
       agreement_confirmed_at: '2026-07-10T00:00:00Z',
       is_member: false,
@@ -85,6 +87,21 @@ describe('auth bootstrap', () => {
       is_member: false,
     }));
     expect(mocks.setStorageSync).toHaveBeenCalledWith(STORAGE_KEYS.user, auth.user);
+  });
+
+  it('uses the server onboarding step instead of agreement alone', async () => {
+    mocks.getMe.mockResolvedValueOnce({
+      ...(await mocks.getMe()),
+      agreement_confirmed: true,
+      onboarding_step: 'goal' as any,
+    });
+    const { useAuthStore } = await import('./auth');
+    const auth = useAuthStore();
+
+    await auth.bootstrap();
+
+    expect(auth.needOnboarding).toBe(true);
+    expect(auth.user?.onboarding_step).toBe('goal');
   });
 
   it('keeps the saved token when refreshing the user fails with a network error', async () => {
