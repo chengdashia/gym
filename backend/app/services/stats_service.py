@@ -4,7 +4,7 @@ from datetime import date, datetime, time
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.models import DietRecord, TrainingSession, UserProfile, WeightRecord
+from app.models import DietRecord, TrainingSession, WeightRecord
 from app.utils.date import range_dates
 from app.services.exercise_stats import effective_set_values
 
@@ -12,6 +12,20 @@ from app.services.exercise_stats import effective_set_values
 def effective_session_volume(session) -> float:
     exercises = getattr(session, "exercises", None) or []
     return sum(effective_set_values(set_row)[2] for exercise in exercises for set_row in (exercise.sets or []))
+
+
+def add_weight_moving_average(points: list[dict]) -> list[dict]:
+    result = []
+    for index, point in enumerate(points):
+        values = [
+            item["weight_kg"] for item in points[max(0, index - 6):index + 1]
+            if item["weight_kg"] is not None
+        ]
+        result.append({
+            **point,
+            "average_7d": round(sum(values) / len(values), 2) if len(values) >= 3 else None,
+        })
+    return result
 
 
 def diet_series(db: Session, user_id: int, days: int, end: date | None = None,
@@ -98,12 +112,6 @@ def weight_series(db: Session, user_id: int, days: int, end: date | None = None,
         d = r.record_date.date()
         latest_by_day[d] = float(r.weight_kg)
 
-    # 没有任何体重记录时，用 profile.current_weight_kg 在今天补一个点，避免图表空白
-    if not latest_by_day:
-        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-        if profile and profile.current_weight_kg is not None:
-            latest_by_day[end] = float(profile.current_weight_kg)
-
     out = []
     first = next(iter(latest_by_day.values()), None)
     for d in sorted({d for d in range_dates(days, end)}):
@@ -115,4 +123,4 @@ def weight_series(db: Session, user_id: int, days: int, end: date | None = None,
             "diff_kg": None if w is None or target_weight is None else round(w - target_weight, 2),
             "change_from_start": None if w is None or first is None else round(w - first, 2),
         })
-    return out
+    return add_weight_moving_average(out)

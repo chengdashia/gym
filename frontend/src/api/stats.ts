@@ -25,6 +25,7 @@ export interface WeightStatPoint {
   target_weight_kg: number | null;
   diff_kg: number | null;
   change_from_start: number | null;
+  average_7d: number | null;
 }
 export interface ExerciseStat {
   exercise_name: string;

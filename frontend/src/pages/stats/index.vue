@@ -36,6 +36,7 @@
         <EChartsView v-if="dietOption" :option="dietOption" canvas-id="diet-chart" />
         <view v-else class="chart-empty">暂无数据</view>
       </view>
+      <view v-if="weightTrendHint" class="chart-sub">{{ weightTrendHint }}</view>
       <view class="macros-summary">
         <view class="ms-cell">
           <view class="ms-num">{{ Math.round(avgCarbs) }}</view>
@@ -167,6 +168,10 @@ const weightChange = computed<number | null>(() => {
 const latestWeight = computed<number | null>(() => {
   const valid = validWeightPoints(weightData.value);
   return valid.length ? Number(valid[valid.length - 1].weight_kg) : null;
+});
+const weightTrendHint = computed(() => {
+  const count = validWeightPoints(weightData.value).length;
+  return count >= 3 ? '' : `还需要记录 ${3 - count} 天才能生成 7 日趋势`;
 });
 
 const dietOption = computed(() => {
@@ -312,6 +317,7 @@ const weightOption = computed(() => {
   if (!valid.length) return null;
   const dates = valid.map((d) => d.date.slice(5));
   const weights = valid.map((d) => d.weight_kg);
+  const averages = valid.map((d) => d.average_7d);
   const target = valid[0]?.target_weight_kg;
 
   return {
@@ -357,6 +363,15 @@ const weightOption = computed(() => {
           data: [{ yAxis: target, name: '目标' }],
           label: { color: chartTheme.warm, fontSize: 10 },
         } : undefined,
+        connectNulls: false,
+      },
+      {
+        name: '7日均线',
+        type: 'line',
+        smooth: true,
+        data: averages,
+        lineStyle: { width: 3, color: chartTheme.info },
+        symbol: 'none',
         connectNulls: false,
       },
     ],
