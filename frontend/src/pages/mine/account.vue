@@ -55,7 +55,7 @@
           </view>
         </view>
 
-        <view v-if="weightHistory.length < 2" class="chart-empty">
+        <view v-if="!hasWeightChartData(weightHistory.length)" class="chart-empty">
           <line-icon name="scale" tint="mint" :size="64" />
           <text>多记录几次，趋势会更清晰</text>
         </view>
@@ -195,6 +195,7 @@ import { userApi } from '@/api/user';
 import { clearAllCache } from '@/utils/cache';
 import { formatTime, today } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
+import { hasWeightChartData } from '@/utils/weight-chart';
 import { weightRecordToForm } from '@/utils/weight-record';
 
 const userStore = useUserStore();
@@ -327,7 +328,7 @@ const GRID_COLOR = '#E6ECEA';
 
 function drawChart() {
   const data = weightHistory.value;
-  if (data.length < 2) return;
+  if (!hasWeightChartData(data.length)) return;
 
   const query = uni.createSelectorQuery();
   query.select('#weight-trend-canvas')
