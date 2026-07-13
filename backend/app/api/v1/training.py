@@ -45,6 +45,7 @@ from app.schemas import (
 from app.services.schedule import resolve_today_day
 from app.services.exercise_stats import effective_set_values
 from app.services.training_history import last_completed_sets
+from app.services.training_summary import build_training_summary
 from app.services.training_sessions import can_resume_session
 from app.utils.date import date_str
 
@@ -594,6 +595,29 @@ def get_session(session_id: int, user: User = Depends(get_current_user), db: Ses
     if not s:
         raise BizException(40401, "训练记录不存在")
     return ok(_session_to_dict(s))
+
+
+@router.get("/sessions/{session_id}/summary")
+def get_session_summary(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    session = db.query(TrainingSession).filter(
+        TrainingSession.id == session_id, TrainingSession.user_id == user.id,
+        TrainingSession.deleted_at.is_(None),
+    ).first()
+    if not session:
+        raise BizException(40401, "训练记录不存在")
+    previous_query = db.query(TrainingSession).filter(
+        TrainingSession.user_id == user.id,
+        TrainingSession.id != session.id,
+        TrainingSession.status == "completed",
+        TrainingSession.deleted_at.is_(None),
+        TrainingSession.started_at < session.started_at,
+    )
+    if session.plan_day_id:
+        previous_query = previous_query.filter(TrainingSession.plan_day_id == session.plan_day_id)
+    else:
+        previous_query = previous_query.filter(TrainingSession.session_name == session.session_name)
+    previous = previous_query.order_by(TrainingSession.started_at.desc()).first()
+    return ok(build_training_summary(session, previous))
 
 
 @router.put("/sessions/{session_id}")

@@ -18,6 +18,15 @@
         </view>
       </view>
     </liquid-glass-card>
+    <liquid-glass-card v-if="summary" variant="light" radius="20rpx" padding="24rpx">
+      <view class="ex-name">训练总结</view>
+      <view class="summary-line">动作 {{ summary.completed_exercises }}/{{ summary.planned_exercises }} · 组数 {{ summary.completed_sets }}/{{ summary.planned_sets }}</view>
+      <view v-if="summary.volume_change !== null" class="summary-line">较上次容量 {{ summary.volume_change >= 0 ? '+' : '' }}{{ Math.round(summary.volume_change) }} kg</view>
+      <view v-for="exercise in summary.exercises" :key="exercise.name" class="summary-line">
+        {{ exercise.name }} {{ exercise.completed_sets }}/{{ exercise.planned_sets }} 组
+        <text v-if="exercise.progression_hint"> · {{ exercise.progression_hint }}</text>
+      </view>
+    </liquid-glass-card>
 
     <view class="exercises">
       <liquid-glass-card
@@ -54,7 +63,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/store/auth';
-import { trainingApi, TrainingSession } from '@/api/training';
+import { trainingApi, TrainingSession, type TrainingSummary } from '@/api/training';
 import { humanizeDuration } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
 import { effectiveSetValues, sessionVolume } from '@/utils/training-progress';
@@ -62,6 +71,7 @@ import type { SessionSet } from '@/api/training';
 
 const id = ref(0);
 const session = ref<TrainingSession | null>(null);
+const summary = ref<TrainingSummary | null>(null);
 const loading = ref(false);
 const auth = useAuthStore();
 
@@ -93,7 +103,10 @@ onMounted(async () => {
   if (!id.value) return;
   loading.value = true;
   try {
-    session.value = await trainingApi.getSession(id.value);
+    [session.value, summary.value] = await Promise.all([
+      trainingApi.getSession(id.value),
+      trainingApi.getSessionSummary(id.value).catch(() => null),
+    ]);
   } catch (e) {
     uni.showToast({ title: '加载详情失败', icon: 'none' });
   } finally {
@@ -148,6 +161,7 @@ onMounted(async () => {
   color: $text-3;
   margin-top: 4rpx;
 }
+.summary-line { margin-top: $gap-1; color: $text-2; font-size: $fs-sm; line-height: 1.6; }
 .set-list {
   margin-top: $gap-2;
 }

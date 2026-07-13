@@ -246,7 +246,7 @@ async function finishSession() {
     session.value.status = finished.status;
     uni.showToast({ title: `训练完成 · ${Math.round(finished.total_volume)} kg`, icon: 'success' });
     allowBack = true;
-    setTimeout(() => safeNavigateBack('/pages/training/index'), 700);
+    setTimeout(() => uni.redirectTo({ url: `/pages/training/history-detail?id=${finished.id}&summary=1` }), 700);
   } catch (e: any) { uni.showToast({ title: e?.message || '完成失败', icon: 'none' }); }
   finally { finishing.value = false; }
 }

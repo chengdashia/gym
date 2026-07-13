@@ -96,6 +96,20 @@ export interface TrainingSession {
   exercises?: SessionExercise[];
 }
 
+export interface TrainingSummary {
+  session_id: number;
+  session_name: string;
+  duration_seconds: number;
+  completed_exercises: number;
+  planned_exercises: number;
+  completed_sets: number;
+  planned_sets: number;
+  total_volume: number;
+  previous_volume: number | null;
+  volume_change: number | null;
+  exercises: Array<{ name: string; completed_sets: number; planned_sets: number; progression_hint: string | null }>;
+}
+
 export interface TodayTraining {
   has_plan: boolean;
   is_rest_day: boolean;
@@ -142,6 +156,9 @@ export const trainingApi = {
   },
   getSession(id: number) {
     return http.get<TrainingSession>(`/training/sessions/${id}`);
+  },
+  getSessionSummary(id: number) {
+    return http.get<TrainingSummary>(`/training/sessions/${id}/summary`);
   },
   updateSession(id: number, payload: {
     status: string;
