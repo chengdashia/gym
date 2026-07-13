@@ -57,6 +57,36 @@ def export_personal_data(
     )
 
 
+def _upsert_profile_weight(db: Session, user_id: int, weight_kg) -> WeightRecord:
+    now = datetime.now()
+    start = datetime.combine(now.date(), time.min)
+    end = datetime.combine(now.date(), time.max)
+    records = db.query(WeightRecord).filter(
+        WeightRecord.user_id == user_id,
+        WeightRecord.note == "基础资料同步",
+        WeightRecord.deleted_at.is_(None),
+        WeightRecord.record_date >= start,
+        WeightRecord.record_date <= end,
+    ).order_by(WeightRecord.record_time.desc(), WeightRecord.id.desc()).all()
+    if records:
+        record = records[0]
+        for duplicate in records[1:]:
+            duplicate.deleted_at = now
+        record.weight_kg = weight_kg
+        record.record_time = now.time().replace(microsecond=0)
+        return record
+
+    record = WeightRecord(
+        user_id=user_id,
+        record_date=datetime.combine(now.date(), time.min),
+        record_time=now.time().replace(microsecond=0),
+        weight_kg=weight_kg,
+        note="基础资料同步",
+    )
+    db.add(record)
+    return record
+
+
 def _to_user_me(user: User, profile: UserProfile | None) -> dict:
     profile_out = UserProfileOut.model_validate(profile).model_dump() if profile else None
     return {
@@ -122,6 +152,7 @@ def update_me(
             profile.height_cm = p.height_cm
         if p.current_weight_kg is not None:
             profile.current_weight_kg = p.current_weight_kg
+            _upsert_profile_weight(db, user.id, p.current_weight_kg)
         if p.target_weight_kg is not None:
             profile.target_weight_kg = p.target_weight_kg
         if p.fitness_goal is not None:

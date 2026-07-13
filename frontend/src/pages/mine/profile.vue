@@ -84,7 +84,7 @@
       </liquid-glass-card>
 
       <view class="actions">
-        <liquid-glass-button text="保存资料" variant="primary" @tap="save" />
+        <liquid-glass-button text="保存资料" variant="primary" :loading="saving" @tap="save" />
       </view>
     </view>
   </view>
@@ -110,6 +110,7 @@ const goals = FITNESS_GOALS;
 const frequencies = TRAINING_FREQUENCIES;
 const ready = ref(false);
 const uploadingAvatar = ref(false);
+const saving = ref(false);
 
 const form = reactive({
   nickname: '',
@@ -204,10 +205,12 @@ function validateProfile() {
 }
 
 async function save() {
+  if (saving.value) return;
   if (!validateProfile()) {
     uni.showToast({ title: '请输入有效的数值', icon: 'none' });
     return;
   }
+  saving.value = true;
   uni.showLoading({ title: '保存中...' });
   try {
     await userStore.updateProfile({
@@ -220,6 +223,7 @@ async function save() {
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
+    saving.value = false;
     (uni.hideLoading as any)({ fail: () => {} });
   }
 }
