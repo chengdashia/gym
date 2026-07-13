@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from app.services.exercise_stats import aggregate_exercise_sets, effective_set_values
-from app.services.stats_service import add_weight_moving_average, effective_session_volume
+from app.services.stats_service import add_weight_moving_average, effective_session_volume, weight_trend_meta
 
 
 def exercise(name="卧推"):
@@ -57,3 +57,23 @@ def test_weight_average_requires_three_records_and_uses_last_seven_days():
     assert result[2]["average_7d"] is None
     assert result[4]["average_7d"] == 71
     assert result[-1]["average_7d"] == 73
+
+
+def test_weight_trend_meta_compares_available_moving_averages():
+    points = add_weight_moving_average([
+        {"date": f"2026-07-{day:02d}", "weight_kg": weight}
+        for day, weight in enumerate([70, 70, 70, 69, 69, 69], start=1)
+    ])
+    assert weight_trend_meta(points) == {
+        "record_days": 6,
+        "has_trend": True,
+        "average_change": -1.0,
+    }
+
+
+def test_weight_trend_meta_reports_insufficient_data():
+    assert weight_trend_meta([{"weight_kg": 70, "average_7d": None}]) == {
+        "record_days": 1,
+        "has_trend": False,
+        "average_change": None,
+    }

@@ -98,7 +98,7 @@
         </view>
         <view v-if="latestWeight !== null" class="weight-summary">
           <view class="latest-weight">{{ latestWeight.toFixed(1) }} kg</view>
-          <view v-if="weightChange !== null" class="weight-change" :class="{ down: weightChange < 0, up: weightChange > 0 }">较首日 {{ weightChange > 0 ? '+' : '' }}{{ weightChange.toFixed(1) }} kg</view>
+          <view v-if="weightChange !== null" class="weight-change" :class="{ down: weightChange < 0, up: weightChange > 0 }">周期均值变化 {{ weightChange > 0 ? '+' : '' }}{{ weightChange.toFixed(1) }} kg</view>
         </view>
       </view>
       <view class="chart-box">
@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat, StatsRange, WeeklySummary } from '@/api/stats';
+import { statsApi, DietStatPoint, TrainingStatPoint, WeightStatPoint, ExerciseStat, StatsRange, WeeklySummary, type WeightTrendMeta } from '@/api/stats';
 import { useAuthStore } from '@/store/auth';
 import { chartTheme } from '@/utils/echarts';
 import EChartsView from '@/components/EChartsView.vue';
@@ -139,6 +139,7 @@ const range = ref<StatsRange>(7);
 const dietData = ref<DietStatPoint[]>([]);
 const trainingData = ref<TrainingStatPoint[]>([]);
 const weightData = ref<WeightStatPoint[]>([]);
+const weightMeta = ref<WeightTrendMeta>({ record_days: 0, has_trend: false, average_change: null });
 const exerciseData = ref<ExerciseStat[]>([]);
 const weekly = ref<WeeklySummary | null>(null);
 
@@ -161,17 +162,14 @@ const avgFat = computed(() => {
 const totalSessions = computed(() => trainingData.value.reduce((s, d) => s + d.session_count, 0));
 const totalVolume = computed(() => trainingData.value.reduce((s, d) => s + d.total_volume, 0));
 const weightChange = computed<number | null>(() => {
-  const valid = weightData.value.filter((d) => d.weight_kg != null);
-  if (valid.length < 2) return null;
-  return (valid[valid.length - 1].weight_kg as number) - (valid[0].weight_kg as number);
+  return weightMeta.value.average_change;
 });
 const latestWeight = computed<number | null>(() => {
   const valid = validWeightPoints(weightData.value);
   return valid.length ? Number(valid[valid.length - 1].weight_kg) : null;
 });
 const weightTrendHint = computed(() => {
-  const count = validWeightPoints(weightData.value).length;
-  return count >= 3 ? '' : `还需要记录 ${3 - count} 天才能生成 7 日趋势`;
+  return weightMeta.value.has_trend ? '' : `还需要记录 ${Math.max(3 - weightMeta.value.record_days, 0)} 天才能生成 7 日趋势`;
 });
 
 const dietOption = computed(() => {
@@ -397,6 +395,7 @@ async function load() {
     dietData.value = d.items || [];
     trainingData.value = t.items || [];
     weightData.value = w.items || [];
+    weightMeta.value = w.meta || { record_days: 0, has_trend: false, average_change: null };
     exerciseData.value = e.items || [];
     weekly.value = summary;
   } catch {

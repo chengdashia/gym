@@ -28,6 +28,20 @@ def add_weight_moving_average(points: list[dict]) -> list[dict]:
     return result
 
 
+def weight_trend_meta(points: list[dict]) -> dict:
+    values = [point["weight_kg"] for point in points if point["weight_kg"] is not None]
+    record_days = len(values)
+    period_size = len(values) // 2
+    previous = values[:period_size]
+    current = values[-period_size:] if period_size else []
+    return {
+        "record_days": record_days,
+        "has_trend": record_days >= 3,
+        "average_change": round(sum(current) / period_size - sum(previous) / period_size, 2)
+        if record_days >= 6 else None,
+    }
+
+
 def diet_series(db: Session, user_id: int, days: int, end: date | None = None,
                 calories_goal: float = 0) -> list[dict]:
     end = end or date.today()

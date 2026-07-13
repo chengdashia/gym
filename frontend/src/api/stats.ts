@@ -27,6 +27,11 @@ export interface WeightStatPoint {
   change_from_start: number | null;
   average_7d: number | null;
 }
+export interface WeightTrendMeta {
+  record_days: number;
+  has_trend: boolean;
+  average_change: number | null;
+}
 export interface ExerciseStat {
   exercise_name: string;
   body_part: string | null;
@@ -58,7 +63,7 @@ export const statsApi = {
     return http.get<{ items: TrainingStatPoint[] }>('/stats/training', { range });
   },
   weight(range: StatsRange = 7) {
-    return http.get<{ items: WeightStatPoint[] }>('/stats/weight', { range });
+    return http.get<{ items: WeightStatPoint[]; meta: WeightTrendMeta }>('/stats/weight', { range });
   },
   exercises(range: StatsRange = 7) {
     return http.get<{ items: ExerciseStat[] }>('/stats/exercises', { range });

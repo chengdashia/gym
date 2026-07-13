@@ -9,7 +9,7 @@ from app.core.exceptions import BizException
 from app.core.response import ok
 from app.models import NutritionGoal, TrainingSession, TrainingSessionExercise, TrainingSessionSet, User, UserProfile
 from app.schemas import DietStatOut, TrainingStatOut, WeightStatOut
-from app.services.stats_service import diet_series, training_series, weight_series
+from app.services.stats_service import diet_series, training_series, weight_series, weight_trend_meta
 from app.services.weekly_summary import build_weekly_summary
 from app.services.exercise_stats import aggregate_exercise_sets
 
@@ -88,7 +88,7 @@ def weight_stats(
 ):
     days = _normalize_range(range)
     items = weight_series(db, user.id, days, target_weight=_target_weight(db, user.id))
-    return ok({"range": days, "items": items})
+    return ok({"range": days, "items": items, "meta": weight_trend_meta(items)})
 
 
 @router.get("/exercises")
