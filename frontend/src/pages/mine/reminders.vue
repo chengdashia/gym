@@ -4,7 +4,7 @@
       <view class="head-content">
         <line-icon name="bell" tint="warm" :size="96" class="head-icon" />
         <view class="head-text">每日提醒</view>
-        <view class="head-sub">开启提醒后，会通过系统通知按时提示</view>
+        <view class="head-sub">当前仅保存提醒计划，不会发送系统通知</view>
       </view>
     </liquid-glass-card>
 
@@ -66,6 +66,7 @@ import { useAuthStore } from '@/store/auth';
 import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 import { ReminderItem } from '@/api/user';
+import { validateReminderItems } from '@/utils/reminders';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -128,14 +129,19 @@ function toggleWeekday(type: string, day: number) {
   if (idx >= 0) list.splice(idx, 1);
   else list.push(String(day));
   list.sort((a, b) => Number(a) - Number(b));
-  it.weekdays = list.join(',') || '1,2,3,4,5,6,7';
+  it.weekdays = list.join(',');
 }
 
 async function save() {
+  const error = validateReminderItems(items.value);
+  if (error) {
+    uni.showToast({ title: error, icon: 'none' });
+    return;
+  }
   uni.showLoading({ title: '保存中...' });
   try {
     await userStore.updateReminders(items.value);
-    uni.showToast({ title: '已保存', icon: 'success' });
+    uni.showToast({ title: '提醒计划已保存', icon: 'success' });
     setTimeout(() => safeNavigateBack('/pages/mine/index'), 600);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
