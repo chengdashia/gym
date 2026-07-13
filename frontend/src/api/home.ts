@@ -49,7 +49,7 @@ export interface HomeSummary {
     training_sessions: number;
     weight_days: number;
     streak_days: number;
-  };
+  } | null;
 }
 
 export const homeApi = {

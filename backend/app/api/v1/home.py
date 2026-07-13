@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, time
 from typing import Optional
 
@@ -24,6 +25,15 @@ from app.services.weekly_summary import build_weekly_summary
 
 
 router = APIRouter(prefix="/home", tags=["home"])
+logger = logging.getLogger(__name__)
+
+
+def _weekly_or_none(db: Session, user_id: int, end_date):
+    try:
+        return build_weekly_summary(db, user_id, end_date)
+    except Exception:
+        logger.exception("weekly home summary failed", extra={"user_id": user_id})
+        return None
 
 
 @router.get("/summary")
@@ -157,5 +167,5 @@ def home_summary(
         "diet": diet,
         "training": training,
         "weight": weight,
-        "weekly": build_weekly_summary(db, user.id, d),
+        "weekly": _weekly_or_none(db, user.id, d),
     })

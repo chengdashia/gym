@@ -1,6 +1,7 @@
 import pytest
 
 from app.services.home_action import choose_primary_action
+from app.api.v1 import home
 
 
 @pytest.mark.parametrize(
@@ -29,3 +30,8 @@ def test_higher_priority_wins_when_multiple_actions_are_available():
         training_status="in_progress", weight_recorded_today=False,
     )
     assert action["type"] == "set_nutrition_goal"
+
+
+def test_weekly_failure_does_not_break_home_summary(monkeypatch):
+    monkeypatch.setattr(home, "build_weekly_summary", lambda *args: (_ for _ in ()).throw(RuntimeError("stats down")))
+    assert home._weekly_or_none(object(), 1, object()) is None
