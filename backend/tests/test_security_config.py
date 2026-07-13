@@ -22,3 +22,23 @@ def test_debug_mode_allows_local_defaults():
     settings = Settings(debug=True, db_url="sqlite:///./fitness.db", jwt_secret="dev-only", _env_file=None)
 
     settings.validate_for_runtime()
+
+
+def test_production_rejects_mock_wechat():
+    settings = Settings(
+        debug=False, db_url="mysql://configured", jwt_secret="x" * 32,
+        mock_wechat=True, _env_file=None,
+    )
+
+    with pytest.raises(ValueError, match="MOCK_WECHAT"):
+        settings.validate_for_runtime()
+
+
+def test_production_rejects_default_jwt_secret():
+    settings = Settings(
+        debug=False, db_url="mysql://configured",
+        jwt_secret="dev-only-change-before-production", _env_file=None,
+    )
+
+    with pytest.raises(ValueError, match="JWT_SECRET"):
+        settings.validate_for_runtime()

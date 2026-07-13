@@ -33,8 +33,14 @@ class Settings(BaseSettings):
     upload_max_size_mb: int = 10
 
     def validate_for_runtime(self) -> None:
-        if not self.debug and (not self.db_url or len(self.jwt_secret) < 32):
-            raise ValueError("生产环境必须配置 DB_URL 和至少 32 位 JWT_SECRET")
+        if self.debug:
+            return
+        if not self.db_url:
+            raise ValueError("生产环境必须配置 DB_URL")
+        if len(self.jwt_secret) < 32 or self.jwt_secret == "dev-only-change-before-production":
+            raise ValueError("生产环境必须配置非默认且至少 32 位的 JWT_SECRET")
+        if self.mock_wechat:
+            raise ValueError("生产环境禁止启用 MOCK_WECHAT")
 
 
 settings = Settings()
