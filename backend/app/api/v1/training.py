@@ -675,6 +675,8 @@ def finish_session(session_id: int, user: User = Depends(get_current_user), db: 
     ).first()
     if not s:
         raise BizException(40401, "训练记录不存在")
+    if s.status == "completed":
+        return ok(_session_to_dict(s))
     if s.status not in ("in_progress", "paused"):
         raise BizException(40901, "该训练已结束")
 
