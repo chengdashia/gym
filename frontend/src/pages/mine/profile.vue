@@ -29,34 +29,34 @@
         <view class="row column">
           <view class="row-line">
             <text class="label">年龄</text>
-            <input v-model.number="form.profile.age" type="number" placeholder="请输入" class="input" @blur="clampAge" />
+            <input v-model.number="form.profile.age" type="number" placeholder="可选" class="input" />
             <text class="unit">岁</text>
           </view>
-          <slider :min="10" :max="100" :step="1" :value="num(form.profile.age)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onAgeChange" @change="onAgeChange" class="form-slider" />
+          <slider :min="10" :max="120" :step="1" :value="num(form.profile.age)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onAgeChange" @change="onAgeChange" class="form-slider" />
         </view>
         <view class="row column">
           <view class="row-line">
             <text class="label">身高</text>
-            <input v-model.number="form.profile.height_cm" type="number" placeholder="请输入" class="input" @blur="clampHeight" />
+            <input v-model.number="form.profile.height_cm" type="number" placeholder="可选" class="input" />
             <text class="unit">cm</text>
           </view>
-          <slider :min="120" :max="220" :step="1" :value="num(form.profile.height_cm)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onHeightChange" @change="onHeightChange" class="form-slider" />
+          <slider :min="50" :max="250" :step="1" :value="num(form.profile.height_cm)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onHeightChange" @change="onHeightChange" class="form-slider" />
         </view>
         <view class="row column">
           <view class="row-line">
             <text class="label">当前体重</text>
-            <input v-model.number="form.profile.current_weight_kg" type="digit" placeholder="请输入" class="input" @blur="clampWeight" />
+            <input v-model.number="form.profile.current_weight_kg" type="digit" placeholder="可选" class="input" />
             <text class="unit">kg</text>
           </view>
-          <slider :min="30" :max="200" :step="0.5" :value="num(form.profile.current_weight_kg)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onCurrentWeightChange" @change="onCurrentWeightChange" class="form-slider" />
+          <slider :min="20" :max="250" :step="0.5" :value="num(form.profile.current_weight_kg)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onCurrentWeightChange" @change="onCurrentWeightChange" class="form-slider" />
         </view>
         <view class="row column">
           <view class="row-line">
             <text class="label">目标体重</text>
-            <input v-model.number="form.profile.target_weight_kg" type="digit" placeholder="请输入" class="input" @blur="clampTargetWeight" />
+            <input v-model.number="form.profile.target_weight_kg" type="digit" placeholder="可选" class="input" />
             <text class="unit">kg</text>
           </view>
-          <slider :min="30" :max="200" :step="0.5" :value="num(form.profile.target_weight_kg)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onTargetWeightChange" @change="onTargetWeightChange" class="form-slider" />
+          <slider :min="20" :max="250" :step="0.5" :value="num(form.profile.target_weight_kg)" active-color="#3FA67C" block-color="#3FA67C" background-color="#E8F5EE" block-size="28" @changing="onTargetWeightChange" @change="onTargetWeightChange" class="form-slider" />
         </view>
         <view class="row column">
           <text class="label">健身目标</text>
@@ -102,6 +102,7 @@ import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 import { uploadApi } from '@/api/uploads';
 import { resolveStaticUrl } from '@/utils/request';
+import { normalizeOptionalNumber, PROFILE_BOUNDS } from '@/utils/profile-validation';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -114,13 +115,13 @@ const form = reactive({
   nickname: '',
   avatar_url: '',
   profile: {
-    gender: 'male' as 'male' | 'female',
-    age: 25,
-    height_cm: 170,
-    current_weight_kg: 65,
-    target_weight_kg: 62,
-    fitness_goal: 'fat_loss' as any,
-    training_frequency: '3-4',
+    gender: null as 'male' | 'female' | null,
+    age: null as number | null,
+    height_cm: null as number | null,
+    current_weight_kg: null as number | null,
+    target_weight_kg: null as number | null,
+    fitness_goal: null as string | null,
+    training_frequency: null as string | null,
   },
 });
 
@@ -135,13 +136,13 @@ function syncFromStore() {
   form.nickname = me.nickname || '';
   form.avatar_url = resolveStaticUrl(me.avatar_url);
   if (me.profile) {
-    form.profile.gender = (me.profile.gender as any) || 'male';
-    form.profile.age = me.profile.age || 25;
-    form.profile.height_cm = me.profile.height_cm || 170;
-    form.profile.current_weight_kg = me.profile.current_weight_kg || 65;
-    form.profile.target_weight_kg = me.profile.target_weight_kg || 62;
-    form.profile.fitness_goal = (me.profile.fitness_goal as any) || 'fat_loss';
-    form.profile.training_frequency = me.profile.training_frequency || '3-4';
+    form.profile.gender = (me.profile.gender as any) || null;
+    form.profile.age = me.profile.age ?? null;
+    form.profile.height_cm = me.profile.height_cm ?? null;
+    form.profile.current_weight_kg = me.profile.current_weight_kg ?? null;
+    form.profile.target_weight_kg = me.profile.target_weight_kg ?? null;
+    form.profile.fitness_goal = me.profile.fitness_goal || null;
+    form.profile.training_frequency = me.profile.training_frequency || null;
   }
 }
 
@@ -159,11 +160,6 @@ onMounted(async () => {
   syncFromStore();
   ready.value = true;
 });
-
-function clampAge() { form.profile.age = Math.max(10, Math.min(100, Math.round(num(form.profile.age)))); }
-function clampHeight() { form.profile.height_cm = Math.max(120, Math.min(220, Math.round(num(form.profile.height_cm)))); }
-function clampWeight() { form.profile.current_weight_kg = Math.max(30, Math.min(200, Math.round(num(form.profile.current_weight_kg) * 2) / 2)); }
-function clampTargetWeight() { form.profile.target_weight_kg = Math.max(30, Math.min(200, Math.round(num(form.profile.target_weight_kg) * 2) / 2)); }
 
 function onAgeChange(e: any) { form.profile.age = e.detail.value; }
 function onHeightChange(e: any) { form.profile.height_cm = e.detail.value; }
@@ -198,11 +194,13 @@ function chooseAvatar() {
 
 function validateProfile() {
   const { age, height_cm, current_weight_kg, target_weight_kg } = form.profile;
-  if (!Number.isFinite(age) || !Number.isInteger(age) || age < 5 || age > 120) return false;
-  if (!Number.isFinite(height_cm) || height_cm < 50 || height_cm > 300) return false;
-  if (!Number.isFinite(current_weight_kg) || current_weight_kg < 20 || current_weight_kg > 500) return false;
-  if (!Number.isFinite(target_weight_kg) || target_weight_kg < 20 || target_weight_kg > 500) return false;
-  return true;
+  const values = [
+    normalizeOptionalNumber(age, PROFILE_BOUNDS.age),
+    normalizeOptionalNumber(height_cm, PROFILE_BOUNDS.height),
+    normalizeOptionalNumber(current_weight_kg, PROFILE_BOUNDS.weight),
+    normalizeOptionalNumber(target_weight_kg, PROFILE_BOUNDS.weight),
+  ];
+  return !values.includes(undefined);
 }
 
 async function save() {
