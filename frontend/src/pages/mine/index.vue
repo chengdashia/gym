@@ -10,12 +10,7 @@
         <view class="info">
           <view class="name">{{ nickname }}</view>
           <view class="meta">
-            <liquid-glass-pill
-              :text="isMember ? '会员' : '普通用户'"
-              :variant="isMember ? 'warn' : 'default'"
-              size="xs"
-            />
-            <text v-if="profile?.fitness_goal" class="goal-text">· {{ goalLabel }}</text>
+            <text v-if="profile?.fitness_goal" class="goal-text">{{ goalLabel }}</text>
           </view>
         </view>
         <view class="edit-btn" @tap="goProfile">
@@ -116,8 +111,6 @@ const avatar = computed(() => userStore.avatar);
 const initial = computed(() => nickname.value?.[0] || '健');
 const profile = computed(() => userStore.me?.profile);
 const goal = computed(() => userStore.goal);
-const isMember = computed(() => !!userStore.me?.is_member);
-
 const goalLabel = computed(() => {
   const v = profile.value?.fitness_goal;
   return FITNESS_GOALS.find((g) => g.value === v)?.label || '';

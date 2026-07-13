@@ -177,6 +177,7 @@ import ProgressRing from '@/components/ProgressRing.vue';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { addDays, formatDate, weekdayCN } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
+import { FEATURE_GATES } from '@/utils/feature-gates';
 import { dietApi, type DietRecord } from '@/api/diet';
 import { formatTime } from '@/utils/date';
 import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
@@ -219,7 +220,9 @@ const hasSnackSection = computed(() => showSnack.value || (meals.value.snack || 
 const addOptions = [
   { action: 'add' as const,    icon: 'search', tint: 'mint' as const,  text: '搜索食物', desc: '从食物库查找' },
   { action: 'custom' as const, icon: 'edit',  tint: 'warm' as const,  text: '自定义食物', desc: '手动录入营养' },
-  { action: 'photo' as const,  icon: 'camera', tint: 'sky' as const,   text: '拍照识别', desc: 'AI 智能识别' },
+  ...(FEATURE_GATES.photoRecognition
+    ? [{ action: 'photo' as const, icon: 'camera', tint: 'sky' as const, text: '拍照识别', desc: 'AI 智能识别' }]
+    : []),
 ];
 
 const weekDates = computed(() => {
