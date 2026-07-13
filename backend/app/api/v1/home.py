@@ -20,6 +20,7 @@ from app.api.v1.training import _session_to_dict, _plan_to_dict
 from app.api.v1.stats import _goal_kcal, _target_weight
 from app.services.schedule import resolve_today_day
 from app.services.home_action import choose_primary_action
+from app.services.weekly_summary import build_weekly_summary
 
 
 router = APIRouter(prefix="/home", tags=["home"])
@@ -156,4 +157,5 @@ def home_summary(
         "diet": diet,
         "training": training,
         "weight": weight,
+        "weekly": build_weekly_summary(db, user.id, d),
     })

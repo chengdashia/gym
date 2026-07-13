@@ -43,6 +43,13 @@ export interface HomeSummary {
   diet: HomeSummaryDiet;
   training: HomeSummaryTraining;
   weight: HomeSummaryWeight;
+  weekly: {
+    diet_days: number;
+    nutrition_target_days: number;
+    training_sessions: number;
+    weight_days: number;
+    streak_days: number;
+  };
 }
 
 export const homeApi = {

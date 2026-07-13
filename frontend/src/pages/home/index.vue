@@ -141,6 +141,16 @@
           <view v-if="weight.last_recorded_at" class="weight-foot">最近记录：{{ formatDateTime(weight.last_recorded_at) }}</view>
         </view>
       </liquid-glass-card>
+
+      <liquid-glass-card v-if="summary?.weekly" :highlight="true" class="card-section">
+        <view class="section-head"><view class="left"><view class="bar" /><text class="title">本周反馈</text></view><text class="more" @tap.stop="goStats">详情 ›</text></view>
+        <view class="weekly-grid">
+          <view><text class="weekly-value">{{ summary.weekly.diet_days }}</text><text class="weekly-label">饮食记录天数</text></view>
+          <view><text class="weekly-value">{{ summary.weekly.training_sessions }}</text><text class="weekly-label">完成训练</text></view>
+          <view><text class="weekly-value">{{ summary.weekly.weight_days }}</text><text class="weekly-label">体重记录天数</text></view>
+          <view><text class="weekly-value">{{ summary.weekly.streak_days }}</text><text class="weekly-label">连续行动天数</text></view>
+        </view>
+      </liquid-glass-card>
     </view>
 
     <!-- 自定义液态玻璃 TabBar 由 pages.json tabBar.custom 渲染 -->
@@ -583,4 +593,8 @@ function recordWeight() {
   color: $text-3;
   text-align: center;
 }
+.weekly-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: $gap-2; }
+.weekly-grid > view { display: flex; flex-direction: column; padding: $gap-2; border-radius: $r-12; background: rgba(234, 248, 241, .7); }
+.weekly-value { color: $primary-deep; font-size: $fs-xl; font-weight: 700; }
+.weekly-label { margin-top: 4rpx; color: $text-3; font-size: $fs-xs; }
 </style>
