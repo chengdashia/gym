@@ -34,7 +34,7 @@
       <!-- 趋势图 -->
       <liquid-glass-card variant="light" :highlight="true" class="chart-card">
         <view class="chart-head">
-          <text class="chart-title">近 7 次趋势</text>
+          <text class="chart-title">近 7 天趋势</text>
           <view class="chart-toggle">
             <liquid-glass-pill
               text="柱状"
@@ -197,6 +197,7 @@ import { formatTime, today } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
 import { hasWeightChartData } from '@/utils/weight-chart';
 import { weightRecordToForm } from '@/utils/weight-record';
+import { selectDailyWeightTrend } from '@/utils/weight-trend';
 
 const userStore = useUserStore();
 const auth = useAuthStore();
@@ -256,8 +257,8 @@ async function loadWeight() {
     const items = res.items || [];
     weightRecords.value = items;
     latestWeight.value = items[0] || null;
-    // 最近 7 条，反转为正序（旧→新）给图表
-    weightHistory.value = items.slice(0, 7).reverse();
+    // 每天仅保留最后一次记录，按旧→新交给图表
+    weightHistory.value = selectDailyWeightTrend(items);
     // 数据更新后重绘图表
     nextTick(() => drawChart());
   } catch (e) {
