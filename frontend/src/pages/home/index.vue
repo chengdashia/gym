@@ -13,6 +13,7 @@
             <image v-else :src="avatar" mode="aspectFill" class="avatar-img" />
           </view>
         </view>
+        <view v-if="!auth.isLogged" class="guest-login" @tap="goLogin">登录 / 注册</view>
       </view>
 
       <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="ring-panel">
@@ -179,9 +180,10 @@ function syncTabBar() {
 
 const userStore = useUserStore();
 const trainingStore = useTrainingStore();
+const auth = useAuthStore();
 
 const summary = ref<HomeSummary | null>(null);
-const nickname = computed(() => userStore.nickname);
+const nickname = computed(() => auth.isLogged ? (userStore.nickname || '健身伙伴') : '游客');
 const avatar = computed(() => userStore.avatar);
 const initial = computed(() => nickname.value?.[0] || '健');
 
@@ -223,15 +225,7 @@ async function load() {
 }
 
 onMounted(async () => {
-  const auth = useAuthStore();
   if (!auth.ready) await auth.bootstrap();
-  // 登录态但未确认协议 → 跳到 onboarding 完善资料
-  // 放在首页 onMounted 中执行（页面 webview 已 ready），避免 onLaunch 过早 reLaunch
-  // 触发「routeDone with a webviewId X is not found」错误
-  if (auth.token && auth.user && auth.needOnboarding) {
-    uni.reLaunch({ url: '/pages/login/onboarding' });
-    return;
-  }
   if (auth.isLogged) {
     if (!userStore.me) await userStore.fetchMe().catch(() => {});
     await load();
@@ -248,6 +242,7 @@ onShow(async () => {
 });
 
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
+function goLogin() { uni.navigateTo({ url: '/pages/login/onboarding' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
 function openPrimaryAction() {
@@ -361,6 +356,7 @@ function recordWeight() {
     inset 0 1rpx 0 rgba(255, 255, 255, 0.7),
     0 4rpx 12rpx rgba(95, 175, 145, 0.15);
 }
+.guest-login { margin-left: auto; padding: 10rpx 18rpx; border-radius: $r-pill; background: rgba(255, 255, 255, .7); color: $primary-deep; font-size: $fs-sm; font-weight: 600; }
 
 .avatar {
   width: 80rpx;

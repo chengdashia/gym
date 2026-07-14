@@ -8,13 +8,14 @@
           <image v-else :src="avatar" class="avatar-img" mode="aspectFill" />
         </view>
         <view class="info">
-          <view class="name">{{ nickname }}</view>
+          <view class="name">{{ auth.isLogged ? nickname : '游客模式' }}</view>
           <view class="meta">
             <text v-if="profile?.fitness_goal" class="goal-text">{{ goalLabel }}</text>
+            <text v-else-if="!auth.isLogged" class="goal-text">登录后可同步你的记录</text>
           </view>
         </view>
         <view class="edit-btn" @tap="goProfile">
-          <text>编辑</text>
+          <text>{{ auth.isLogged ? '编辑' : '登录 / 注册' }}</text>
           <text class="edit-arrow">›</text>
         </view>
       </view>
@@ -75,7 +76,7 @@
         <text class="mi-label">隐私政策</text>
         <text class="mi-arrow">›</text>
       </view>
-      <view class="menu-item" @tap="logout">
+      <view v-if="auth.isLogged" class="menu-item" @tap="logout">
         <line-icon name="logout" color="#D96B7D" :stroke-width="1.7" :size="44" class="mi-icon" />
         <text class="mi-label danger">退出登录</text>
         <text class="mi-arrow">›</text>
@@ -129,10 +130,12 @@ onShow(() => {
 });
 
 function goProfile() {
+  if (!auth.isLogged) return goLogin();
   const url = '/pages/mine/profile';
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
+function goLogin() { uni.navigateTo({ url: '/pages/login/onboarding' }); }
 function goGoals() {
   const url = '/pages/mine/goals';
   if (!requireAuth({ redirect: url })) return;

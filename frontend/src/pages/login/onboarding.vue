@@ -61,6 +61,7 @@
               {{ authMode === 'login' ? '手机号登录' : '注册并登录' }}
             </button>
           </view>
+          <button class="guest-action" @tap="goGuest">暂不登录，先逛逛</button>
         </view>
       </view>
     </view>
@@ -76,6 +77,7 @@
           <text class="agree-text">我已阅读并同意 <text class="agreement-link" @tap.stop="goAgreement('agreement')">《用户协议》</text> 和 <text class="agreement-link" @tap.stop="goAgreement('privacy')">《隐私政策》</text></text>
         </view>
         <button :class="['auth-submit', { disabled: !agreed }]" :disabled="!agreed" @tap="confirmAgreement">同意并继续</button>
+        <button class="guest-action" @tap="goGuest">暂不完善，先体验</button>
       </view>
     </view>
 
@@ -125,6 +127,7 @@
         <button :class="['auth-submit', { disabled: !canFinishProfile }]" :disabled="!canFinishProfile" @tap="finishProfile">
           {{ profileLoading ? '正在保存' : '保存并继续' }}
         </button>
+        <button class="guest-action" @tap="goGuest">暂不完善，先体验</button>
       </view>
     </view>
 
@@ -140,6 +143,7 @@
           </view>
         </view>
         <button :class="['auth-submit', { disabled: !selectedGoal }]" :disabled="!selectedGoal" @tap="finishGoal">完成设置</button>
+        <button class="guest-action" @tap="goGuest">暂不完善，先体验</button>
       </view>
     </view>
   </view>
@@ -357,6 +361,10 @@ function goHome() {
   uni.reLaunch({ url: redirectUrl.value });
 }
 
+function goGuest() {
+  uni.reLaunch({ url: '/pages/home/index' });
+}
+
 function goAgreement(type: 'agreement' | 'privacy') {
   uni.navigateTo({ url: `/pages/mine/agreement?type=${type}` });
 }
@@ -390,6 +398,8 @@ function goAgreement(type: 'agreement' | 'privacy') {
 .auth-submit.disabled { opacity: 0.5; }
 .wechat-submit { margin-bottom: $gap-2; }
 .phone-login-toggle { padding: $gap-2 0 $gap-3; text-align: center; color: $primary-deep; font-size: $fs-sm; }
+.guest-action { margin-top: $gap-3; padding: 0; border: 0; background: transparent; color: $text-3; font-size: $fs-sm; line-height: 48rpx; }
+.guest-action::after { border: 0; }
 .step-profile { min-height: 100vh; justify-content: center; padding: 72rpx 0 100rpx; box-sizing: border-box; }
 .profile-shell { width: 100%; max-width: 680rpx; margin: auto; }
 .profile-topline { margin-bottom: 56rpx; text-align: center; }
