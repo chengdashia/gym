@@ -1,0 +1,206 @@
+[
+  {
+    "stable_key": "exercise:三头下压",
+    "name": "三头下压",
+    "body_part": "手臂",
+    "description": "龙门架三头下压"
+  },
+  {
+    "stable_key": "exercise:上斜哑铃推举",
+    "name": "上斜哑铃推举",
+    "body_part": "胸",
+    "description": "上斜椅30度，哑铃推举"
+  },
+  {
+    "stable_key": "exercise:二头弯举",
+    "name": "二头弯举",
+    "body_part": "手臂",
+    "description": "哑铃/杠铃二头弯举"
+  },
+  {
+    "stable_key": "exercise:仰卧臂屈伸",
+    "name": "仰卧臂屈伸",
+    "body_part": "手臂",
+    "description": "仰卧杠铃三头臂屈伸"
+  },
+  {
+    "stable_key": "exercise:仰卧起坐",
+    "name": "仰卧起坐",
+    "body_part": "核心",
+    "description": "标准仰卧起坐"
+  },
+  {
+    "stable_key": "exercise:俄罗斯转体",
+    "name": "俄罗斯转体",
+    "body_part": "核心",
+    "description": "坐姿转体"
+  },
+  {
+    "stable_key": "exercise:俯卧撑",
+    "name": "俯卧撑",
+    "body_part": "胸",
+    "description": "标准俯卧撑"
+  },
+  {
+    "stable_key": "exercise:动感单车",
+    "name": "动感单车",
+    "body_part": "有氧",
+    "description": "室内单车"
+  },
+  {
+    "stable_key": "exercise:卷腹",
+    "name": "卷腹",
+    "body_part": "核心",
+    "description": "仰卧卷腹"
+  },
+  {
+    "stable_key": "exercise:双杠臂屈伸",
+    "name": "双杠臂屈伸",
+    "body_part": "胸",
+    "description": "双杠撑体下降后撑起"
+  },
+  {
+    "stable_key": "exercise:哑铃侧平举",
+    "name": "哑铃侧平举",
+    "body_part": "肩",
+    "description": "站姿哑铃侧平举"
+  },
+  {
+    "stable_key": "exercise:哑铃卧推",
+    "name": "哑铃卧推",
+    "body_part": "胸",
+    "description": "平躺仰卧持哑铃推举"
+  },
+  {
+    "stable_key": "exercise:坐姿划船",
+    "name": "坐姿划船",
+    "body_part": "背",
+    "description": "坐姿器械划船"
+  },
+  {
+    "stable_key": "exercise:平板支撑",
+    "name": "平板支撑",
+    "body_part": "核心",
+    "description": "俯桥平板支撑"
+  },
+  {
+    "stable_key": "exercise:引体向上",
+    "name": "引体向上",
+    "body_part": "背",
+    "description": "正握单杠引体向上"
+  },
+  {
+    "stable_key": "exercise:弯举集中弯举",
+    "name": "弯举集中弯举",
+    "body_part": "手臂",
+    "description": "坐姿集中弯举"
+  },
+  {
+    "stable_key": "exercise:杠铃划船",
+    "name": "杠铃划船",
+    "body_part": "背",
+    "description": "俯身杠铃划船"
+  },
+  {
+    "stable_key": "exercise:杠铃卧推",
+    "name": "杠铃卧推",
+    "body_part": "胸",
+    "description": "平躺仰卧，双手略宽于肩握杠铃，下放至胸口推起"
+  },
+  {
+    "stable_key": "exercise:杠铃推举",
+    "name": "杠铃推举",
+    "body_part": "肩",
+    "description": "站姿杠铃颈前推举"
+  },
+  {
+    "stable_key": "exercise:杠铃深蹲",
+    "name": "杠铃深蹲",
+    "body_part": "腿",
+    "description": "后蹲到大腿平行"
+  },
+  {
+    "stable_key": "exercise:杠铃硬拉",
+    "name": "杠铃硬拉",
+    "body_part": "腿",
+    "description": "传统屈腿硬拉"
+  },
+  {
+    "stable_key": "exercise:椭圆机",
+    "name": "椭圆机",
+    "body_part": "有氧",
+    "description": "椭圆机训练"
+  },
+  {
+    "stable_key": "exercise:箭步蹲",
+    "name": "箭步蹲",
+    "body_part": "腿",
+    "description": "行走箭步蹲"
+  },
+  {
+    "stable_key": "exercise:绳索面拉",
+    "name": "绳索面拉",
+    "body_part": "肩",
+    "description": "绳索面拉锻炼后束"
+  },
+  {
+    "stable_key": "exercise:罗马尼亚硬拉",
+    "name": "罗马尼亚硬拉",
+    "body_part": "腿",
+    "description": "直腿为主的硬拉变体"
+  },
+  {
+    "stable_key": "exercise:罗马椅挺身",
+    "name": "罗马椅挺身",
+    "body_part": "背",
+    "description": "罗马椅挺身下放挺起"
+  },
+  {
+    "stable_key": "exercise:腿举",
+    "name": "腿举",
+    "body_part": "腿",
+    "description": "器械腿推"
+  },
+  {
+    "stable_key": "exercise:腿屈伸",
+    "name": "腿屈伸",
+    "body_part": "腿",
+    "description": "坐姿腿屈伸"
+  },
+  {
+    "stable_key": "exercise:腿弯举",
+    "name": "腿弯举",
+    "body_part": "腿",
+    "description": "俯卧/坐姿腿弯举"
+  },
+  {
+    "stable_key": "exercise:跑步",
+    "name": "跑步",
+    "body_part": "有氧",
+    "description": "慢跑/快跑"
+  },
+  {
+    "stable_key": "exercise:跳绳",
+    "name": "跳绳",
+    "body_part": "有氧",
+    "description": "跳绳有氧"
+  },
+  {
+    "stable_key": "exercise:阿诺德推举",
+    "name": "阿诺德推举",
+    "body_part": "肩",
+    "description": "旋转动作的阿诺德推举"
+  },
+  {
+    "stable_key": "exercise:高位下拉",
+    "name": "高位下拉",
+    "body_part": "背",
+    "description": "龙门架高位下拉"
+  },
+  {
+    "stable_key": "exercise:龙门架夹胸",
+    "name": "龙门架夹胸",
+    "body_part": "胸",
+    "description": "站姿龙门架夹胸"
+  }
+]

@@ -1,6 +1,7 @@
 import { migrateDatabase } from './migrations';
 import { openPlusSqliteDatabase } from './plus-sqlite';
 import type { SqlDatabase } from './types';
+import { installSeeds } from '@/local/seed';
 
 let database: SqlDatabase | null = null;
 
@@ -9,6 +10,7 @@ export async function initializeLocalDatabase(): Promise<SqlDatabase> {
   database = await openPlusSqliteDatabase();
   try {
     await migrateDatabase(database);
+    await installSeeds(database);
     return database;
   } catch (error) {
     await database.close();

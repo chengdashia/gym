@@ -9,6 +9,7 @@
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin && node scripts/postbuild-mp-weixin.mjs",
     "build:app-android": "uni build -p app-plus",
+    "seeds:build": "python3 scripts/export-local-seeds.py",
     "dev:h5": "uni",
     "build:h5": "uni build"
   },

@@ -1,0 +1,737 @@
+[
+  {
+    "stable_key": "template:三分化增肌模板",
+    "name": "三分化增肌模板",
+    "description": "经典推/拉/腿三分化，适合中级训练者",
+    "split_type": "three_split",
+    "difficulty": "intermediate",
+    "goal": "muscle_gain",
+    "days": [
+      {
+        "name": "推（胸/肩/三头）",
+        "is_rest_day": false,
+        "weekday": 1,
+        "exercises": [
+          {
+            "name": "杠铃卧推",
+            "sets": 4,
+            "reps": 8,
+            "weight": 60.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "上斜哑铃推举",
+            "sets": 4,
+            "reps": 10,
+            "weight": 22.5,
+            "rest_seconds": 150
+          },
+          {
+            "name": "哑铃侧平举",
+            "sets": 3,
+            "reps": 12,
+            "weight": 8.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "三头下压",
+            "sets": 4,
+            "reps": 12,
+            "weight": 30.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "俯卧撑",
+            "sets": 3,
+            "reps": 15,
+            "weight": null,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "拉（背/二头）",
+        "is_rest_day": false,
+        "weekday": 3,
+        "exercises": [
+          {
+            "name": "杠铃划船",
+            "sets": 4,
+            "reps": 8,
+            "weight": 50.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "高位下拉",
+            "sets": 4,
+            "reps": 10,
+            "weight": 45.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "引体向上",
+            "sets": 3,
+            "reps": 8,
+            "weight": null,
+            "rest_seconds": 180
+          },
+          {
+            "name": "二头弯举",
+            "sets": 4,
+            "reps": 10,
+            "weight": 12.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "绳索面拉",
+            "sets": 3,
+            "reps": 12,
+            "weight": 20.0,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "腿（股四/腘绳/臀）",
+        "is_rest_day": false,
+        "weekday": 5,
+        "exercises": [
+          {
+            "name": "杠铃深蹲",
+            "sets": 4,
+            "reps": 8,
+            "weight": 80.0,
+            "rest_seconds": 240
+          },
+          {
+            "name": "罗马尼亚硬拉",
+            "sets": 4,
+            "reps": 10,
+            "weight": 70.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "腿举",
+            "sets": 4,
+            "reps": 12,
+            "weight": 120.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "腿弯举",
+            "sets": 3,
+            "reps": 12,
+            "weight": 30.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "卷腹",
+            "sets": 3,
+            "reps": 15,
+            "weight": null,
+            "rest_seconds": 60
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "stable_key": "template:五分化增肌模板",
+    "name": "五分化增肌模板",
+    "description": "每天一个部位，恢复充分",
+    "split_type": "five_split",
+    "difficulty": "intermediate",
+    "goal": "muscle_gain",
+    "days": [
+      {
+        "name": "胸部",
+        "is_rest_day": false,
+        "weekday": 1,
+        "exercises": [
+          {
+            "name": "杠铃卧推",
+            "sets": 4,
+            "reps": 8,
+            "weight": 60.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "上斜哑铃推举",
+            "sets": 4,
+            "reps": 10,
+            "weight": 22.5,
+            "rest_seconds": 150
+          },
+          {
+            "name": "龙门架夹胸",
+            "sets": 3,
+            "reps": 12,
+            "weight": 25.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "俯卧撑",
+            "sets": 3,
+            "reps": 12,
+            "weight": null,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "背部",
+        "is_rest_day": false,
+        "weekday": 2,
+        "exercises": [
+          {
+            "name": "引体向上",
+            "sets": 4,
+            "reps": 8,
+            "weight": null,
+            "rest_seconds": 180
+          },
+          {
+            "name": "杠铃划船",
+            "sets": 4,
+            "reps": 8,
+            "weight": 50.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "高位下拉",
+            "sets": 3,
+            "reps": 12,
+            "weight": 45.0,
+            "rest_seconds": 120
+          }
+        ]
+      },
+      {
+        "name": "肩部 + 三头",
+        "is_rest_day": false,
+        "weekday": 3,
+        "exercises": [
+          {
+            "name": "杠铃推举",
+            "sets": 4,
+            "reps": 8,
+            "weight": 35.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "哑铃侧平举",
+            "sets": 4,
+            "reps": 12,
+            "weight": 8.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "绳索面拉",
+            "sets": 3,
+            "reps": 12,
+            "weight": 20.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "三头下压",
+            "sets": 4,
+            "reps": 10,
+            "weight": 30.0,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "腿部",
+        "is_rest_day": false,
+        "weekday": 4,
+        "exercises": [
+          {
+            "name": "杠铃深蹲",
+            "sets": 4,
+            "reps": 8,
+            "weight": 80.0,
+            "rest_seconds": 240
+          },
+          {
+            "name": "罗马尼亚硬拉",
+            "sets": 4,
+            "reps": 8,
+            "weight": 70.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "腿举",
+            "sets": 4,
+            "reps": 12,
+            "weight": 120.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "腿弯举",
+            "sets": 3,
+            "reps": 12,
+            "weight": 30.0,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "手臂",
+        "is_rest_day": false,
+        "weekday": 5,
+        "exercises": [
+          {
+            "name": "二头弯举",
+            "sets": 4,
+            "reps": 10,
+            "weight": 12.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "三头下压",
+            "sets": 4,
+            "reps": 10,
+            "weight": 30.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "弯举集中弯举",
+            "sets": 3,
+            "reps": 10,
+            "weight": 8.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "仰卧臂屈伸",
+            "sets": 3,
+            "reps": 10,
+            "weight": 25.0,
+            "rest_seconds": 90
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "stable_key": "template:减脂基础模板",
+    "name": "减脂基础模板",
+    "description": "抗阻 + 有氧循环,适合减脂期",
+    "split_type": "fat_loss_split",
+    "difficulty": "beginner",
+    "goal": "fat_loss",
+    "days": [
+      {
+        "name": "全身循环 A",
+        "is_rest_day": false,
+        "weekday": 1,
+        "exercises": [
+          {
+            "name": "杠铃深蹲",
+            "sets": 3,
+            "reps": 12,
+            "weight": 50.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "杠铃卧推",
+            "sets": 3,
+            "reps": 12,
+            "weight": 40.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "杠铃划船",
+            "sets": 3,
+            "reps": 12,
+            "weight": 40.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "跑步",
+            "sets": 1,
+            "reps": 20,
+            "weight": null,
+            "rest_seconds": 0
+          },
+          {
+            "name": "平板支撑",
+            "sets": 3,
+            "reps": 45,
+            "weight": null,
+            "rest_seconds": 60
+          }
+        ]
+      },
+      {
+        "name": "全身循环 B",
+        "is_rest_day": false,
+        "weekday": 3,
+        "exercises": [
+          {
+            "name": "罗马尼亚硬拉",
+            "sets": 3,
+            "reps": 12,
+            "weight": 50.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "哑铃卧推",
+            "sets": 3,
+            "reps": 12,
+            "weight": 18.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "高位下拉",
+            "sets": 3,
+            "reps": 12,
+            "weight": 40.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "跳绳",
+            "sets": 1,
+            "reps": 15,
+            "weight": null,
+            "rest_seconds": 0
+          },
+          {
+            "name": "卷腹",
+            "sets": 3,
+            "reps": 15,
+            "weight": null,
+            "rest_seconds": 60
+          }
+        ]
+      },
+      {
+        "name": "有氧日",
+        "is_rest_day": false,
+        "weekday": 5,
+        "exercises": [
+          {
+            "name": "动感单车",
+            "sets": 1,
+            "reps": 30,
+            "weight": null,
+            "rest_seconds": 0
+          },
+          {
+            "name": "卷腹",
+            "sets": 3,
+            "reps": 15,
+            "weight": null,
+            "rest_seconds": 60
+          }
+        ]
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 2,
+        "exercises": []
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 4,
+        "exercises": []
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 6,
+        "exercises": []
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 7,
+        "exercises": []
+      }
+    ]
+  },
+  {
+    "stable_key": "template:四分化增肌模板",
+    "name": "四分化增肌模板",
+    "description": "适合中级以上的精细化训练",
+    "split_type": "four_split",
+    "difficulty": "intermediate",
+    "goal": "muscle_gain",
+    "days": [
+      {
+        "name": "胸部",
+        "is_rest_day": false,
+        "weekday": 1,
+        "exercises": [
+          {
+            "name": "杠铃卧推",
+            "sets": 5,
+            "reps": 6,
+            "weight": 60.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "上斜哑铃推举",
+            "sets": 4,
+            "reps": 8,
+            "weight": 22.5,
+            "rest_seconds": 150
+          },
+          {
+            "name": "龙门架夹胸",
+            "sets": 4,
+            "reps": 12,
+            "weight": 25.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "俯卧撑",
+            "sets": 3,
+            "reps": 15,
+            "weight": null,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "背部",
+        "is_rest_day": false,
+        "weekday": 3,
+        "exercises": [
+          {
+            "name": "引体向上",
+            "sets": 4,
+            "reps": 8,
+            "weight": null,
+            "rest_seconds": 180
+          },
+          {
+            "name": "杠铃划船",
+            "sets": 4,
+            "reps": 8,
+            "weight": 50.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "高位下拉",
+            "sets": 4,
+            "reps": 10,
+            "weight": 45.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "罗马椅挺身",
+            "sets": 3,
+            "reps": 12,
+            "weight": null,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "肩部",
+        "is_rest_day": false,
+        "weekday": 5,
+        "exercises": [
+          {
+            "name": "杠铃推举",
+            "sets": 4,
+            "reps": 6,
+            "weight": 35.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "哑铃侧平举",
+            "sets": 4,
+            "reps": 12,
+            "weight": 8.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "阿诺德推举",
+            "sets": 3,
+            "reps": 10,
+            "weight": 10.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "绳索面拉",
+            "sets": 4,
+            "reps": 12,
+            "weight": 20.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "三头下压",
+            "sets": 3,
+            "reps": 12,
+            "weight": 30.0,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "腿部 + 手臂",
+        "is_rest_day": false,
+        "weekday": 7,
+        "exercises": [
+          {
+            "name": "杠铃深蹲",
+            "sets": 5,
+            "reps": 6,
+            "weight": 80.0,
+            "rest_seconds": 240
+          },
+          {
+            "name": "罗马尼亚硬拉",
+            "sets": 4,
+            "reps": 8,
+            "weight": 70.0,
+            "rest_seconds": 180
+          },
+          {
+            "name": "腿弯举",
+            "sets": 4,
+            "reps": 12,
+            "weight": 30.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "二头弯举",
+            "sets": 4,
+            "reps": 10,
+            "weight": 12.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "弯举集中弯举",
+            "sets": 3,
+            "reps": 12,
+            "weight": 8.0,
+            "rest_seconds": 90
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "stable_key": "template:新手全身训练模板",
+    "name": "新手全身训练模板",
+    "description": "每周3次全身训练，适合训练新手",
+    "split_type": "full_body",
+    "difficulty": "beginner",
+    "goal": "general",
+    "days": [
+      {
+        "name": "全身训练 A",
+        "is_rest_day": false,
+        "weekday": 1,
+        "exercises": [
+          {
+            "name": "杠铃深蹲",
+            "sets": 3,
+            "reps": 8,
+            "weight": 40.0,
+            "rest_seconds": 150
+          },
+          {
+            "name": "杠铃卧推",
+            "sets": 3,
+            "reps": 8,
+            "weight": 30.0,
+            "rest_seconds": 150
+          },
+          {
+            "name": "杠铃划船",
+            "sets": 3,
+            "reps": 8,
+            "weight": 30.0,
+            "rest_seconds": 150
+          }
+        ]
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 2,
+        "exercises": []
+      },
+      {
+        "name": "全身训练 B",
+        "is_rest_day": false,
+        "weekday": 3,
+        "exercises": [
+          {
+            "name": "罗马尼亚硬拉",
+            "sets": 3,
+            "reps": 8,
+            "weight": 40.0,
+            "rest_seconds": 150
+          },
+          {
+            "name": "哑铃卧推",
+            "sets": 3,
+            "reps": 10,
+            "weight": 14.0,
+            "rest_seconds": 120
+          },
+          {
+            "name": "高位下拉",
+            "sets": 3,
+            "reps": 10,
+            "weight": 35.0,
+            "rest_seconds": 120
+          }
+        ]
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 4,
+        "exercises": []
+      },
+      {
+        "name": "全身训练 A",
+        "is_rest_day": false,
+        "weekday": 5,
+        "exercises": [
+          {
+            "name": "杠铃深蹲",
+            "sets": 3,
+            "reps": 8,
+            "weight": 40.0,
+            "rest_seconds": 150
+          },
+          {
+            "name": "哑铃侧平举",
+            "sets": 3,
+            "reps": 12,
+            "weight": 6.0,
+            "rest_seconds": 90
+          },
+          {
+            "name": "二头弯举",
+            "sets": 3,
+            "reps": 10,
+            "weight": 10.0,
+            "rest_seconds": 90
+          }
+        ]
+      },
+      {
+        "name": "休息",
+        "is_rest_day": true,
+        "weekday": 6,
+        "exercises": []
+      },
+      {
+        "name": "休息/有氧",
+        "is_rest_day": true,
+        "weekday": 7,
+        "exercises": []
+      }
+    ]
+  }
+]
