@@ -2,9 +2,11 @@
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app';
 import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
+import { initializeLocalDatabase } from '@/local/db';
 
 onLaunch(async () => {
   console.log('[App] launched');
+  await initializeLocalDatabase();
   const appStore = useAppStore();
   appStore.init();
   const auth = useAuthStore();
