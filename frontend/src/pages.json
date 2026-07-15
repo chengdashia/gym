@@ -10,7 +10,7 @@
     {
       "path": "pages/login/onboarding",
       "style": {
-        "navigationBarTitleText": "登录",
+        "navigationBarTitleText": "首次设置",
         "navigationStyle": "custom"
       }
     },

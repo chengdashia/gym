@@ -1,6 +1,5 @@
-import { http } from '@/utils/request';
-import { API_BASE } from '@/utils/constants';
-import { getToken } from '@/utils/request';
+import { getLocalDatabase } from '@/local/db';
+import { createProfileService } from '@/local/services/profile';
 
 export interface UserProfile {
   gender?: string | null;
@@ -16,13 +15,13 @@ export interface UserMe {
   id: number;
   nickname: string | null;
   avatar_url: string | null;
-  phone: string | null;
-  is_member: boolean;
-  member_expired_at: string | null;
-  agreement_confirmed: boolean;
-  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
-  agreement_version: string | null;
-  agreement_confirmed_at: string | null;
+  phone: null;
+  is_member: false;
+  member_expired_at: null;
+  agreement_confirmed: true;
+  onboarding_step: 'profile' | 'goal' | 'complete';
+  agreement_version: null;
+  agreement_confirmed_at: null;
   profile: UserProfile | null;
 }
 
@@ -40,51 +39,95 @@ export interface ReminderItem {
   weekdays: string;
 }
 
+function service() {
+  return createProfileService(getLocalDatabase());
+}
+
+function asUserMe(local: Awaited<ReturnType<ReturnType<typeof createProfileService>['get']>>): UserMe {
+  return {
+    ...local,
+    phone: null,
+    is_member: false,
+    member_expired_at: null,
+    agreement_confirmed: true,
+    agreement_version: null,
+    agreement_confirmed_at: null,
+  };
+}
+
+const DEFAULT_REMINDERS: ReminderItem[] = [
+  { reminder_type: 'diet', enabled: false, reminder_time: '08:00', weekdays: '1,2,3,4,5,6,7' },
+  { reminder_type: 'training', enabled: false, reminder_time: '18:00', weekdays: '1,2,3,4,5,6,7' },
+  { reminder_type: 'weight', enabled: false, reminder_time: '07:00', weekdays: '1,2,3,4,5,6,7' },
+];
+
 export const userApi = {
-  exportData() {
-    return new Promise<string>((resolve, reject) => {
-      const token = getToken();
-      uni.downloadFile({
-        url: `${API_BASE}/users/export.csv`,
-        header: token ? { Authorization: `Bearer ${token}` } : {},
-        success: (res) => res.statusCode === 200
-          ? resolve(res.tempFilePath)
-          : reject({ statusCode: res.statusCode, message: '导出失败' }),
-        fail: reject,
-      });
-    });
+  async getMe(): Promise<UserMe> {
+    return asUserMe(await service().get());
   },
-  getMe() {
-    return http.get<UserMe>('/users/me');
+
+  async getAvatarData(): Promise<{ data_url: string | null }> {
+    return { data_url: null };
   },
-  getAvatarData() {
-    return http.get<{ data_url: string | null }>('/users/me/avatar-data');
+
+  async updateMe(payload: { nickname?: string; avatar_url?: string; profile?: Partial<UserProfile> }): Promise<UserMe> {
+    return asUserMe(await service().updateProfile(payload));
   },
-  updateMe(payload: { nickname?: string; avatar_url?: string; profile?: Partial<UserProfile> }) {
-    return http.put<UserMe>('/users/me', payload);
+
+  async confirmAgreement(_payload?: { agreement_version: string; privacy_version: string }): Promise<void> {
+    // Local privacy information remains visible, but it is not an auth gate.
   },
-  confirmAgreement(payload: { agreement_version: string; privacy_version: string }) {
-    return http.post('/users/agreement-confirm', payload);
+
+  async finishOnboarding(payload: Parameters<ReturnType<typeof createProfileService>['finishOnboarding']>[0]): Promise<UserMe> {
+    return asUserMe(await service().finishOnboarding(payload));
   },
-  getNutritionGoal() {
-    return http.get<NutritionGoal>('/users/nutrition-goal');
+
+  getNutritionGoal(): Promise<NutritionGoal> {
+    return service().getNutritionGoal();
   },
-  updateNutritionGoal(payload: NutritionGoal) {
-    return http.put<NutritionGoal>('/users/nutrition-goal', payload);
+
+  updateNutritionGoal(payload: NutritionGoal): Promise<NutritionGoal> {
+    return service().updateNutritionGoal(payload);
   },
-  recommendNutritionGoal() {
-    return http.post<NutritionGoal & { formula_note?: string }>('/users/nutrition-goal/recommend');
+
+  async recommendNutritionGoal(): Promise<NutritionGoal & { formula_note: string }> {
+    const me = await service().get();
+    const weight = me.profile.current_weight_kg || 70;
+    const calories = Math.round(weight * 28);
+    return {
+      calories_kcal: calories,
+      carbs_g: Math.round(calories * 0.45 / 4),
+      protein_g: Math.round(weight * 1.6),
+      fat_g: Math.round(calories * 0.25 / 9),
+      formula_note: '根据本地体重估算，可手动调整',
+    };
   },
-  getReminders() {
-    return http.get<{ items: ReminderItem[] }>('/users/reminders');
+
+  async getReminders(): Promise<{ items: ReminderItem[] }> {
+    const rows = await getLocalDatabase().query<{ value: string }>(
+      "SELECT value FROM app_meta WHERE key = 'reminders'",
+    );
+    return { items: rows[0] ? JSON.parse(rows[0].value) : DEFAULT_REMINDERS };
   },
-  updateReminders(items: ReminderItem[]) {
-    return http.put<{ items: ReminderItem[] }>('/users/reminders', { items });
+
+  async updateReminders(items: ReminderItem[]): Promise<{ items: ReminderItem[] }> {
+    await getLocalDatabase().execute(
+      `INSERT INTO app_meta(key, value) VALUES('reminders', ?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+      [JSON.stringify(items)],
+    );
+    return { items };
   },
-  deleteData() {
-    return http.post('/users/delete-data');
+
+  async exportData(): Promise<string> {
+    throw new Error('请使用离线备份功能');
   },
-  cancelAccount() {
-    return http.post('/users/cancel-account');
+
+  async deleteData(): Promise<void> {
+    throw new Error('本地数据清空将在备份功能中提供');
+  },
+
+  async cancelAccount(): Promise<void> {
+    throw new Error('离线模式没有账号');
   },
 };

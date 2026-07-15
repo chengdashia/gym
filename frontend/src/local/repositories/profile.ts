@@ -77,4 +77,17 @@ export class ProfileRepository {
       [weightCenti, now, now, now],
     );
   }
+
+  async insertWeightIfChanged(weightCenti: number, now: string): Promise<void> {
+    const latest = await this.db.query<{ weight_centi: number }>(
+      `SELECT weight_centi FROM weight_records
+       WHERE deleted_at IS NULL ORDER BY recorded_at DESC, id DESC LIMIT 1`,
+    );
+    if (latest[0]?.weight_centi === weightCenti) return;
+    await this.db.execute(
+      `INSERT INTO weight_records(weight_centi, recorded_at, created_at, updated_at)
+       VALUES(?, ?, ?, ?)`,
+      [weightCenti, now, now, now],
+    );
+  }
 }

@@ -13,7 +13,6 @@
             <image v-else :src="avatar" mode="aspectFill" class="avatar-img" />
           </view>
         </view>
-        <view v-if="!auth.isLogged" class="guest-login" @tap="goLogin">登录 / 注册</view>
       </view>
 
       <liquid-glass-panel variant="light" :highlight="true" :ambient="true" class="ring-panel">
@@ -183,7 +182,7 @@ const trainingStore = useTrainingStore();
 const auth = useAuthStore();
 
 const summary = ref<HomeSummary | null>(null);
-const nickname = computed(() => auth.isLogged ? (userStore.nickname || '健身伙伴') : '游客');
+const nickname = computed(() => userStore.nickname || '健身伙伴');
 const avatar = computed(() => userStore.avatar);
 const initial = computed(() => nickname.value?.[0] || '健');
 
@@ -226,6 +225,10 @@ async function load() {
 
 onMounted(async () => {
   if (!auth.ready) await auth.bootstrap();
+  if (auth.needOnboarding) {
+    uni.reLaunch({ url: '/pages/login/onboarding' });
+    return;
+  }
   if (auth.isLogged) {
     if (!userStore.me) await userStore.fetchMe().catch(() => {});
     await load();
@@ -242,7 +245,6 @@ onShow(async () => {
 });
 
 function goMine() { uni.switchTab({ url: '/pages/mine/index' }); }
-function goLogin() { uni.navigateTo({ url: '/pages/login/onboarding' }); }
 function goTraining() { uni.switchTab({ url: '/pages/training/index' }); }
 function goStats() { uni.switchTab({ url: '/pages/stats/index' }); }
 function openPrimaryAction() {

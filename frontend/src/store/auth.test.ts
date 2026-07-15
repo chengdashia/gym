@@ -2,150 +2,58 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
 const mocks = vi.hoisted(() => ({
-  getToken: vi.fn(() => 'saved-token'),
-  clearAuth: vi.fn(),
-  setStorageSync: vi.fn(),
   getMe: vi.fn(async () => ({
     id: 1,
-    nickname: '测试',
+    nickname: '本地用户',
     avatar_url: null,
-    phone: '13800138000',
+    phone: null,
     agreement_confirmed: true,
     onboarding_step: 'complete' as const,
-    agreement_version: 'v1.0',
-    agreement_confirmed_at: '2026-07-10T00:00:00Z',
+    agreement_version: null,
+    agreement_confirmed_at: null,
     is_member: false,
     member_expired_at: null,
     profile: null,
   })),
 }));
 
-vi.mock('@/utils/request', () => ({
-  getToken: mocks.getToken,
-  setToken: vi.fn(),
-  clearAuth: mocks.clearAuth,
-}));
+vi.mock('@/api/user', () => ({ userApi: { getMe: mocks.getMe } }));
 
-vi.mock('@/api/user', () => ({
-  userApi: { getMe: mocks.getMe },
-}));
-
-describe('auth bootstrap', () => {
+describe('local single-user bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getToken.mockReturnValue('saved-token');
-    mocks.getMe.mockResolvedValue({
-      id: 1,
-      nickname: '测试',
-      avatar_url: null,
-      phone: '13800138000',
-      agreement_confirmed: true,
-      onboarding_step: 'complete' as const,
-      agreement_version: 'v1.0',
-      agreement_confirmed_at: '2026-07-10T00:00:00Z',
-      is_member: false,
-      member_expired_at: null,
-      profile: null,
-    });
     setActivePinia(createPinia());
-    vi.stubGlobal('uni', {
-      getStorageSync: vi.fn(() => ({ id: 1, agreement_confirmed: true })),
-      setStorageSync: mocks.setStorageSync,
-      removeStorageSync: vi.fn(),
-    });
   });
 
-  it('restores a saved token instead of clearing it', async () => {
+  it('loads the fixed local user without a token', async () => {
     const { useAuthStore } = await import('./auth');
     const auth = useAuthStore();
 
     await auth.bootstrap();
 
-    expect(auth.token).toBe('saved-token');
-    expect(mocks.clearAuth).not.toHaveBeenCalled();
+    expect(auth.ready).toBe(true);
+    expect(auth.isLogged).toBe(true);
+    expect(auth.token).toBe('local');
+    expect(auth.user).toEqual(expect.objectContaining({ id: 1, nickname: '本地用户' }));
   });
 
-  it('refreshes and synchronizes the current user into both stores and cache', async () => {
-    const { STORAGE_KEYS } = await import('@/utils/constants');
-    const { useAuthStore } = await import('./auth');
-    const { useUserStore } = await import('./user');
-    const auth = useAuthStore();
-    const user = useUserStore();
-
-    await auth.bootstrap();
-
-    expect(mocks.getMe).toHaveBeenCalledOnce();
-    expect(user.me).toEqual(expect.objectContaining({
-      id: 1,
-      phone: '13800138000',
-      agreement_confirmed: true,
-    }));
-    expect(auth.user).toEqual(expect.objectContaining({
-      id: 1,
-      nickname: '测试',
-      agreement_confirmed: true,
-      is_member: false,
-    }));
-    expect(mocks.setStorageSync).toHaveBeenCalledWith(STORAGE_KEYS.user, auth.user);
-  });
-
-  it('uses the server onboarding step instead of agreement alone', async () => {
+  it('uses the local onboarding step', async () => {
     mocks.getMe.mockResolvedValueOnce({
       ...(await mocks.getMe()),
-      agreement_confirmed: true,
-      onboarding_step: 'goal' as any,
-    });
+      onboarding_step: 'profile',
+    } as any);
     const { useAuthStore } = await import('./auth');
     const auth = useAuthStore();
 
     await auth.bootstrap();
 
     expect(auth.needOnboarding).toBe(true);
-    expect(auth.user?.onboarding_step).toBe('goal');
-  });
-
-  it('keeps the saved token when refreshing the user fails with a network error', async () => {
-    mocks.getMe.mockRejectedValueOnce(new Error('network unavailable'));
-    const { useAuthStore } = await import('./auth');
-    const auth = useAuthStore();
-
-    await auth.bootstrap();
-
-    expect(auth.token).toBe('saved-token');
-    expect(auth.ready).toBe(true);
-    expect(mocks.clearAuth).not.toHaveBeenCalled();
-  });
-
-  it('clears the saved token when refreshing the user returns 40101', async () => {
-    mocks.getMe.mockRejectedValueOnce({ code: 40101 });
-    const { useAuthStore } = await import('./auth');
-    const auth = useAuthStore();
-
-    await auth.bootstrap();
-
-    expect(mocks.getMe).toHaveBeenCalledOnce();
-    expect(auth.token).toBe('');
-    expect(mocks.clearAuth).toHaveBeenCalledOnce();
-  });
-
-  it('clears the saved token for an HTTP 401 without a business code', async () => {
-    mocks.getMe.mockRejectedValueOnce({ statusCode: 401 });
-    const { useAuthStore } = await import('./auth');
-    const auth = useAuthStore();
-
-    await auth.bootstrap();
-
-    expect(auth.token).toBe('');
-    expect(mocks.clearAuth).toHaveBeenCalledOnce();
   });
 });
 
 describe('user reset', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-  });
-
   it('clears account-scoped business state', async () => {
+    setActivePinia(createPinia());
     const { useUserStore } = await import('./user');
     const user = useUserStore();
     user.me = { id: 1 } as any;

@@ -159,7 +159,7 @@
     <ModalConfirm
       :visible="showDeleteData"
       title="清空健身数据"
-      message="将永久删除饮食、训练、体重、身体资料、自定义内容及上传图片；登录账号、昵称和头像会保留。"
+      message="将永久删除饮食、训练、体重、身体资料、自定义内容及本地图片。"
       confirm-text="确认清空"
       danger
       @confirm="deleteData"

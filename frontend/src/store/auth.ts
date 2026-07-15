@@ -1,30 +1,30 @@
 import { defineStore } from 'pinia';
-import { getToken, setToken, clearAuth } from '@/utils/request';
-import { authApi, AuthResult } from '@/api/auth';
-import { STORAGE_KEYS } from '@/utils/constants';
 
-interface UserBrief {
-  id: number;
+import { userApi } from '@/api/user';
+import { useUserStore } from '@/store/user';
+
+interface LocalUserBrief {
+  id: 1;
   nickname: string | null;
   avatar_url: string | null;
   is_new_user: boolean;
   agreement_confirmed: boolean;
-  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
-  is_member: boolean;
+  onboarding_step: 'profile' | 'goal' | 'complete';
+  is_member: false;
 }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: '' as string,
-    user: null as UserBrief | null,
+    token: '' as '' | 'local',
+    user: null as LocalUserBrief | null,
     bootstrapped: false,
     ready: false,
     initPromise: null as Promise<void> | null,
   }),
 
   getters: {
-    isLogged: (s) => !!s.token,
-    needOnboarding: (s) => s.user?.onboarding_step !== 'complete',
+    isLogged: (state) => state.ready && state.token === 'local',
+    needOnboarding: (state) => state.user?.onboarding_step !== 'complete',
   },
 
   actions: {
@@ -34,101 +34,48 @@ export const useAuthStore = defineStore('auth', {
       return this.initPromise;
     },
 
-    async _doBootstrap() {
-      const savedToken = getToken();
-      if (savedToken) this.token = savedToken;
-
+    async _doBootstrap(): Promise<void> {
       try {
-        const cached = uni.getStorageSync(STORAGE_KEYS.user) as UserBrief | null;
-        if (cached) this.user = cached;
-      } catch {
-        // storage unavailable
-      }
-
-      this.bootstrapped = true;
-      if (!this.token) {
-        this.ready = true;
-        return;
-      }
-
-      try {
-        const me = await (await import('@/api/user')).userApi.getMe();
-        const userStore = (await import('@/store/user')).useUserStore();
+        const me = await userApi.getMe();
+        const userStore = useUserStore();
         userStore.me = me;
-        this.setUser({
-          id: me.id,
+        this.token = 'local';
+        this.user = {
+          id: 1,
           nickname: me.nickname,
           avatar_url: me.avatar_url,
-          is_new_user: false,
-          agreement_confirmed: me.agreement_confirmed,
+          is_new_user: me.onboarding_step !== 'complete',
+          agreement_confirmed: true,
           onboarding_step: me.onboarding_step,
-          is_member: me.is_member,
-        });
-      } catch (error: any) {
-        if (error?.code === 40101 || error?.statusCode === 401) this.logout();
+          is_member: false,
+        };
+        this.bootstrapped = true;
       } finally {
         this.ready = true;
       }
     },
 
-    _setAuthData(data: AuthResult) {
-      this.token = data.access_token;
-      setToken(data.access_token);
-      this.user = data.user;
-      uni.setStorageSync(STORAGE_KEYS.user, data.user);
-    },
-
-    async login(payload?: { nickname?: string; avatar_url?: string }) {
-      let wechatCode = '';
-      try {
-        // #ifdef MP-WEIXIN
-        const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
-          uni.login({ provider: 'weixin', success: resolve, fail: reject });
-        });
-        wechatCode = loginRes.code || '';
-        // #endif
-      } catch {
-        wechatCode = '';
+    setUser(update: Partial<LocalUserBrief>): void {
+      if (!this.user) return;
+      this.user = { ...this.user, ...update };
+      const userStore = useUserStore();
+      if (userStore.me) {
+        userStore.me = {
+          ...userStore.me,
+          nickname: this.user.nickname,
+          avatar_url: this.user.avatar_url,
+          onboarding_step: this.user.onboarding_step,
+        };
       }
-
-      if (!wechatCode) throw new Error('微信登录失败，请重试');
-
-      const data = await authApi.wechatLogin({
-        code: wechatCode,
-        nickname: payload?.nickname,
-        avatar_url: payload?.avatar_url,
-      });
-      this._setAuthData(data);
-      return data;
     },
 
-    async phoneLogin(phone: string, password: string) {
-      const data = await authApi.phoneLogin({ phone, password });
-      this._setAuthData(data);
-      return data;
+    async refresh(): Promise<void> {
+      this.initPromise = null;
+      await this.bootstrap();
     },
 
-    async register(phone: string, password: string, confirmPassword: string, captchaId: string, captchaCode: string) {
-      const data = await authApi.register({
-        phone,
-        password,
-        confirm_password: confirmPassword,
-        captcha_id: captchaId,
-        captcha_code: captchaCode,
-      });
-      this._setAuthData(data);
-      return data;
-    },
-
-    setUser(u: Partial<UserBrief>) {
-      this.user = { ...(this.user as any), ...u } as UserBrief;
-      uni.setStorageSync(STORAGE_KEYS.user, this.user);
-    },
-
-    logout() {
-      this.token = '';
-      this.user = null;
-      clearAuth();
+    logout(): void {
+      // Compatibility no-op. Offline mode always has one local user.
     },
   },
 });

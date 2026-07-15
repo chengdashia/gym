@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { userApi, UserMe, UserProfile, NutritionGoal, ReminderItem } from '@/api/user';
-import { resolveStaticUrl } from '@/utils/request';
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -14,7 +13,7 @@ export const useUserStore = defineStore('user', {
   getters: {
     hasProfile: (s) => !!s.me?.profile,
     nickname: (s) => s.me?.nickname || '健身伙伴',
-    avatar: (s) => s.avatarDataUrl || resolveStaticUrl(s.me?.avatar_url),
+    avatar: (s) => s.avatarDataUrl || s.me?.avatar_url || '',
   },
 
   actions: {

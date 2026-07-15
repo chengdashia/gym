@@ -8,14 +8,13 @@
           <image v-else :src="avatar" class="avatar-img" mode="aspectFill" />
         </view>
         <view class="info">
-          <view class="name">{{ auth.isLogged ? nickname : '游客模式' }}</view>
+          <view class="name">{{ nickname }}</view>
           <view class="meta">
             <text v-if="profile?.fitness_goal" class="goal-text">{{ goalLabel }}</text>
-            <text v-else-if="!auth.isLogged" class="goal-text">登录后可同步你的记录</text>
           </view>
         </view>
         <view class="edit-btn" @tap="goProfile">
-          <text>{{ auth.isLogged ? '编辑' : '登录 / 注册' }}</text>
+          <text>编辑</text>
           <text class="edit-arrow">›</text>
         </view>
       </view>
@@ -76,11 +75,6 @@
         <text class="mi-label">隐私政策</text>
         <text class="mi-arrow">›</text>
       </view>
-      <view v-if="auth.isLogged" class="menu-item" @tap="logout">
-        <line-icon name="logout" color="#D96B7D" :stroke-width="1.7" :size="44" class="mi-icon" />
-        <text class="mi-label danger">退出登录</text>
-        <text class="mi-arrow">›</text>
-      </view>
     </liquid-glass-card>
 
     <view class="version">v1.0.0 · 健身与饮食记录</view>
@@ -93,7 +87,6 @@ import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/user';
 import { useAuthStore } from '@/store/auth';
 import { FITNESS_GOALS } from '@/utils/constants';
-import { clearAll } from '@/utils/cache';
 import { requireAuth } from '@/utils/auth-guard';
 
 // 同步自定义 tabBar 高亮
@@ -130,12 +123,10 @@ onShow(() => {
 });
 
 function goProfile() {
-  if (!auth.isLogged) return goLogin();
   const url = '/pages/mine/profile';
   if (!requireAuth({ redirect: url })) return;
   uni.navigateTo({ url });
 }
-function goLogin() { uni.navigateTo({ url: '/pages/login/onboarding' }); }
 function goGoals() {
   const url = '/pages/mine/goals';
   if (!requireAuth({ redirect: url })) return;
@@ -158,19 +149,6 @@ function goTrainingHistory() {
 }
 function goAgreement(t: 'agreement' | 'privacy') { uni.navigateTo({ url: `/pages/mine/agreement?type=${t}` }); }
 
-function logout() {
-  uni.showModal({
-    title: '退出登录',
-    content: '确定要退出登录吗？',
-    success: (r) => {
-      if (r.confirm) {
-        clearAll();
-        auth.logout();
-        uni.reLaunch({ url: '/pages/login/onboarding' });
-      }
-    },
-  });
-}
 </script>
 
 <style lang="scss" scoped>
