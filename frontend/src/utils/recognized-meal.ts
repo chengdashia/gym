@@ -5,6 +5,8 @@ export interface RecognizedMealItem {
   name: string;
   confidence: number;
   estimated_amount_g: number;
+  estimated_amount_min_g?: number;
+  estimated_amount_max_g?: number;
   calories_per_100g: number;
   carbs_per_100g: number;
   protein_per_100g: number;

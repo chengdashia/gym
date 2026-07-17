@@ -1,24 +1,54 @@
-import random
-from datetime import datetime
+import json
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import BizException
 from app.core.response import ok
-from app.models import Food, FoodRecognitionLog, UploadedFile, User
-from app.schemas import AIRecognizeIn, AICandidate, AIRecognizedItem
+from app.models import Food, User
+from app.schemas import AIRecognizeIn
 
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-MOCK_CANDIDATES = [
-    {"food_id": 1, "name": "米饭", "confidence": 0.92, "source": "system"},
-    {"food_id": 2, "name": "鸡蛋", "confidence": 0.81, "source": "system"},
-    {"food_id": 3, "name": "鸡胸肉", "confidence": 0.76, "source": "system"},
-]
+FOOD_LABELS_FILE = Path(__file__).resolve().parents[2] / "data" / "food_model_labels.json"
+
+
+@router.get("/food-recognition/model-manifest")
+def food_model_manifest(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user.id not in settings.experimental_user_ids:
+        raise BizException(40301, "该实验功能尚未向当前账号开放", 403)
+    if not settings.food_model_url or not settings.food_model_version:
+        raise BizException(50301, "本地识别模型尚未发布", 503)
+
+    labels = json.loads(FOOD_LABELS_FILE.read_text(encoding="utf-8"))
+    foods_by_name = {
+        row.name: row.id
+        for row in db.query(Food).filter(Food.is_system == 1, Food.status == "active").all()
+    }
+    return ok({
+        "version": settings.food_model_version,
+        "model_url": settings.food_model_url,
+        "input_size": 320,
+        "input_name": "images",
+        "output_names": {
+            "scores": "scores",
+            "labels": "labels",
+            "area_ratios": "area_ratios",
+        },
+        "score_threshold": 0.35,
+        "labels": [
+            {**label, "food_id": foods_by_name.get(label["name"])}
+            for label in labels
+        ],
+    })
 
 
 @router.post("/food-recognition")
@@ -27,48 +57,4 @@ def food_recognition(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    uf = db.query(UploadedFile).filter(UploadedFile.id == body.file_id, UploadedFile.user_id == user.id).first()
-    if not uf:
-        raise BizException(40401, "图片不存在")
-
-    sys_foods = db.query(Food).filter(Food.is_system == 1, Food.status == "active").limit(20).all()
-    if sys_foods:
-        pool = [(f.id, f.name, "system") for f in sys_foods]
-        chosen = random.sample(pool, k=min(3, len(pool)))
-        candidates_payload = []
-        for i, (fid, name, source) in enumerate(chosen):
-            candidates_payload.append({
-                "food_id": fid, "source": source, "name": name,
-                "confidence": round(0.95 - i * 0.08, 2),
-            })
-    else:
-        candidates_payload = list(MOCK_CANDIDATES)
-
-    recognized_items_payload = [
-        {**candidate, "estimated_amount_g": 100}
-        for candidate in candidates_payload[:3]
-    ]
-    candidates = [AICandidate(**c) for c in candidates_payload]
-    recognized_items = [AIRecognizedItem(**item) for item in recognized_items_payload]
-    recognized_items_json = [item.model_dump(mode="json") for item in recognized_items]
-
-    log = FoodRecognitionLog(
-        user_id=user.id,
-        image_url=uf.file_url,
-        recognition_status="success",
-        candidates_json={
-            "recognized_items": recognized_items_json,
-            "candidates": candidates_payload,
-        },
-        provider="mock",
-    )
-    db.add(log)
-    db.commit()
-    db.refresh(log)
-
-    return ok({
-        "recognition_id": log.id,
-        "provider": "mock",
-        "recognized_items": recognized_items_json,
-        "candidates": [c.model_dump() for c in candidates],
-    })
+    raise BizException(41001, "旧版云端模拟识别已停用，请升级到本地识别版本", 410)

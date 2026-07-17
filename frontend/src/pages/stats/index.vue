@@ -1,5 +1,13 @@
 <template>
   <view class="stats-page">
+    <liquid-glass-card v-if="!auth.isLogged" class="guest-card" :highlight="true" @tap="goLogin">
+      <view>
+        <view class="guest-title">这里会汇总你的真实记录</view>
+        <view class="guest-sub">登录并开始记录后，生成饮食、训练和体重趋势。</view>
+      </view>
+      <text class="guest-link">登录 / 注册 ›</text>
+    </liquid-glass-card>
+
     <!-- Range 切换：玻璃药丸 -->
     <view class="range-bar">
       <liquid-glass-pill
@@ -411,6 +419,8 @@ function setRange(r: StatsRange) {
   load();
 }
 
+function goLogin() { uni.navigateTo({ url: '/pages/login/onboarding' }); }
+
 onMounted(() => {
   syncTabBar();
   load();
@@ -435,6 +445,10 @@ onShow(() => {
   margin-bottom: $gap-3;
   padding: 6rpx 0;
 }
+.guest-card { display: flex; align-items: center; justify-content: space-between; gap: $gap-2; margin-bottom: $gap-3; padding: $gap-3; }
+.guest-title { color: $text-1; font-size: $fs-md; font-weight: 750; }
+.guest-sub { margin-top: 6rpx; color: $text-3; font-size: $fs-xs; line-height: 1.5; }
+.guest-link { flex-shrink: 0; color: $primary-deep; font-size: $fs-sm; font-weight: 650; }
 
 .loading {
   text-align: center;

@@ -32,19 +32,30 @@ def build_actions(
     protein_goal_days: int,
     has_protein_goal: bool,
     training_sessions: int,
+    weight_days: int = 0,
 ) -> list[str]:
-    if diet_days == 0:
-        return ["记录更多数据后生成总结，先从今天记录一餐开始"]
     actions = []
-    if diet_days < 3:
+    if diet_days == 0:
+        actions.append("今天先完整记录一餐，建立饮食基线")
+    elif diet_days < 5:
         actions.append(f"本周记录了 {diet_days} 天，先尝试每天至少记录一餐")
-    if has_protein_goal and protein_goal_days < 4:
+    elif has_protein_goal and protein_goal_days < 4:
         actions.append(f"本周蛋白质达标 {protein_goal_days} 天，下一餐优先补充优质蛋白")
-    if training_sessions < 2:
+    else:
+        actions.append(f"本周饮食已记录 {diet_days} 天，继续保持当前节奏")
+
+    if training_sessions == 0:
+        actions.append("选择一个入门训练模板，并安排第一次训练")
+    elif training_sessions < 2:
         actions.append(f"本周完成 {training_sessions} 次训练，可安排下一次训练时间")
-    if not actions:
-        actions.append("本周记录和训练节奏稳定，继续保持")
-    return actions[:3]
+    else:
+        actions.append(f"本周已完成 {training_sessions} 次训练，下一次按计划继续")
+
+    if weight_days < 3:
+        actions.append(f"本周记录体重 {weight_days} 天，固定晨起同一时段补足 3 天")
+    else:
+        actions.append(f"本周记录体重 {weight_days} 天，继续保持同一时段测量")
+    return actions
 
 
 def build_weekly_summary(db: Session, user_id: int, end: date | None = None) -> dict:
@@ -74,5 +85,6 @@ def build_weekly_summary(db: Session, user_id: int, end: date | None = None) -> 
         protein_goal_days=protein_goal_days,
         has_protein_goal=protein_goal > 0,
         training_sessions=sessions,
+        weight_days=result["weight_days"],
     )
     return result

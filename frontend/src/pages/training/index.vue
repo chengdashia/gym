@@ -9,6 +9,14 @@
       <line-icon name="dumbbell" color="#3FA67C" :stroke-width="1.8" :size="72" />
     </view>
 
+    <liquid-glass-card v-if="!auth.isLogged" class="guest-card" :highlight="true" @tap="goLogin">
+      <view>
+        <view class="guest-title">登录后开始训练</view>
+        <view class="guest-sub">创建计划、记录每组表现，并在设备间同步进度。</view>
+      </view>
+      <text class="guest-link">登录 / 注册 ›</text>
+    </liquid-glass-card>
+
     <view class="quick-row">
       <view class="quick-action" @tap="goHistory"><line-icon name="history" color="#8FA3A1" :size="38" /><text>训练历史</text></view>
       <view class="quick-action" @tap="managePlans"><line-icon name="settings" color="#8FA3A1" :size="38" /><text>管理计划</text></view>
@@ -165,9 +173,19 @@ function continueSession() {
   if (todayInfo.value?.session_id) uni.navigateTo({ url: `/pages/training/execute?id=${todayInfo.value.session_id}` });
 }
 
-function goHistory() { uni.navigateTo({ url: '/pages/training/history' }); }
-function goCreatePlan() { uni.navigateTo({ url: templatePlanEditUrl() }); }
+function goLogin() { uni.navigateTo({ url: '/pages/login/onboarding' }); }
+function goHistory() {
+  const url = '/pages/training/history';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
+function goCreatePlan() {
+  const url = templatePlanEditUrl();
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
+}
 function managePlans() {
+  if (!requireAuth({ redirect: '/pages/training/index' })) return;
   const items = activePlan.value ? ['编辑当前计划', '创建新计划'] : ['创建训练计划'];
   uni.showActionSheet({ itemList: items, success: ({ tapIndex }) => {
     if (activePlan.value && tapIndex === 0) uni.navigateTo({ url: `/pages/training/plan-edit?id=${activePlan.value.id}` });
@@ -188,6 +206,10 @@ onShow(() => { syncTabBar(); if (auth.isLogged) load(); });
 .hero-sub { margin-top: 8rpx; color: $text-2; font-size: $fs-sm; }
 .quick-row { display: flex; gap: $gap-2; margin-bottom: $gap-3; }
 .quick-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8rpx; height: 72rpx; border-radius: $r-pill; background: rgba(255,255,255,.72); color: $text-2; font-size: $fs-sm; box-shadow: $shadow-glass-sm; }
+.guest-card { display: flex; align-items: center; justify-content: space-between; gap: $gap-2; margin-bottom: $gap-3; padding: $gap-3; }
+.guest-title { color: $text-1; font-size: $fs-md; font-weight: 750; }
+.guest-sub { margin-top: 6rpx; color: $text-3; font-size: $fs-xs; line-height: 1.5; }
+.guest-link { flex-shrink: 0; color: $primary-deep; font-size: $fs-sm; font-weight: 650; }
 .state-copy { text-align: center; padding: $gap-5; color: $text-3; }
 .today-card { padding: $gap-3; }
 .today-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: $gap-2; }

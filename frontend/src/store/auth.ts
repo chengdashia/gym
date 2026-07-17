@@ -9,8 +9,9 @@ interface UserBrief {
   avatar_url: string | null;
   is_new_user: boolean;
   agreement_confirmed: boolean;
-  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
+  onboarding_step: 'agreement' | 'profile' | 'complete';
   is_member: boolean;
+  experimental_features: Array<'diet_programs' | 'food_recognition'>;
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -63,6 +64,8 @@ export const useAuthStore = defineStore('auth', {
           agreement_confirmed: me.agreement_confirmed,
           onboarding_step: me.onboarding_step,
           is_member: me.is_member,
+          member_expired_at: me.member_expired_at,
+          experimental_features: me.experimental_features,
         });
       } catch (error: any) {
         if (error?.code === 40101 || error?.statusCode === 401) this.logout();

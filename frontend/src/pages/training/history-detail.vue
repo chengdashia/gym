@@ -25,6 +25,11 @@
       <view v-for="exercise in summary.exercises" :key="exercise.name" class="summary-line">
         {{ exercise.name }} {{ exercise.completed_sets }}/{{ exercise.planned_sets }} 组
         <text v-if="exercise.progression_hint"> · {{ exercise.progression_hint }}</text>
+        <view
+          v-if="exercise.progression && exercise.plan_exercise_id"
+          class="apply-progression"
+          @tap="applyProgression(exercise.plan_exercise_id)"
+        >{{ applyingId === exercise.plan_exercise_id ? '更新中...' : '采用建议' }}</view>
       </view>
     </liquid-glass-card>
 
@@ -73,6 +78,7 @@ const id = ref(0);
 const session = ref<TrainingSession | null>(null);
 const summary = ref<TrainingSummary | null>(null);
 const loading = ref(false);
+const applyingId = ref<number | null>(null);
 const auth = useAuthStore();
 
 const completedSets = computed(() => {
@@ -84,6 +90,20 @@ function formatSet(set: SessionSet) {
   if (!set.completed) return '未完成';
   const value = effectiveSetValues(set);
   return value.weight > 0 ? `${value.reps} × ${value.weight} kg` : `${value.reps} 次 · 自重`;
+}
+
+async function applyProgression(planExerciseId: number) {
+  if (!session.value || applyingId.value) return;
+  applyingId.value = planExerciseId;
+  try {
+    await trainingApi.applyProgression(session.value.id, planExerciseId);
+    summary.value = await trainingApi.getSessionSummary(session.value.id);
+    uni.showToast({ title: '已更新下次训练目标', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '更新失败', icon: 'none' });
+  } finally {
+    applyingId.value = null;
+  }
 }
 
 onMounted(async () => {
@@ -162,6 +182,7 @@ onMounted(async () => {
   margin-top: 4rpx;
 }
 .summary-line { margin-top: $gap-1; color: $text-2; font-size: $fs-sm; line-height: 1.6; }
+.apply-progression { display: inline-flex; margin-left: 12rpx; padding: 6rpx 16rpx; border-radius: $r-pill; background: $primary-tint; color: $primary-deep; font-size: $fs-xs; font-weight: 650; }
 .set-list {
   margin-top: $gap-2;
 }

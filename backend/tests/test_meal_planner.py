@@ -21,7 +21,9 @@ def _sqlite_bigint_as_integer(type_, compiler, **kwargs):
 
 
 @pytest.fixture
-def program_http_client():
+def program_http_client(monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "experimental_user_ids", [1])
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, autoflush=False)

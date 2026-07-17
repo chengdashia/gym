@@ -187,7 +187,9 @@ def test_target_loss_rate_respects_absolute_weekly_ceiling(weight_kg, rate, shou
 
 
 @pytest.fixture
-def program_http_client():
+def program_http_client(monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "experimental_user_ids", [1, 2])
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool,
     )

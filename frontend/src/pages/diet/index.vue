@@ -28,32 +28,36 @@
           <view><text class="summary-plan-name">{{ activeProgram.template_name }} · 阶段 {{ activeProgram.stage.stage_number }}</text><text class="summary-plan-state">今日执行中</text></view>
           <text class="summary-plan-link">管理 ›</text>
         </view>
-        <view v-else class="summary-plan empty" @tap="openPrograms">
-          <view><text class="summary-plan-name">还未选择饮食方案</text><text class="summary-plan-state">自由记录模式</text></view>
-          <text class="summary-plan-link">选择方案 ›</text>
+        <view v-else-if="canUseDietPrograms" class="summary-plan empty" @tap="openPrograms">
+          <view><text class="summary-plan-name">饮食方案实验</text><text class="summary-plan-state">自由记录不受影响</text></view>
+          <text class="summary-plan-link">进入实验 ›</text>
+        </view>
+        <view v-else class="summary-plan empty" @tap="openGoals">
+          <view><text class="summary-plan-name">自由记录模式</text><text class="summary-plan-state">无需先设目标，可直接记录</text></view>
+          <text class="summary-plan-link">目标可选 ›</text>
         </view>
         <view class="sum-row">
           <view class="sum-main">
             <view class="sum-num">{{ Math.round(summary.calories_kcal) }}</view>
-            <view class="sum-label">/ {{ Math.round(goalKcal) }} kcal</view>
+            <view class="sum-label">{{ hasNutritionGoal ? `/ ${Math.round(goalKcal)} kcal` : '自由记录' }}</view>
           </view>
           <view class="sum-progress">
-            <ProgressRing :value="summary.calories_kcal" :goal="goalKcal || 1" :size="100" :thickness="10" />
+            <ProgressRing :value="summary.calories_kcal" :goal="goalKcal" :size="100" :thickness="10" />
           </view>
         </view>
         <view class="sum-divider" />
         <view class="sum-macros">
           <view class="sm-cell">
             <view class="sm-name">碳水</view>
-            <view class="sm-val">{{ Math.round(summary.carbs_g) }}<text class="sm-goal">/{{ Math.round(goalCarbs) }}</text></view>
+            <view class="sm-val">{{ Math.round(summary.carbs_g) }}<text class="sm-goal">{{ goalCarbs > 0 ? `/${Math.round(goalCarbs)}` : '' }}</text></view>
           </view>
           <view class="sm-cell">
             <view class="sm-name">蛋白质</view>
-            <view class="sm-val">{{ Math.round(summary.protein_g) }}<text class="sm-goal">/{{ Math.round(goalProtein) }}</text></view>
+            <view class="sm-val">{{ Math.round(summary.protein_g) }}<text class="sm-goal">{{ goalProtein > 0 ? `/${Math.round(goalProtein)}` : '' }}</text></view>
           </view>
           <view class="sm-cell">
             <view class="sm-name">脂肪</view>
-            <view class="sm-val">{{ Math.round(summary.fat_g) }}<text class="sm-goal">/{{ Math.round(goalFat) }}</text></view>
+            <view class="sm-val">{{ Math.round(summary.fat_g) }}<text class="sm-goal">{{ goalFat > 0 ? `/${Math.round(goalFat)}` : '' }}</text></view>
           </view>
         </view>
       </liquid-glass-panel>
@@ -110,6 +114,7 @@
 
           <view class="meal-actions">
             <view class="meal-add" @tap="addMeal(m.value)">+ 添加食物</view>
+            <view v-if="(meals[m.value] || []).length" class="meal-add" @tap="saveMealTemplate(m.value)">保存整餐</view>
             <view v-if="selectedDate !== todayString && (meals[m.value] || []).length" class="meal-add" @tap="copyMeal(m.value)">复制到今天</view>
           </view>
         </view>
@@ -177,13 +182,12 @@ import ProgressRing from '@/components/ProgressRing.vue';
 import { MEAL_TYPES, MealType } from '@/utils/constants';
 import { addDays, formatDate, weekdayCN } from '@/utils/date';
 import { requireAuth } from '@/utils/auth-guard';
-import { FEATURE_GATES } from '@/utils/feature-gates';
+import { hasExperimentalFeature } from '@/utils/feature-gates';
 import { dietApi, type DietRecord } from '@/api/diet';
 import { formatTime } from '@/utils/date';
 import { compactDateLabel, dietDateHeading } from '@/utils/diet-date';
 import { buildDietEntryUrl } from '@/utils/diet-context';
 import { dietProgramApi, type ActiveDietProgram } from '@/api/diet-programs';
-import { requireNutritionGoal } from '@/utils/feature-gates';
 
 // 同步自定义 tabBar 高亮
 function syncTabBar() {
@@ -206,6 +210,7 @@ const goalKcal = computed(() => userStore.goal.calories_kcal);
 const goalCarbs = computed(() => userStore.goal.carbs_g);
 const goalProtein = computed(() => userStore.goal.protein_g);
 const goalFat = computed(() => userStore.goal.fat_g);
+const hasNutritionGoal = computed(() => goalKcal.value > 0);
 const todayString = formatDate(new Date());
 const selectedDateHeading = computed(() => dietDateHeading(selectedDate.value, todayString));
 
@@ -217,13 +222,18 @@ const showSnack = ref(false);
 const activeProgram = ref<ActiveDietProgram | null>(null);
 const hasSnackSection = computed(() => showSnack.value || (meals.value.snack || []).length > 0);
 
-const addOptions = [
+const featureAccount = computed(() => userStore.me || auth.user);
+const canUseDietPrograms = computed(() => hasExperimentalFeature(featureAccount.value, 'diet_programs'));
+const canUsePhotoRecognition = computed(() => hasExperimentalFeature(featureAccount.value, 'food_recognition'));
+
+const addOptions = computed(() => [
   { action: 'add' as const,    icon: 'search', tint: 'mint' as const,  text: '搜索食物', desc: '从食物库查找' },
   { action: 'custom' as const, icon: 'edit',  tint: 'warm' as const,  text: '自定义食物', desc: '手动录入营养' },
-  ...(FEATURE_GATES.photoRecognition
-    ? [{ action: 'photo' as const, icon: 'camera', tint: 'sky' as const, text: '拍照识别', desc: 'AI 智能识别' }]
+  { action: 'saved' as const,  icon: 'history', tint: 'violet' as const, text: '常用整餐', desc: '一次加入整餐模板' },
+  ...(canUsePhotoRecognition.value
+    ? [{ action: 'photo' as const, icon: 'camera', tint: 'sky' as const, text: '拍照识别（实验）', desc: '本地识别，结果需确认' }]
     : []),
-];
+]);
 
 const weekDates = computed(() => {
   const t = new Date();
@@ -246,7 +256,9 @@ async function load() {
   if (!auth.isLogged) return;
   await Promise.all([
     dietStore.fetch(),
-    dietProgramApi.active().then(value => { activeProgram.value = value; }).catch(() => { activeProgram.value = null; }),
+    canUseDietPrograms.value
+      ? dietProgramApi.active().then(value => { activeProgram.value = value; }).catch(() => { activeProgram.value = null; })
+      : Promise.resolve(),
   ]);
 }
 
@@ -318,7 +330,6 @@ function addMeal(v: MealType) {
     time: formatTime(new Date()),
   });
   if (!requireAuth({ redirect: url })) return;
-  if (!requireNutritionGoal(userStore.goal, url)) return;
   uni.navigateTo({ url });
 }
 
@@ -349,8 +360,12 @@ async function copyMeal(sourceMeal: MealType) {
   }
 }
 
-function go(action: 'add' | 'custom' | 'photo') {
+function go(action: 'add' | 'custom' | 'saved' | 'photo') {
   showAddSheet.value = false;
+  if (action === 'saved') {
+    chooseSavedMeal();
+    return;
+  }
   const paths = {
     add: '/pages/diet/add',
     custom: '/pages/diet/custom-food',
@@ -362,13 +377,66 @@ function go(action: 'add' | 'custom' | 'photo') {
     time: formatTime(new Date()),
   });
   if (!requireAuth({ redirect: url })) return;
-  if (!requireNutritionGoal(userStore.goal, url)) return;
   uni.navigateTo({ url });
 }
 
+async function saveMealTemplate(mealType: MealType) {
+  if (!requireAuth({ redirect: '/pages/diet/index' })) return;
+  const label = mealTypes.find(item => item.value === mealType)?.label || '整餐';
+  try {
+    await dietApi.saveMealTemplate({
+      source_date: selectedDate.value,
+      source_meal_type: mealType,
+      name: `${selectedDateHeading.value} ${label}`,
+    });
+    uni.showToast({ title: '已保存为常用整餐', icon: 'success' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
+  }
+}
+
+async function chooseSavedMeal() {
+  if (!requireAuth({ redirect: '/pages/diet/index' })) return;
+  try {
+    const result = await dietApi.savedMeals();
+    const templates = (result.items || []).slice(0, 6);
+    if (!templates.length) {
+      uni.showToast({ title: '先在已记录餐次中保存一个整餐', icon: 'none' });
+      return;
+    }
+    uni.showActionSheet({
+      itemList: templates.map(item => `${item.name} · ${item.item_count} 项`),
+      success: async ({ tapIndex }) => {
+        const template = templates[tapIndex];
+        if (!template) return;
+        try {
+          const recorded = await dietApi.recordSavedMeal(template.id, {
+            target_date: selectedDate.value,
+            target_meal_type: addSheetMeal.value,
+            record_time: formatTime(new Date()),
+          });
+          uni.showToast({ title: `已加入 ${recorded.count} 项`, icon: 'success' });
+          await dietStore.fetch();
+        } catch (e: any) {
+          uni.showToast({ title: e?.message || '加入失败', icon: 'none' });
+        }
+      },
+    });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '常用整餐加载失败', icon: 'none' });
+  }
+}
+
 function openPrograms() {
+  if (!canUseDietPrograms.value) return;
   if (!requireAuth({ redirect: '/pages/diet/programs' })) return;
   uni.navigateTo({ url: '/pages/diet/programs' });
+}
+
+function openGoals() {
+  const url = '/pages/mine/goals';
+  if (!requireAuth({ redirect: url })) return;
+  uni.navigateTo({ url });
 }
 
 function openActiveProgram() {

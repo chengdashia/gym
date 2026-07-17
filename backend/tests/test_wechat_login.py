@@ -17,7 +17,7 @@ from app.schemas import WechatLoginIn
         (False, "昵称", "avatar.png", "fat_loss", "agreement"),
         (True, "", "avatar.png", "fat_loss", "profile"),
         (True, "昵称", "", "fat_loss", "profile"),
-        (True, "昵称", "avatar.png", None, "goal"),
+        (True, "昵称", "avatar.png", None, "complete"),
         (True, "昵称", "avatar.png", "fat_loss", "complete"),
     ],
 )

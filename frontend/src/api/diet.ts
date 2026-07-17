@@ -40,6 +40,15 @@ export interface DietRecordsResponse {
   meals: Record<MealType, DietRecord[]>;
 }
 
+export interface SavedMealTemplate {
+  id: number;
+  name: string;
+  source_meal_type: MealType;
+  item_count: number;
+  items: Array<{ food_name_snapshot: string; amount_g: number | null; serving_count: number | null }>;
+  created_at: string;
+}
+
 export interface CreateDietPayload {
   record_date: string;
   record_time: string;
@@ -58,6 +67,18 @@ export interface CreateDietPayload {
 }
 
 export const dietApi = {
+  savedMeals() {
+    return http.get<{ items: SavedMealTemplate[] }>('/diet/saved-meals');
+  },
+  saveMealTemplate(payload: { source_date: string; source_meal_type: MealType; name: string }) {
+    return http.post<SavedMealTemplate>('/diet/saved-meals/from-meal', payload);
+  },
+  recordSavedMeal(id: number, payload: { target_date: string; target_meal_type: MealType; record_time: string }) {
+    return http.post<{ count: number; template_id: number }>(`/diet/saved-meals/${id}/record`, payload);
+  },
+  deleteSavedMeal(id: number) {
+    return http.del(`/diet/saved-meals/${id}`);
+  },
   recentFoods(limit = 10) {
     return http.get<{ items: RecentFood[] }>('/diet/recent-foods', { limit });
   },

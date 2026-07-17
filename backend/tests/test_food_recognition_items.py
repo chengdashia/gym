@@ -1,32 +1,18 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
 from app.api.v1.ai import food_recognition
+from app.core.exceptions import BizException
 from app.schemas import AIRecognizeIn
 from app.schemas import AIRecognizedItem
 
 
-def test_mock_recognition_returns_editable_items():
-    uploaded = SimpleNamespace(id=9, user_id=7, file_url="/uploads/meal.jpg")
-    foods = [SimpleNamespace(id=1, name="米饭"), SimpleNamespace(id=2, name="鸡蛋")]
-    db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = uploaded
-    db.query.return_value.filter.return_value.limit.return_value.all.return_value = foods
-    db.refresh.side_effect = lambda log: setattr(log, "id", 42)
+def test_legacy_mock_recognition_endpoint_is_retired():
+    with pytest.raises(BizException) as exc:
+        food_recognition(AIRecognizeIn(file_id=9), SimpleNamespace(id=7), SimpleNamespace())
 
-    payload = food_recognition(AIRecognizeIn(file_id=9), SimpleNamespace(id=7), db)["data"]
-
-    items = payload["recognized_items"]
-    assert items
-    assert 1 <= len(items) <= 3
-    assert set(items[0]) >= {"food_id", "source", "name", "confidence", "estimated_amount_g"}
-    assert payload["provider"] == "mock"
-    assert payload["candidates"]
-    assert all(item["estimated_amount_g"] > 0 for item in items)
-    log = db.add.call_args.args[0]
-    assert log.candidates_json["recognized_items"] == items
+    assert exc.value.status_code == 410
 
 
 def test_recognized_item_accepts_custom_food_id_without_system_id():

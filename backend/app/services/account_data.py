@@ -6,6 +6,7 @@ from app.models import (
     FoodRecognitionLog,
     NutritionGoal,
     OperationLog,
+    SavedMealTemplate,
     TrainingPlan,
     TrainingPlanDay,
     TrainingPlanExercise,
@@ -26,6 +27,7 @@ from app.models import (
 PERSONAL_DATA_MODELS = (
     DietPreference,
     DietRecord,
+    SavedMealTemplate,
     WeightRecord,
     UserCustomFood,
     UserCustomExercise,

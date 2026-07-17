@@ -5,8 +5,7 @@ describe('onboarding step resume', () => {
   it.each([
     ['agreement', 1],
     ['profile', 2],
-    ['goal', 3],
-    ['complete', 4],
+    ['complete', 3],
   ] as const)('maps %s to page step %s', (step, expected) => {
     expect(onboardingStepIndex(step)).toBe(expected);
   });

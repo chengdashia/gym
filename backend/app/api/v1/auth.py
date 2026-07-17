@@ -18,6 +18,7 @@ from app.core.response import ok
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import User, UserProfile
 from app.services.onboarding import onboarding_step as _onboarding_step
+from app.services.feature_access import experimental_features
 from app.schemas import (
     CaptchaOut,
     PhoneLoginIn,
@@ -134,6 +135,7 @@ def _user_summary(user: User, is_new: bool = False) -> dict:
         "onboarding_step": _onboarding_step(user),
         "is_member": bool(user.is_member),
         "member_expired_at": user.member_expired_at.isoformat() if user.member_expired_at else None,
+        "experimental_features": experimental_features(user.id),
     }
 
 

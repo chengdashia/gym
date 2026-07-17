@@ -22,10 +22,22 @@ from app.services.diet_program_engine import (
 )
 from app.services.diet_templates import get_active_templates
 from app.services.meal_planner import MealPlanConflict, generate_seven_day_plan, replace_item, validate_meal_plan
+from app.services.feature_access import experimental_features
 
 
-router = APIRouter(prefix="/diet-programs", tags=["diet-programs"])
-meal_plan_router = APIRouter(prefix="/meal-plan", tags=["meal-plan"])
+def require_diet_program_access(user: User = Depends(get_current_user)) -> None:
+    if "diet_programs" not in experimental_features(user.id):
+        raise BizException(40301, "该实验功能尚未向当前账号开放", 403)
+
+
+router = APIRouter(
+    prefix="/diet-programs", tags=["diet-programs"],
+    dependencies=[Depends(require_diet_program_access)],
+)
+meal_plan_router = APIRouter(
+    prefix="/meal-plan", tags=["meal-plan"],
+    dependencies=[Depends(require_diet_program_access)],
+)
 
 
 def _preference_data(row: DietPreference) -> dict:

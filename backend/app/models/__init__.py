@@ -376,6 +376,22 @@ class DietRecord(Base):
     )
 
 
+class SavedMealTemplate(Base):
+    __tablename__ = "saved_meal_templates"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_meal_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    items_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    __table_args__ = (Index("idx_saved_meal_templates_user", "user_id", "created_at"),)
+
+
 class FoodRecognitionLog(Base):
     __tablename__ = "food_recognition_logs"
 

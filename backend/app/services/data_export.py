@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.models import DietRecord, NutritionGoal, TrainingSession, UserProfile, WeightRecord
+from app.models import DietRecord, NutritionGoal, SavedMealTemplate, TrainingSession, UserProfile, WeightRecord
 
 
 FIELDS = ("record_type", "recorded_at", "name", "details")
@@ -79,6 +79,16 @@ def build_user_export(db: Session, user_id: int) -> bytes:
                 "carbs_g": row.carbs_g,
                 "protein_g": row.protein_g,
                 "fat_g": row.fat_g,
+            },
+        })
+    for template in db.query(SavedMealTemplate).filter(SavedMealTemplate.user_id == user_id).all():
+        records.append({
+            "record_type": "常用整餐",
+            "recorded_at": template.created_at,
+            "name": template.name,
+            "details": {
+                "source_meal_type": template.source_meal_type,
+                "items": template.items_json,
             },
         })
     for session in db.query(TrainingSession).filter(

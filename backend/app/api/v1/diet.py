@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,7 @@ from app.api.v1.deps import get_current_user
 from app.core.database import get_db
 from app.core.exceptions import BizException
 from app.core.response import ok
-from app.models import DietRecord, Food, OperationLog, User, UserCustomFood
+from app.models import DietRecord, Food, OperationLog, SavedMealTemplate, User, UserCustomFood
 from app.schemas import CustomFoodRecordIn, DietDayOut, DietRecordIn, DietRecordOut, DietRecordUpdateIn, DietSummary
 from app.services.nutrition import calc_nutrition_per_100g, calc_nutrition_per_serving, sum_nutrition
 from app.services.diet_shortcuts import recent_unique_records
@@ -32,6 +32,29 @@ class CopyMealIn(BaseModel):
     target_date: date
     target_meal_type: str
     record_time: time
+
+
+class SaveMealTemplateIn(BaseModel):
+    source_date: date
+    source_meal_type: str
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class RecordSavedMealIn(BaseModel):
+    target_date: date
+    target_meal_type: str
+    record_time: time
+
+
+def _saved_meal_to_dict(template: SavedMealTemplate) -> dict:
+    return {
+        "id": template.id,
+        "name": template.name,
+        "source_meal_type": template.source_meal_type,
+        "item_count": len(template.items_json or []),
+        "items": template.items_json or [],
+        "created_at": template.created_at,
+    }
 
 
 def _ensure_food(db: Session, user_id: int, source: str, food_id: Optional[int], custom_food_id: Optional[int]):
@@ -165,6 +188,133 @@ def copy_meal(
     db.add(OperationLog(user_id=user.id, action="diet.copy_meal"))
     db.commit()
     return ok({"count": len(copied)})
+
+
+@router.get("/saved-meals")
+def list_saved_meals(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.query(SavedMealTemplate).filter(
+        SavedMealTemplate.user_id == user.id,
+    ).order_by(SavedMealTemplate.created_at.desc(), SavedMealTemplate.id.desc()).limit(20).all()
+    return ok({"items": [_saved_meal_to_dict(row) for row in rows]})
+
+
+@router.post("/saved-meals/from-meal")
+def save_meal_template(
+    body: SaveMealTemplateIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if body.source_meal_type not in MEAL_TYPES:
+        raise BizException(40001, "餐次不正确")
+    if db.query(SavedMealTemplate).filter(SavedMealTemplate.user_id == user.id).count() >= 20:
+        raise BizException(40901, "常用整餐最多保存 20 个", 409)
+    start, end = day_bounds(body.source_date)
+    records = db.query(DietRecord).filter(
+        DietRecord.user_id == user.id,
+        DietRecord.deleted_at.is_(None),
+        DietRecord.record_date >= start,
+        DietRecord.record_date < end,
+        DietRecord.meal_type == body.source_meal_type,
+    ).order_by(DietRecord.record_time.asc(), DietRecord.id.asc()).all()
+    if not records:
+        raise BizException(40401, "当前餐次没有可保存的记录", 404)
+    items = [{
+        "food_source": row.food_source,
+        "food_id": row.food_id,
+        "custom_food_id": row.custom_food_id,
+        "food_name_snapshot": row.food_name_snapshot,
+        "unit_type": row.unit_type,
+        "amount_g": float(row.amount_g) if row.amount_g is not None else None,
+        "serving_count": float(row.serving_count) if row.serving_count is not None else None,
+        "calories_kcal": float(row.calories_kcal),
+        "carbs_g": float(row.carbs_g),
+        "protein_g": float(row.protein_g),
+        "fat_g": float(row.fat_g),
+        "note": row.note,
+    } for row in records]
+    template = SavedMealTemplate(
+        user_id=user.id,
+        name=body.name.strip(),
+        source_meal_type=body.source_meal_type,
+        items_json=items,
+    )
+    db.add(template)
+    db.flush()
+    db.add(OperationLog(
+        user_id=user.id, action="diet.saved_meal.create",
+        target_type="saved_meal", target_id=template.id,
+    ))
+    db.commit()
+    db.refresh(template)
+    return ok(_saved_meal_to_dict(template))
+
+
+@router.post("/saved-meals/{template_id}/record")
+def record_saved_meal(
+    template_id: int,
+    body: RecordSavedMealIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if body.target_meal_type not in MEAL_TYPES:
+        raise BizException(40001, "餐次不正确")
+    template = db.query(SavedMealTemplate).filter(
+        SavedMealTemplate.id == template_id,
+        SavedMealTemplate.user_id == user.id,
+    ).first()
+    if not template:
+        raise BizException(40401, "常用整餐不存在", 404)
+    created = []
+    for item in template.items_json or []:
+        row = DietRecord(
+            user_id=user.id,
+            record_date=datetime.combine(body.target_date, time.min),
+            record_time=body.record_time,
+            meal_type=body.target_meal_type,
+            food_source=item["food_source"],
+            food_id=item.get("food_id"),
+            custom_food_id=item.get("custom_food_id"),
+            food_name_snapshot=item["food_name_snapshot"],
+            unit_type=item["unit_type"],
+            amount_g=item.get("amount_g"),
+            serving_count=item.get("serving_count"),
+            image_url=None,
+            save_image=0,
+            calories_kcal=item["calories_kcal"],
+            carbs_g=item["carbs_g"],
+            protein_g=item["protein_g"],
+            fat_g=item["fat_g"],
+            note=item.get("note"),
+        )
+        db.add(row)
+        created.append(row)
+    db.add(OperationLog(
+        user_id=user.id, action="diet.saved_meal.record",
+        target_type="saved_meal", target_id=template.id,
+    ))
+    db.commit()
+    return ok({"count": len(created), "template_id": template.id})
+
+
+@router.delete("/saved-meals/{template_id}")
+def delete_saved_meal(
+    template_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    template = db.query(SavedMealTemplate).filter(
+        SavedMealTemplate.id == template_id,
+        SavedMealTemplate.user_id == user.id,
+    ).first()
+    if not template:
+        raise BizException(40401, "常用整餐不存在", 404)
+    db.delete(template)
+    db.add(OperationLog(
+        user_id=user.id, action="diet.saved_meal.delete",
+        target_type="saved_meal", target_id=template_id,
+    ))
+    db.commit()
+    return ok({"deleted": template_id})
 
 
 @router.get("/records")

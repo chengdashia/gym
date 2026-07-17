@@ -21,7 +21,7 @@
           <view class="ring-wrap">
             <ProgressRing
               :value="diet.calories_kcal"
-              :goal="diet.calories_goal || 1"
+              :goal="diet.calories_goal"
               :size="220"
               :thickness="18"
               color="#5BC89A"
@@ -29,7 +29,7 @@
               <view class="ring-content">
                 <view class="ring-num">{{ Math.round(diet.calories_kcal) }}</view>
                 <view class="ring-label">已摄入 kcal</view>
-                <view class="ring-goal">目标 {{ Math.round(diet.calories_goal) }}</view>
+                <view class="ring-goal">{{ hasNutritionGoal ? `目标 ${Math.round(diet.calories_goal)}` : '目标未设置' }}</view>
               </view>
             </ProgressRing>
           </view>
@@ -41,9 +41,12 @@
           </view>
         </view>
         <view class="nutrition-action-copy">
-          <text v-if="diet.calories_over > 0">今日已超过目标 {{ Math.round(diet.calories_over) }} kcal</text>
-          <text v-else>今日还可摄入约 {{ Math.round(diet.calories_remaining) }} kcal</text>
-          <text v-if="diet.protein_remaining > 0">蛋白质还差 {{ Math.round(diet.protein_remaining) }} g</text>
+          <text v-if="!hasNutritionGoal">自由记录中，设置目标后可查看剩余摄入建议</text>
+          <template v-else>
+            <text v-if="diet.calories_over > 0">今日已超过目标 {{ Math.round(diet.calories_over) }} kcal</text>
+            <text v-else>今日还可摄入约 {{ Math.round(diet.calories_remaining) }} kcal</text>
+            <text v-if="diet.protein_remaining > 0">蛋白质还差 {{ Math.round(diet.protein_remaining) }} g</text>
+          </template>
         </view>
       </liquid-glass-panel>
     </view>
@@ -132,7 +135,8 @@
             </view>
           </view>
           <view :class="['weight-diff', { pos: (weight.diff_kg || 0) > 0, neg: (weight.diff_kg || 0) < 0 }]">
-            <text v-if="weight.diff_kg && weight.diff_kg > 0">还需减 {{ weight.diff_kg }} kg</text>
+            <text v-if="!weight.target_weight_kg">尚未设置体重目标</text>
+            <text v-else-if="weight.diff_kg && weight.diff_kg > 0">还需减 {{ weight.diff_kg }} kg</text>
             <text v-else-if="weight.diff_kg && weight.diff_kg < 0">还需增 {{ -weight.diff_kg }} kg</text>
             <text v-else>已达成目标</text>
           </view>
@@ -195,6 +199,7 @@ const diet = computed(() => summary.value?.diet || {
   record_count: 0,
   calories_remaining: 0, calories_over: 0, protein_remaining: 0,
 });
+const hasNutritionGoal = computed(() => diet.value.calories_goal > 0);
 
 const training = computed(() => summary.value?.training || {
   status: 'no_plan', plan_id: null, plan_day_id: null,

@@ -29,7 +29,7 @@ def test_higher_priority_wins_when_multiple_actions_are_available():
         needs_profile=False, has_goal=False, meal_recorded=False,
         training_status="in_progress", weight_recorded_today=False,
     )
-    assert action["type"] == "set_nutrition_goal"
+    assert action["type"] == "record_meal"
 
 
 def test_weekly_failure_does_not_break_home_summary(monkeypatch):

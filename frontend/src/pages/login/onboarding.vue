@@ -125,27 +125,12 @@
         <view v-if="profileError" class="profile-feedback">{{ profileError }}</view>
 
         <button :class="['auth-submit', { disabled: !canFinishProfile }]" :disabled="!canFinishProfile" @tap="finishProfile">
-          {{ profileLoading ? '正在保存' : '保存并继续' }}
+          {{ profileLoading ? '正在保存' : '保存并开始使用' }}
         </button>
         <button class="guest-action" @tap="goGuest">暂不完善，先体验</button>
       </view>
     </view>
 
-    <view v-else-if="step === 3" class="step step-profile">
-      <view class="profile-shell">
-        <view class="profile-topline">
-          <view class="step-title">你当前最关注什么？</view>
-          <view class="step-desc">只选一个核心目标，其他资料以后再补充</view>
-        </view>
-        <view class="goal-options">
-          <view v-for="goal in onboardingGoals" :key="goal.value" :class="['goal-option', { active: selectedGoal === goal.value }]" @tap="selectedGoal = goal.value">
-            {{ goal.label }}
-          </view>
-        </view>
-        <button :class="['auth-submit', { disabled: !selectedGoal }]" :disabled="!selectedGoal" @tap="finishGoal">完成设置</button>
-        <button class="guest-action" @tap="goGuest">暂不完善，先体验</button>
-      </view>
-    </view>
   </view>
 </template>
 
@@ -157,7 +142,6 @@ import { useUserStore } from '@/store/user';
 import { authApi } from '@/api/auth';
 import { uploadApi } from '@/api/uploads';
 import { resolveStaticUrl } from '@/utils/request';
-import { FITNESS_GOALS, type FitnessGoal } from '@/utils/constants';
 import { isProfileComplete, onboardingStepIndex, profilePayload, type ProfileSource } from './profile-source';
 
 const step = ref(0);
@@ -178,8 +162,6 @@ const profileDraft = reactive({ nickname: '', avatar_url: '' });
 const profileSource = ref<ProfileSource>('default');
 const profileLoading = ref(false);
 const profileError = ref('');
-const selectedGoal = ref<FitnessGoal | ''>('');
-const onboardingGoals = FITNESS_GOALS.filter((goal) => goal.value !== 'shaping');
 const phoneReg = /^1[3-9]\d{9}$/;
 
 const authDisabled = computed(() => {
@@ -328,13 +310,18 @@ async function finishProfile() {
   uni.showLoading({ title: '保存资料中...' });
   try {
     const payload = profilePayload(profileSource.value, profileDraft.nickname, profileDraft.avatar_url);
-    await userStore.updateProfile(payload);
+    const me = await userStore.updateProfile(payload);
     auth.setUser({
       nickname: payload.nickname,
       avatar_url: payload.avatar_url || null,
-      onboarding_step: 'goal',
+      onboarding_step: me.onboarding_step,
     });
-    step.value = 3;
+    if (me.onboarding_step === 'complete') {
+      uni.showToast({ title: '登录成功', icon: 'success' });
+      setTimeout(goHome, 500);
+      return;
+    }
+    step.value = onboardingStepIndex(me.onboarding_step);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '保存失败，请重试', icon: 'none' });
   } finally {
@@ -347,14 +334,6 @@ async function confirmAgreement() {
   await userStore.confirmAgreement();
   auth.setUser({ agreement_confirmed: true, onboarding_step: 'profile' });
   step.value = 2;
-}
-
-async function finishGoal() {
-  if (!selectedGoal.value) return;
-  await userStore.updateProfile({ profile: { fitness_goal: selectedGoal.value } });
-  auth.setUser({ onboarding_step: 'complete' });
-  uni.showToast({ title: '登录成功', icon: 'success' });
-  setTimeout(goHome, 500);
 }
 
 function goHome() {
@@ -419,7 +398,4 @@ function goAgreement(type: 'agreement' | 'privacy') {
 .profile-state { margin-top: $gap-2; color: $text-3; font-size: $fs-xs; }
 .profile-feedback { margin-top: $gap-2; padding: $gap-2 $gap-3; border-radius: $r-12; background: #fff5e8; color: #a86828; font-size: $fs-xs; line-height: 1.5; }
 .profile-agree { margin: 48rpx 0 $gap-3; }
-.goal-options { display: grid; gap: $gap-2; margin-bottom: $gap-4; }
-.goal-option { padding: $gap-3; border: 2rpx solid rgba(63, 166, 124, .18); border-radius: $r-16; background: #fff; color: $text-1; text-align: center; font-size: $fs-lg; font-weight: 600; }
-.goal-option.active { border-color: $primary; background: rgba(63, 166, 124, .1); color: $primary-deep; }
 </style>

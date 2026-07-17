@@ -4,10 +4,10 @@ def choose_primary_action(
 ) -> dict:
     if needs_profile:
         return {"type": "complete_profile", "title": "补充身体资料", "description": "补充后可生成更准确的营养建议", "url": "/pages/mine/profile"}
-    if not has_goal:
-        return {"type": "set_nutrition_goal", "title": "设置每日营养目标", "description": "先确定今天的热量和营养目标", "url": "/pages/mine/goals"}
     if not meal_recorded:
         return {"type": "record_meal", "title": "记录这一餐", "description": "及时记录，今天的剩余摄入更清楚", "url": "/pages/diet/add"}
+    if not has_goal:
+        return {"type": "set_nutrition_goal", "title": "完善每日营养目标", "description": "可选：设置后可查看剩余摄入建议", "url": "/pages/mine/goals"}
     if training_status == "in_progress":
         return {"type": "resume_training", "title": "继续今日训练", "description": "训练还没有结束", "url": "/pages/training/index"}
     if training_status == "not_started":

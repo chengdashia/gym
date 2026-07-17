@@ -39,6 +39,7 @@ from app.services.onboarding import onboarding_step
 from app.services.account_data import anonymize_account, clear_personal_data
 from app.services.data_export import build_user_export
 from app.services.uploads import delete_local_file, image_data_url
+from app.services.feature_access import experimental_features as _experimental_features
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -97,9 +98,10 @@ def _to_user_me(user: User, profile: UserProfile | None) -> dict:
         "is_member": bool(user.is_member),
         "member_expired_at": user.member_expired_at,
         "agreement_confirmed": user.agreement_confirmed_at is not None,
-        "onboarding_step": onboarding_step(user, profile),
+        "onboarding_step": onboarding_step(user),
         "agreement_version": user.agreement_version,
         "agreement_confirmed_at": user.agreement_confirmed_at,
+        "experimental_features": _experimental_features(user.id),
         "profile": profile_out,
     }
 

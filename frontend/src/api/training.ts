@@ -107,7 +107,19 @@ export interface TrainingSummary {
   total_volume: number;
   previous_volume: number | null;
   volume_change: number | null;
-  exercises: Array<{ name: string; completed_sets: number; planned_sets: number; progression_hint: string | null }>;
+  exercises: Array<{
+    name: string;
+    completed_sets: number;
+    planned_sets: number;
+    progression_hint: string | null;
+    plan_exercise_id: number | null;
+    progression: null | {
+      kind: 'reps' | 'weight';
+      target_reps: number;
+      target_weight_kg: number | null;
+      hint: string;
+    };
+  }>;
 }
 
 export interface TodayTraining {
@@ -159,6 +171,9 @@ export const trainingApi = {
   },
   getSessionSummary(id: number) {
     return http.get<TrainingSummary>(`/training/sessions/${id}/summary`);
+  },
+  applyProgression(sessionId: number, planExerciseId: number) {
+    return http.post(`/training/sessions/${sessionId}/progressions/${planExerciseId}/apply`);
   },
   updateSession(id: number, payload: {
     status: string;

@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     agreement_confirmed_at: '2026-07-10T00:00:00Z',
     is_member: false,
     member_expired_at: null,
+    experimental_features: [],
     profile: null,
   })),
 }));
@@ -45,6 +46,7 @@ describe('auth bootstrap', () => {
       agreement_confirmed_at: '2026-07-10T00:00:00Z',
       is_member: false,
       member_expired_at: null,
+      experimental_features: [],
       profile: null,
     });
     setActivePinia(createPinia());
@@ -66,6 +68,12 @@ describe('auth bootstrap', () => {
   });
 
   it('refreshes and synchronizes the current user into both stores and cache', async () => {
+    const me = await mocks.getMe();
+    mocks.getMe.mockClear();
+    mocks.getMe.mockResolvedValueOnce({
+      ...me,
+      experimental_features: ['food_recognition'] as any,
+    });
     const { STORAGE_KEYS } = await import('@/utils/constants');
     const { useAuthStore } = await import('./auth');
     const { useUserStore } = await import('./user');
@@ -85,6 +93,7 @@ describe('auth bootstrap', () => {
       nickname: '测试',
       agreement_confirmed: true,
       is_member: false,
+      experimental_features: ['food_recognition'],
     }));
     expect(mocks.setStorageSync).toHaveBeenCalledWith(STORAGE_KEYS.user, auth.user);
   });
@@ -92,8 +101,8 @@ describe('auth bootstrap', () => {
   it('uses the server onboarding step instead of agreement alone', async () => {
     mocks.getMe.mockResolvedValueOnce({
       ...(await mocks.getMe()),
-      agreement_confirmed: true,
-      onboarding_step: 'goal' as any,
+      agreement_confirmed: false,
+      onboarding_step: 'agreement' as any,
     });
     const { useAuthStore } = await import('./auth');
     const auth = useAuthStore();
@@ -101,7 +110,7 @@ describe('auth bootstrap', () => {
     await auth.bootstrap();
 
     expect(auth.needOnboarding).toBe(true);
-    expect(auth.user?.onboarding_step).toBe('goal');
+    expect(auth.user?.onboarding_step).toBe('agreement');
   });
 
   it('keeps the saved token when refreshing the user fails with a network error', async () => {

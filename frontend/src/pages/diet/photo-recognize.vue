@@ -20,19 +20,25 @@
             @tap="meal = m.value as MealType"
           />
         </view>
+        <view class="plate-row">
+          <text class="context-label">餐盘直径</text>
+          <picker :range="plateDiameters" :value="plateDiameterIndex" @change="changePlateDiameter">
+            <text class="date-value">{{ plateDiameterCm }} cm ›</text>
+          </picker>
+        </view>
       </liquid-glass-card>
 
       <view class="camera-frame" @tap="chooseCamera">
         <view class="camera-icon">＋</view>
         <view class="camera-title">拍下你的食物</view>
-        <view class="camera-desc">保持光线充足，让食物完整出现在画面中</view>
+        <view class="camera-desc">从正上方拍摄，完整拍到餐盘边缘，并保持光线充足</view>
       </view>
 
       <view class="upload-actions">
         <liquid-glass-button variant="primary" size="lg" text="拍照识别" @tap="chooseCamera" />
         <liquid-glass-button variant="ghost" size="lg" text="从相册选择" @tap="chooseAlbum" />
       </view>
-      <view class="privacy-note">图片仅用于本次食物识别，我们会妥善保护你的隐私</view>
+      <view class="privacy-note">默认只在本机识别；仅当你勾选保存原图时才会上传</view>
     </view>
 
     <view v-else-if="recognizing" class="recognizing">
@@ -47,7 +53,7 @@
       <image :src="imagePath" mode="aspectFill" class="preview-img" />
       <liquid-glass-card :highlight="true" class="card">
         <view class="card-title">确认{{ mealTypes.find(m => m.value === meal)?.label }}食物</view>
-        <view class="simulation-note">模拟识别结果：当前不来自真实图片分析，请核对食物和实际克数。</view>
+        <view class="simulation-note">{{ recognitionNote }}</view>
         <view v-if="items.length === 0" class="empty-tip">
           未能识别出食物，你可以手动搜索添加
         </view>
@@ -60,6 +66,9 @@
             <view class="cand-info">
               <view class="cand-name">{{ item.name }}</view>
               <view class="cand-meta">{{ Math.round(item.confidence * 100) }}% 置信度</view>
+              <view v-if="item.estimated_amount_min_g && item.estimated_amount_max_g" class="cand-meta">
+                估算 {{ item.estimated_amount_min_g }}–{{ item.estimated_amount_max_g }}g，请确认后记录
+              </view>
               <view v-if="item.saveError" class="save-error">{{ item.saveError }}</view>
               <view v-if="item.detailError" class="save-error" @tap="retryDetail(index)">{{ item.detailError }}（点此重试）</view>
             </view>
@@ -103,7 +112,7 @@
           <view class="save-row">
             <label class="save-img" @tap="saveImage = !saveImage">
               <view :class="['checkbox', { checked: saveImage }]">{{ saveImage ? '✓' : '' }}</view>
-              <text>保存食物图片到记录</text>
+              <text>保存食物原图（勾选后才上传）</text>
             </label>
           </view>
         </view>
@@ -133,6 +142,7 @@ import { safeNavigateBack } from '@/utils/nav';
 import { requireAuth } from '@/utils/auth-guard';
 import { buildDietEntryUrl, parseDietContext } from '@/utils/diet-context';
 import { appendSelectionMode, hasUnresolvedDetails, hydrateRecognizedItems, mergeSelectedFood, summarizeRecognizedMeal, type RecognizedMealItem } from '@/utils/recognized-meal';
+import { recognizeFoodLocally } from '@/services/local-food-recognition';
 
 const dietStore = useDietStore();
 const mealTypes = MEAL_TYPES;
@@ -147,7 +157,15 @@ const summary = computed(() => summarizeRecognizedMeal(items.value));
 const meal = ref<MealType>('lunch');
 const recordDate = ref(dietStore.selectedDate || today());
 const recordTime = ref(formatTime(new Date()));
-const saveImage = ref(true);
+const saveImage = ref(false);
+const plateDiameters = [18, 22, 26];
+const plateDiameterCm = ref(22);
+const plateDiameterIndex = computed(() => Math.max(0, plateDiameters.indexOf(plateDiameterCm.value)));
+const recognitionNote = ref('结果由本地模型估算，食物和克数都需要你确认后才会记录。');
+
+function changePlateDiameter(event: any) {
+  plateDiameterCm.value = plateDiameters[Number(event.detail.value)] || 22;
+}
 
 function getCurrentMeal(): MealType {
   const h = new Date().getHours();
@@ -195,13 +213,15 @@ async function handleImage(path: string) {
   imagePath.value = path;
   recognizing.value = true;
   try {
-    const up = await uploadApi.image(path, 'food_recognition', true);
-    uploadedFileId.value = up.file_id;
-    uploadedUrl.value = up.file_url;
-    const ai = await aiApi.recognizeFood({ file_id: up.file_id, image_url: up.file_url });
-    items.value = await hydrateRecognizedItems(ai.recognized_items, foodApi.getDetail);
+    const manifest = await aiApi.getFoodModelManifest();
+    const recognized = await recognizeFoodLocally(path, plateDiameterCm.value, manifest);
+    items.value = await hydrateRecognizedItems(recognized, foodApi.getDetail);
+    recognitionNote.value = items.value.length
+      ? '本地模型已完成估算；请逐项核对食物和克数区间，确认后才会记录。'
+      : '本地模型没有给出可靠结果，请使用“添加食物”手动完成记录。';
   } catch (e: any) {
-    uni.showToast({ title: e?.message || '识别失败', icon: 'none' });
+    recognitionNote.value = e?.message || '本地识别暂不可用，请手动添加食物。';
+    uni.showToast({ title: '本地识别暂不可用，可手动添加', icon: 'none' });
     items.value = [];
   } finally {
     recognizing.value = false;
@@ -245,6 +265,11 @@ async function save() {
   }
   uni.showLoading({ title: '保存中...' });
   try {
+    if (saveImage.value && !uploadedFileId.value) {
+      const up = await uploadApi.image(imagePath.value, 'food_recognition', false);
+      uploadedFileId.value = up.file_id;
+      uploadedUrl.value = up.file_url;
+    }
     const failed: RecognizedMealItem[] = [];
     for (const item of items.value) {
       try {
@@ -255,7 +280,8 @@ async function save() {
           custom_food_id: item.source === 'custom' ? item.custom_food_id : null,
           food_name_snapshot: item.name, unit_type: 'g', amount_g: item.estimated_amount_g,
           image_url: saveImage.value ? uploadedUrl.value : null,
-          image_file_id: uploadedFileId.value, save_image: saveImage.value,
+          image_file_id: saveImage.value ? uploadedFileId.value : null,
+          save_image: saveImage.value,
         });
       } catch (e: any) {
         failed.push({ ...item, saveError: e?.message || '保存失败，请重试' });
@@ -313,6 +339,7 @@ async function save() {
   gap: 8rpx;
   padding-top: $gap-2;
 }
+.plate-row { display: flex; align-items: center; justify-content: space-between; min-height: 80rpx; margin-top: $gap-2; padding-top: $gap-2; border-top: 1rpx solid $divider; }
 .camera-frame {
   min-height: 400rpx;
   border: 2rpx dashed rgba(91, 200, 154, 0.55);

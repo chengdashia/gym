@@ -12,14 +12,26 @@ export interface RecognizedItem extends RecognitionCandidate {
   estimated_amount_g: number;
 }
 
+export interface FoodModelLabel {
+  index: number;
+  name: string;
+  food_id: number | null;
+  density_low: number;
+  density_high: number;
+}
+
+export interface FoodModelManifest {
+  version: string;
+  model_url: string;
+  input_size: number;
+  input_name: string;
+  output_names: { scores: string; labels: string; area_ratios: string };
+  score_threshold: number;
+  labels: FoodModelLabel[];
+}
+
 export const aiApi = {
-  recognizeFood(payload: { file_id?: number; image_url?: string }) {
-    return http.post<{
-      recognition_id: number;
-      provider: string;
-      recognized_items: RecognizedItem[];
-      /** Migration compatibility only. */
-      candidates: RecognitionCandidate[];
-    }>('/ai/food-recognition', payload);
+  getFoodModelManifest() {
+    return http.get<FoodModelManifest>('/ai/food-recognition/model-manifest');
   },
 };

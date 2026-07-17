@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +32,11 @@ class Settings(BaseSettings):
     wechat_secret: str = ""
 
     upload_max_size_mb: int = 10
+
+    # Controlled-beta account allowlist. Keep empty in public environments.
+    experimental_user_ids: list[int] = Field(default_factory=list)
+    food_model_url: str = ""
+    food_model_version: str = ""
 
     def validate_for_runtime(self) -> None:
         if self.debug:

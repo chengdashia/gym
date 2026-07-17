@@ -1,8 +1,8 @@
 export type ProfileSource = 'wechat' | 'custom' | 'default';
-export type OnboardingStep = 'agreement' | 'profile' | 'goal' | 'complete';
+export type OnboardingStep = 'agreement' | 'profile' | 'complete';
 
 export function onboardingStepIndex(step: OnboardingStep): number {
-  return { agreement: 1, profile: 2, goal: 3, complete: 4 }[step];
+  return { agreement: 1, profile: 2, complete: 3 }[step];
 }
 
 export function isProfileComplete(_source: ProfileSource, nickname: string, avatarUrl: string) {

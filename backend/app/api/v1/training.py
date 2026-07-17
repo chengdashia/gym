@@ -45,7 +45,7 @@ from app.schemas import (
 from app.services.schedule import resolve_today_day
 from app.services.exercise_stats import effective_set_values
 from app.services.training_history import last_completed_sets
-from app.services.training_summary import build_training_summary
+from app.services.training_summary import build_training_summary, plan_targets_match_session, progression_proposal
 from app.services.training_sessions import can_resume_session
 from app.utils.date import date_str
 
@@ -617,7 +617,74 @@ def get_session_summary(session_id: int, user: User = Depends(get_current_user),
     else:
         previous_query = previous_query.filter(TrainingSession.session_name == session.session_name)
     previous = previous_query.order_by(TrainingSession.started_at.desc()).first()
-    return ok(build_training_summary(session, previous))
+    summary = build_training_summary(session, previous)
+    if session.plan_day_id:
+        plan_exercises = db.query(TrainingPlanExercise).join(TrainingPlanDay).join(TrainingPlan).filter(
+            TrainingPlanExercise.plan_day_id == session.plan_day_id,
+            TrainingPlan.user_id == user.id,
+            TrainingPlan.deleted_at.is_(None),
+        ).all()
+        by_key = {
+            (item.exercise_name_snapshot, item.sort_order): item
+            for item in plan_exercises
+        }
+        for row, session_exercise in zip(summary["exercises"], session.exercises):
+            if row["progression"]:
+                plan_exercise = by_key.get(
+                    (session_exercise.exercise_name_snapshot, session_exercise.sort_order)
+                )
+                if plan_exercise and plan_targets_match_session(plan_exercise, session_exercise):
+                    row["plan_exercise_id"] = plan_exercise.id
+    return ok(summary)
+
+
+@router.post("/sessions/{session_id}/progressions/{plan_exercise_id}/apply")
+def apply_progression(
+    session_id: int,
+    plan_exercise_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = db.query(TrainingSession).filter(
+        TrainingSession.id == session_id,
+        TrainingSession.user_id == user.id,
+        TrainingSession.deleted_at.is_(None),
+        TrainingSession.status == "completed",
+    ).first()
+    if not session:
+        raise BizException(40401, "已完成的训练记录不存在", 404)
+
+    plan_exercise = db.query(TrainingPlanExercise).join(TrainingPlanDay).join(TrainingPlan).filter(
+        TrainingPlanExercise.id == plan_exercise_id,
+        TrainingPlanExercise.plan_day_id == session.plan_day_id,
+        TrainingPlan.id == session.plan_id,
+        TrainingPlan.user_id == user.id,
+        TrainingPlan.deleted_at.is_(None),
+    ).first()
+    if not plan_exercise:
+        raise BizException(40401, "计划动作不存在", 404)
+
+    session_exercise = next((item for item in session.exercises if (
+        item.exercise_name_snapshot == plan_exercise.exercise_name_snapshot
+        and item.sort_order == plan_exercise.sort_order
+    )), None)
+    proposal = progression_proposal(session_exercise) if session_exercise else None
+    if not proposal:
+        raise BizException(40901, "本次表现尚未达到递进条件", 409)
+    if not plan_targets_match_session(plan_exercise, session_exercise):
+        raise BizException(40901, "计划目标已更新，请以最新计划为准", 409)
+
+    plan_exercise.target_reps = proposal["target_reps"]
+    plan_exercise.target_weight_kg = proposal["target_weight_kg"]
+    db.add(OperationLog(
+        user_id=user.id,
+        action="training.progression.apply",
+        target_type="plan_exercise",
+        target_id=plan_exercise.id,
+        detail_json=proposal,
+    ))
+    db.commit()
+    return ok({"plan_exercise_id": plan_exercise.id, **proposal})
 
 
 @router.put("/sessions/{session_id}")

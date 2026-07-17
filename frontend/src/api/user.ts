@@ -20,9 +20,10 @@ export interface UserMe {
   is_member: boolean;
   member_expired_at: string | null;
   agreement_confirmed: boolean;
-  onboarding_step: 'agreement' | 'profile' | 'goal' | 'complete';
+  onboarding_step: 'agreement' | 'profile' | 'complete';
   agreement_version: string | null;
   agreement_confirmed_at: string | null;
+  experimental_features: Array<'diet_programs' | 'food_recognition'>;
   profile: UserProfile | null;
 }
 
